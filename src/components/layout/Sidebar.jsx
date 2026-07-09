@@ -2,8 +2,8 @@ import { NavLink } from "react-router-dom";
 import CloverLogo from "../common/CloverLogo";
 
 const items = [
-  ["/", "Home"], ["/calendar", "Calendar"], ["/daily", "Daily"], ["/tasks", "Tasks"], ["/life", "Life"],
-  ["/money", "Money"], ["/archive", "Archive"], ["/campaigns", "Campaigns"], ["/files", "Files"], ["/settings", "Settings"]
+  ["/", "Home"], ["/calendar", "Calendar"], ["/tasks", "Tasks"], ["/daily", "Daily"], ["/habits", "Habits"], ["/life", "Life"],
+  ["/money", "Money"], ["/content", "Content"], ["/campaigns", "Campaigns"], ["/files", "Files"], ["/archive", "Archive"], ["/settings", "Settings"]
 ];
 
 export default function Sidebar() {

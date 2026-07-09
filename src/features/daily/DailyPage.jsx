@@ -1,25 +1,29 @@
-import CrudPanel from "../shared/CrudPanel";
+import { Link } from "react-router-dom";
+import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/layout/PageHeader";
 import { createTimelineEntry, deleteTimelineEntry, getTimelineEntries, updateTimelineEntry } from "../../lib/storage/localStorageAdapter";
+import CrudPanel from "../shared/CrudPanel";
 
 export default function DailyPage() {
   return (
     <>
-      <PageHeader eyebrow="Daily" title="데일리 타임라인" />
+      <PageHeader eyebrow="Daily" title="Daily timeline">
+        <Link to="/habits"><AppButton variant="soft">Habits</AppButton></Link>
+      </PageHeader>
       <CrudPanel
-        title="오늘의 기록"
-        description="시간대별 기록, 컨디션, 회고를 자유롭게 쌓아두는 공간입니다."
+        title="Today notes"
+        description="Write time blocks, mood, reflections, and loose notes for the day."
         getItems={getTimelineEntries}
         createItem={createTimelineEntry}
         updateItem={updateTimelineEntry}
         deleteItem={deleteTimelineEntry}
         defaultItem={{ date: new Date().toISOString().slice(0, 10), time: "09:00" }}
         fields={[
-          { name: "title", label: "제목", primary: true },
-          { name: "date", label: "날짜", type: "date" },
-          { name: "time", label: "시간", type: "time" },
-          { name: "mood", label: "컨디션", type: "select", options: ["좋음", "보통", "피곤", "정신없음", "회복 필요"] },
-          { name: "memo", label: "기록", type: "textarea" }
+          { name: "title", label: "Title", primary: true },
+          { name: "date", label: "Date", type: "date" },
+          { name: "time", label: "Time", type: "time" },
+          { name: "mood", label: "Mood", type: "select", options: ["Good", "Normal", "Tired", "Scattered", "Need rest"] },
+          { name: "memo", label: "Note", type: "textarea" }
         ]}
       />
     </>

@@ -7,6 +7,7 @@ import HomePage from "./features/home/HomePage";
 import CalendarPage from "./features/calendar/CalendarPage";
 import DailyPage from "./features/daily/DailyPage";
 import TasksPage from "./features/tasks/TasksPage";
+import HabitsPage from "./features/habits/HabitsPage";
 import LifePage from "./features/life/LifePage";
 import MoneyPage from "./features/money/MoneyPage";
 import ArchivePage from "./features/archive/ArchivePage";
@@ -30,8 +31,10 @@ export default function App() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/daily" element={<DailyPage />} />
         <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/habits" element={<HabitsPage />} />
         <Route path="/life" element={<LifePage />} />
         <Route path="/money" element={<MoneyPage />} />
+        <Route path="/content" element={<ArchivePage />} />
         <Route path="/archive" element={<ArchivePage />} />
         <Route path="/campaigns" element={<CampaignsPage />} />
         <Route path="/files" element={<FilesPage />} />

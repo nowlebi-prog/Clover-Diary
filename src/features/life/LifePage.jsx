@@ -1,15 +1,37 @@
+import { Link } from "react-router-dom";
+import AppButton from "../../components/common/AppButton";
+import GlassCard from "../../components/common/GlassCard";
+import SectionTitle from "../../components/common/SectionTitle";
 import PageHeader from "../../components/layout/PageHeader";
 import CrudPanel from "../shared/CrudPanel";
-import { createChore, createHabit, createShoppingItem, deleteChore, deleteHabit, deleteShoppingItem, getChores, getHabits, getShoppingItems, updateChore, updateHabit, updateShoppingItem } from "../../lib/storage/localStorageAdapter";
+import {
+  createChore,
+  createShoppingItem,
+  deleteChore,
+  deleteShoppingItem,
+  getChores,
+  getShoppingItems,
+  updateChore,
+  updateShoppingItem
+} from "../../lib/storage/localStorageAdapter";
 
 export default function LifePage() {
   return (
     <>
-      <PageHeader eyebrow="Life" title="생활 루틴" />
+      <PageHeader eyebrow="Life" title="Life routines">
+        <Link to="/habits"><AppButton variant="soft">Open Habit Tracker</AppButton></Link>
+      </PageHeader>
       <div className="grid gap-4">
-        <CrudPanel title="반복 루틴" getItems={getHabits} createItem={createHabit} updateItem={updateHabit} deleteItem={deleteHabit} fields={[{ name: "title", label: "루틴", primary: true }, { name: "cycle", label: "반복 주기", type: "select", options: ["매일", "매주", "매월", "필요할 때"] }, { name: "nextDueDate", label: "다음 예정일", type: "date" }, { name: "completed", label: "완료", type: "checkbox" }]} />
-        <CrudPanel title="집안일" getItems={getChores} createItem={createChore} updateItem={updateChore} deleteItem={deleteChore} fields={[{ name: "title", label: "할 일", primary: true }, { name: "cycle", label: "반복 주기", type: "select", options: ["매일", "매주", "매월", "필요할 때"] }, { name: "lastDoneAt", label: "마지막 완료일", type: "date" }, { name: "nextDueDate", label: "다음 예정일", type: "date" }, { name: "completed", label: "완료", type: "checkbox" }]} />
-        <CrudPanel title="구매 필요 목록" getItems={getShoppingItems} createItem={createShoppingItem} updateItem={updateShoppingItem} deleteItem={deleteShoppingItem} fields={[{ name: "title", label: "구매 항목", primary: true }, { name: "category", label: "카테고리", type: "select", options: ["장보기", "생활용품", "업무", "기타"] }, { name: "memo", label: "메모" }, { name: "completed", label: "구매 완료", type: "checkbox" }]} />
+        <GlassCard>
+          <SectionTitle>Habit tracker moved up</SectionTitle>
+          <p className="text-sm leading-relaxed text-clover-sub">
+            Habits now have their own Notion-style tracker with daily checks, weekly and monthly views,
+            yearly heatmaps, streaks, and paused habits.
+          </p>
+          <Link to="/habits"><AppButton className="mt-4">Go to Habits</AppButton></Link>
+        </GlassCard>
+        <CrudPanel title="Chores" getItems={getChores} createItem={createChore} updateItem={updateChore} deleteItem={deleteChore} fields={[{ name: "title", label: "Task", primary: true }, { name: "cycle", label: "Cycle", type: "select", options: ["Daily", "Weekly", "Monthly", "When needed"] }, { name: "lastDoneAt", label: "Last done", type: "date" }, { name: "nextDueDate", label: "Next due", type: "date" }, { name: "completed", label: "Done", type: "checkbox" }]} />
+        <CrudPanel title="Shopping list" getItems={getShoppingItems} createItem={createShoppingItem} updateItem={updateShoppingItem} deleteItem={deleteShoppingItem} fields={[{ name: "title", label: "Item", primary: true }, { name: "category", label: "Category", type: "select", options: ["Groceries", "Home supplies", "Work", "Other"] }, { name: "memo", label: "Memo" }, { name: "completed", label: "Bought", type: "checkbox" }]} />
       </div>
     </>
   );

@@ -10,6 +10,29 @@ const normalize = (data) => {
   collections.forEach((key) => {
     if (!Array.isArray(next[key])) next[key] = [];
   });
+  next.habits = next.habits.map((habit) => ({
+    id: habit.id,
+    name: habit.name || habit.title || "New habit",
+    icon: habit.icon || "CL",
+    color: habit.color || "#8DDFA8",
+    frequencyType: habit.frequencyType || (habit.cycle === "매주" ? "weekly_count" : "daily"),
+    targetCount: Number(habit.targetCount || 7),
+    customDays: Array.isArray(habit.customDays) ? habit.customDays : [],
+    memo: habit.memo || "",
+    status: habit.status || "active",
+    createdAt: habit.createdAt || today(),
+    updatedAt: habit.updatedAt || today()
+  }));
+  next.habitLogs = next.habitLogs
+    .filter((log) => log && log.habitId && log.date)
+    .map((log) => ({
+      id: log.id,
+      habitId: log.habitId,
+      date: log.date,
+      completed: Boolean(log.completed),
+      createdAt: log.createdAt || today(),
+      updatedAt: log.updatedAt || today()
+    }));
   return next;
 };
 
@@ -79,12 +102,32 @@ Object.entries(names).forEach(([collection, name]) => {
   api[`delete${name}`] = (id) => remove(collection, id);
 });
 
+api.getHabitLogs = () => list("habitLogs");
+api.createHabitLog = (payload) => create("habitLogs", payload);
+api.updateHabitLog = (id, updates) => update("habitLogs", id, updates);
+api.deleteHabitLog = (id) => remove("habitLogs", id);
+api.toggleHabitLog = (habitId, date) => {
+  const data = getAllData();
+  const existing = data.habitLogs.find((log) => log.habitId === habitId && log.date === date);
+  if (existing) {
+    data.habitLogs = data.habitLogs.filter((log) => log.id !== existing.id);
+  } else {
+    const now = today();
+    data.habitLogs = [
+      { id: makeId("habitLogs"), habitId, date, completed: true, createdAt: now, updatedAt: now },
+      ...data.habitLogs
+    ];
+  }
+  saveAllData(data);
+};
+
 export const storage = api;
 export const {
   getTodos, createTodo, updateTodo, deleteTodo,
   getTop3, createTop3, updateTop3, deleteTop3,
   getDelayedTasks, createDelayedTask, updateDelayedTask, deleteDelayedTask,
   getHabits, createHabit, updateHabit, deleteHabit,
+  getHabitLogs, createHabitLog, updateHabitLog, deleteHabitLog, toggleHabitLog,
   getEvents, createEvent, updateEvent, deleteEvent,
   getTimelineEntries, createTimelineEntry, updateTimelineEntry, deleteTimelineEntry,
   getChores, createChore, updateChore, deleteChore,

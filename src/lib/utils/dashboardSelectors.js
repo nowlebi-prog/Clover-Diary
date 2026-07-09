@@ -1,0 +1,92 @@
+import { addDays, daysBetween, toDateKey } from "./date";
+
+const titleOf = (item) => item.title || item.name || item.project || item.service || "Untitled";
+const compact = (item, type, date, meta = {}) => ({ ...item, type, date, displayTitle: titleOf(item), ...meta });
+
+export function getIncompleteTodos(data) {
+  return [...(data.todos || [])]
+    .filter((todo) => !todo.completed)
+    .sort((a, b) => {
+      const priority = { high: 0, medium: 1, normal: 1, low: 2 };
+      return (a.dueDate || "9999-12-31").localeCompare(b.dueDate || "9999-12-31") || (priority[a.priority] ?? 1) - (priority[b.priority] ?? 1);
+    });
+}
+
+export function getTodayTodos(data, today = toDateKey()) {
+  return getIncompleteTodos(data).filter((todo) => !todo.dueDate || todo.dueDate <= today);
+}
+
+export function getOverdueTodos(data, today = toDateKey()) {
+  return getIncompleteTodos(data).filter((todo) => todo.dueDate && todo.dueDate < today);
+}
+
+export function getTodayItems(data, today = toDateKey()) {
+  const items = [];
+  (data.events || []).filter((item) => item.date === today).forEach((item) => items.push(compact(item, "event", item.date, { tone: "green", label: "Event" })));
+  (data.todos || []).filter((item) => !item.completed && item.dueDate === today).forEach((item) => items.push(compact(item, "todo", item.dueDate, { tone: "red", label: "Todo" })));
+  (data.contentPlans || []).filter((item) => item.publishDate === today).forEach((item) => items.push(compact(item, "content", item.publishDate, { tone: "blue", label: "Content" })));
+  (data.payments || []).filter((item) => item.expectedDate === today).forEach((item) => items.push(compact(item, "payment", item.expectedDate, { tone: "red", label: "Payment" })));
+  (data.campaigns || []).forEach((item) => {
+    if (item.applyDueDate === today) items.push(compact(item, "campaign", item.applyDueDate, { tone: "mint", label: "Apply" }));
+    if (item.uploadDueDate === today) items.push(compact(item, "campaign", item.uploadDueDate, { tone: "mint", label: "Upload" }));
+  });
+  return items.sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
+}
+
+export function getUpcomingDeadlines(data, today = toDateKey()) {
+  const items = [];
+  getIncompleteTodos(data).forEach((item) => item.dueDate && items.push(compact(item, "todo", item.dueDate, { label: "Todo" })));
+  (data.events || []).forEach((item) => item.date && items.push(compact(item, "event", item.date, { label: "Event" })));
+  (data.contentPlans || []).forEach((item) => item.publishDate && items.push(compact(item, "content", item.publishDate, { label: "Content" })));
+  (data.payments || []).filter((item) => item.status !== "입금 완료").forEach((item) => item.expectedDate && items.push(compact(item, "payment", item.expectedDate, { label: "Payment" })));
+  (data.campaigns || []).forEach((item) => {
+    if (item.applyDueDate) items.push(compact(item, "campaign", item.applyDueDate, { label: "Apply" }));
+    if (item.uploadDueDate) items.push(compact(item, "campaign", item.uploadDueDate, { label: "Upload" }));
+  });
+  (data.subscriptions || []).forEach((item) => item.billingDay && items.push(compact(item, "subscription", `${today.slice(0, 8)}${String(item.billingDay).padStart(2, "0")}`, { label: "Sub" })));
+  return items
+    .filter((item) => item.date >= addDays(today, -30))
+    .map((item) => ({ ...item, dday: daysBetween(today, item.date) }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 12);
+}
+
+export function getMonthCalendarItems(data, year, month) {
+  const map = {};
+  const push = (date, item) => {
+    if (!date) return;
+    map[date] = [...(map[date] || []), item];
+  };
+  (data.events || []).forEach((item) => push(item.date, compact(item, "event", item.date, { badge: "E", tone: "green" })));
+  (data.todos || []).filter((item) => !item.completed).forEach((item) => push(item.dueDate, compact(item, "todo", item.dueDate, { badge: "T", tone: "red" })));
+  (data.contentPlans || []).forEach((item) => push(item.publishDate, compact(item, "content", item.publishDate, { badge: "C", tone: "blue" })));
+  (data.payments || []).forEach((item) => push(item.expectedDate, compact(item, "payment", item.expectedDate, { badge: "P", tone: "red" })));
+  (data.campaigns || []).forEach((item) => {
+    push(item.applyDueDate, compact(item, "campaign", item.applyDueDate, { badge: "A", tone: "mint" }));
+    push(item.uploadDueDate, compact(item, "campaign", item.uploadDueDate, { badge: "U", tone: "mint" }));
+  });
+  const prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+  Object.keys(map).forEach((key) => {
+    if (!key.startsWith(prefix)) delete map[key];
+  });
+  return map;
+}
+
+export function getUpcomingPayments(data, today = toDateKey()) {
+  return (data.payments || [])
+    .filter((item) => item.expectedDate >= today && item.status !== "입금 완료")
+    .sort((a, b) => a.expectedDate.localeCompare(b.expectedDate));
+}
+
+export function getWeeklyContentPlans(data, today = toDateKey()) {
+  const end = addDays(today, 7);
+  return (data.contentPlans || [])
+    .filter((item) => item.publishDate >= today && item.publishDate <= end)
+    .sort((a, b) => a.publishDate.localeCompare(b.publishDate));
+}
+
+export function getCampaignAlerts(data, today = toDateKey()) {
+  return (data.campaigns || [])
+    .filter((item) => [item.applyDueDate, item.uploadDueDate].some((date) => date && date >= addDays(today, -1) && date <= addDays(today, 7)))
+    .sort((a, b) => (a.applyDueDate || a.uploadDueDate || "").localeCompare(b.applyDueDate || b.uploadDueDate || ""));
+}

@@ -24,8 +24,16 @@ export const initialData = {
     { id: "delay-2", title: "서랍 정리", count: 5, reason: "시간 애매함", createdAt: today, updatedAt: today },
     { id: "delay-3", title: "입금 관련 확인", count: 2, reason: "복잡함", createdAt: today, updatedAt: today }
   ],
-  habits: [{ id: "habit-1", title: "물 6잔", cycle: "매일", completed: false, lastDoneAt: "", nextDueDate: today, createdAt: today, updatedAt: today }],
-  habitLogs: [],
+  habits: [
+    { id: "habit-1", name: "AI study 1 hour", icon: "AI", color: "#F6A6A6", frequencyType: "daily", targetCount: 7, customDays: [], memo: "Keep the learning loop warm.", status: "active", createdAt: today, updatedAt: today },
+    { id: "habit-2", name: "Eat probiotic yogurt", icon: "YG", color: "#A9C9FF", frequencyType: "daily", targetCount: 7, customDays: [], memo: "Small health check.", status: "active", createdAt: today, updatedAt: today },
+    { id: "habit-3", name: "Personal movement", icon: "MV", color: "#F4B6D2", frequencyType: "weekdays", targetCount: 5, customDays: [], memo: "Stretch, walk, or short workout.", status: "active", createdAt: today, updatedAt: today },
+    { id: "habit-4", name: "Vitamins", icon: "VT", color: "#F6C68D", frequencyType: "daily", targetCount: 7, customDays: [], memo: "Vitamin C and B.", status: "active", createdAt: today, updatedAt: today }
+  ],
+  habitLogs: [
+    { id: "habit-log-1", habitId: "habit-1", date: today, completed: true, createdAt: today, updatedAt: today },
+    { id: "habit-log-2", habitId: "habit-2", date: today, completed: true, createdAt: today, updatedAt: today }
+  ],
   events: [{ id: "event-1", title: "콘텐츠 발행 점검", date: today, time: "14:00", category: "콘텐츠", memo: "이번 주 일정 확인", createdAt: today, updatedAt: today }],
   timelineEntries: [{ id: "time-1", date: today, time: "09:30", title: "아침 정리", memo: "오늘 할 일 스캔", createdAt: today, updatedAt: today }],
   chores: [{ id: "chore-1", title: "분리수거", cycle: "매주", completed: false, lastDoneAt: "", nextDueDate: tomorrow, createdAt: today, updatedAt: today }],

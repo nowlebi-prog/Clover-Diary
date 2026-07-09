@@ -8,7 +8,14 @@ import { logout } from "../../lib/auth/localAuthAdapter";
 import { resetAllData } from "../../lib/storage/localStorageAdapter";
 
 const moreLinks = [
-  ["/life", "Life"], ["/money", "Money"], ["/archive", "Archive"], ["/campaigns", "Campaigns"], ["/files", "Files"]
+  ["/habits", "Habits"],
+  ["/life", "Life"],
+  ["/money", "Money"],
+  ["/content", "Content"],
+  ["/campaigns", "Campaigns"],
+  ["/files", "Files"],
+  ["/archive", "Archive"],
+  ["/settings", "Settings"]
 ];
 
 export default function SettingsPage({ onLogout }) {
@@ -19,12 +26,12 @@ export default function SettingsPage({ onLogout }) {
     navigate("/login");
   };
   const reset = () => {
-    if (confirm("샘플 데이터로 초기화할까요?")) resetAllData();
+    if (confirm("Reset data to the sample set?")) resetAllData();
   };
 
   return (
     <>
-      <PageHeader eyebrow="Settings" title="설정과 More" />
+      <PageHeader eyebrow="Settings" title="Settings and More" />
       <div className="grid gap-4">
         <GlassCard className="md:hidden">
           <SectionTitle>More</SectionTitle>
@@ -33,11 +40,11 @@ export default function SettingsPage({ onLogout }) {
           </div>
         </GlassCard>
         <GlassCard>
-          <SectionTitle>앱 정보</SectionTitle>
+          <SectionTitle>App info</SectionTitle>
           <div className="grid gap-3 text-sm text-clover-sub">
-            <p><b className="text-clover-text">Clover Desk</b>는 브라우저에서 설치 가능한 PWA입니다.</p>
-            <p>데이터는 현재 이 브라우저의 localStorage에 저장됩니다.</p>
-            <p>Vercel 배포는 Vite 기본값 그대로 `npm run build` 후 `dist`를 사용하면 됩니다.</p>
+            <p><b className="text-clover-text">Clover Desk</b> is a browser-installable PWA.</p>
+            <p>Data is stored in this browser through localStorage.</p>
+            <p>For Vercel, use the Vite preset, build command `npm run build`, and output directory `dist`.</p>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <StatusBadge>PWA Ready</StatusBadge>
@@ -46,21 +53,17 @@ export default function SettingsPage({ onLogout }) {
           </div>
         </GlassCard>
         <GlassCard>
-          <SectionTitle>Supabase 전환 메모</SectionTitle>
+          <SectionTitle>Supabase migration note</SectionTitle>
           <p className="text-sm leading-relaxed text-clover-sub">
-            UI는 `src/lib/storage/localStorageAdapter.js`와 `src/lib/auth/localAuthAdapter.js`만 호출합니다.
-            나중에 Supabase로 옮길 때는 동일한 메서드 이름을 가진 `supabaseStorageAdapter.js`,
-            `supabaseAuthAdapter.js`를 만들고 import 경로만 바꾸면 됩니다. 테이블은 users, todos,
-            top3, delayed_tasks, habits, habit_logs, events, timeline_entries, chores, shopping_items,
-            supplies, expenses, subscriptions, payments, reflections, quotes, ideas, links, inbox_memos,
-            content_plans, campaigns, campaign_participants, important_files 구조를 권장합니다.
+            UI code talks to adapters under `src/lib/storage` and `src/lib/auth`. For habits, keep the same method names
+            and map `habits` plus `habit_logs` to Supabase tables with `user_id`, `habit_id`, `date`, and `completed`.
           </p>
         </GlassCard>
         <GlassCard>
-          <SectionTitle>관리</SectionTitle>
+          <SectionTitle>Manage</SectionTitle>
           <div className="flex flex-wrap gap-2">
-            <AppButton variant="soft" onClick={reset}>데이터 초기화</AppButton>
-            <AppButton variant="danger" onClick={signOut}>로그아웃</AppButton>
+            <AppButton variant="soft" onClick={reset}>Reset data</AppButton>
+            <AppButton variant="danger" onClick={signOut}>Log out</AppButton>
           </div>
         </GlassCard>
       </div>
