@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
 import GlassCard from "../../components/common/GlassCard";
 import SectionLink from "../../components/dashboard/SectionLink";
@@ -12,15 +13,19 @@ import TodayRoutineCard from "../../components/dashboard/TodayRoutineCard";
 import PageHeader from "../../components/layout/PageHeader";
 import TodayTopThree from "./components/TodayTopThree";
 import { getAllData, updateTodo, toggleHabitLog } from "../../lib/storage/localStorageAdapter";
+import { getTodayHabitStatus } from "../../lib/utils/habitSelectors";
 import { toDateKey } from "../../lib/utils/date";
 import {
   getTodayItems,
+  getIncompleteTodos,
   getHomeTop3,
   getDeadlineProjects,
   getProjectsProgress,
   getBudgetSummary,
-  getTodayRoutines
+  getTodayRoutines,
+  getWorkSummary
 } from "../../lib/utils/dashboardSelectors";
+import { fmtHM } from "../../lib/utils/workUtils";
 
 export default function HomePage() {
   const [data, setData] = useState(getAllData());
@@ -33,6 +38,14 @@ export default function HomePage() {
   }, []);
 
   const todayItems = getTodayItems(data, today);
+  const incomplete = getIncompleteTodos(data);
+  const habitStatus = getTodayHabitStatus(data.habits, data.habitLogs, today);
+  const monthKey = today.slice(0, 7);
+  const monthExpenses = (data.expenses || [])
+    .filter((item) => (item.date || "").startsWith(monthKey))
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const todayPayments = (data.payments || []).filter((item) => item.expectedDate === today && item.status !== "입금 완료");
+  const workSummary = getWorkSummary(data, today);
   const top3 = getHomeTop3(data).map((todo) => ({
     ...todo,
     onToggle: (completed) => updateTodo(todo.id, { completed, completedAt: completed ? today : "" })
@@ -57,6 +70,37 @@ export default function HomePage() {
         </div>
       </PageHeader>
       <p className="-mt-3 mb-4 text-sm font-bold text-clover-sub">{statusLine}</p>
+
+      <div className="mb-4 grid gap-3 md:grid-cols-3">
+        <Link to="/life" className="glass rounded-[22px] border border-emerald-100 bg-emerald-50/75 p-4 transition hover:bg-emerald-50">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Life</p>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">{habitStatus.doneCount}/{habitStatus.total}</span>
+          </div>
+          <p className="mt-2 text-sm font-bold text-clover-ink">오늘 루틴 체크</p>
+          <div className="mt-3 h-2 rounded-full bg-white/70">
+            <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${habitStatus.rate}%` }} />
+          </div>
+        </Link>
+        <Link to="/work" className="glass rounded-[22px] border border-sky-100 bg-sky-50/75 p-4 transition hover:bg-sky-50">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-sky-700">Work</p>
+            <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-black text-sky-700">{todayItems.length}</span>
+          </div>
+          <p className="mt-2 text-sm font-bold text-clover-ink">오늘 할 일과 마감</p>
+          <p className="mt-2 text-xs font-bold text-clover-sub">
+            {workSummary.active ? `지금 ${workSummary.active.title} 중` : `오늘 작업 ${fmtHM(workSummary.todaySec)}`} · 남은 업무 {incomplete.length}개
+          </p>
+        </Link>
+        <Link to="/money" className="glass rounded-[22px] border border-amber-100 bg-amber-50/75 p-4 transition hover:bg-amber-50">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">Money</p>
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">{todayPayments.length}</span>
+          </div>
+          <p className="mt-2 text-sm font-bold text-clover-ink">이번 달 지출 {monthExpenses.toLocaleString()}원</p>
+          <p className="mt-2 text-xs font-bold text-clover-sub">오늘 결제 예정 {todayPayments.length}건</p>
+        </Link>
+      </div>
 
       <div className="grid gap-4">
         <TodayTopThree items={top3} />

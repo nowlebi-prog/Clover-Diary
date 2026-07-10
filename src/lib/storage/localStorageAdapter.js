@@ -10,6 +10,14 @@ const normalize = (data) => {
   collections.forEach((key) => {
     if (!Array.isArray(next[key])) next[key] = [];
   });
+  next.activeSession = data && Object.prototype.hasOwnProperty.call(data, "activeSession") ? data.activeSession : null;
+  next.weeklyGoalHours = Number(data?.weeklyGoalHours ?? initialData.weeklyGoalHours ?? 40);
+  next.todos = next.todos.map((todo, index) => ({
+    isPriority: false,
+    priorityOrder: index,
+    ...todo
+  }));
+  next.workCategories = next.workCategories.length ? next.workCategories : clone(initialData.workCategories);
   next.habits = next.habits.map((habit) => ({
     id: habit.id,
     name: habit.name || habit.title || "New habit",
@@ -87,6 +95,7 @@ function remove(collection, id) {
 }
 
 const api = { getAllData, saveAllData, resetAllData };
+
 const names = {
   todos: "Todo", top3: "Top3", delayedTasks: "DelayedTask", habits: "Habit",
   events: "Event", timelineEntries: "TimelineEntry", chores: "Chore",
@@ -95,7 +104,8 @@ const names = {
   importantFiles: "ImportantFile", goals: "Goal", gratitudeEntries: "GratitudeEntry",
   questionPrompts: "QuestionPrompt", questionAnswers: "QuestionAnswer",
   timeSessions: "TimeSession", recurringEvents: "RecurringEvent", beautyItems: "BeautyItem",
-  digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry"
+  digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry",
+  workSessions: "WorkSession", workCategories: "WorkCategory"
 };
 
 Object.entries(names).forEach(([collection, name]) => {
@@ -105,6 +115,116 @@ Object.entries(names).forEach(([collection, name]) => {
   api[`update${name}`] = (id, updates) => update(collection, id, updates);
   api[`delete${name}`] = (id) => remove(collection, id);
 });
+
+// ── Active timer session (진행 중인 업무) ──
+// activeSession: { id, taskId, title, category, startTime, pauseSec, pauses: [{start, end?}], memos: [{id, text, at, phase}] }
+api.getActiveSession = () => getAllData().activeSession;
+
+api.startActiveSession = ({ title, category, taskId = null }) => {
+  const data = getAllData();
+  data.activeSession = {
+    id: makeId("session"),
+    taskId,
+    title: title || "제목 없는 업무",
+    category: category || (data.workCategories[0]?.name ?? "개인작업"),
+    startTime: Date.now(),
+    pauseSec: 0,
+    pauses: [],
+    memos: []
+  };
+  saveAllData(data);
+  return data.activeSession;
+};
+
+api.pauseActiveSession = () => {
+  const data = getAllData();
+  if (!data.activeSession || data.activeSession.pauses.some((p) => !p.end)) return;
+  data.activeSession.pauses.push({ start: Date.now() });
+  saveAllData(data);
+};
+
+api.resumeActiveSession = () => {
+  const data = getAllData();
+  if (!data.activeSession) return;
+  const openPause = data.activeSession.pauses.find((p) => !p.end);
+  if (!openPause) return;
+  openPause.end = Date.now();
+  data.activeSession.pauseSec += Math.round((openPause.end - openPause.start) / 1000);
+  saveAllData(data);
+};
+
+api.updateActiveSession = (updates) => {
+  const data = getAllData();
+  if (!data.activeSession) return;
+  data.activeSession = { ...data.activeSession, ...updates };
+  saveAllData(data);
+};
+
+api.addActiveSessionMemo = (text, phase = "working") => {
+  const data = getAllData();
+  if (!data.activeSession || !text?.trim()) return;
+  data.activeSession.memos.push({ id: makeId("memo"), text: text.trim(), at: Date.now(), phase });
+  saveAllData(data);
+};
+
+api.endActiveSession = () => {
+  const data = getAllData();
+  const active = data.activeSession;
+  if (!active) return null;
+  const endTime = Date.now();
+  const openPause = active.pauses.find((p) => !p.end);
+  let pauseSec = active.pauseSec;
+  if (openPause) {
+    openPause.end = endTime;
+    pauseSec += Math.round((openPause.end - openPause.start) / 1000);
+  }
+  const totalSec = Math.round((endTime - active.startTime) / 1000);
+  const duration = Math.max(totalSec - pauseSec, 0);
+  const session = {
+    id: active.id,
+    taskId: active.taskId,
+    title: active.title,
+    category: active.category,
+    startTime: active.startTime,
+    endTime,
+    duration,
+    pauseSec,
+    pauses: active.pauses,
+    memos: active.memos,
+    date: today(),
+    createdAt: today(),
+    updatedAt: today()
+  };
+  data.workSessions = [session, ...data.workSessions];
+  data.activeSession = null;
+  saveAllData(data);
+  return session;
+};
+
+api.discardActiveSession = () => {
+  const data = getAllData();
+  data.activeSession = null;
+  saveAllData(data);
+};
+
+// ── 우선 업무(Priority Todo) 정렬 ──
+api.setTodoPriority = (id, isPriority) => {
+  const data = getAllData();
+  const maxOrder = Math.max(-1, ...data.todos.filter((t) => t.isPriority).map((t) => t.priorityOrder ?? 0));
+  data.todos = data.todos.map((todo) =>
+    todo.id === id ? { ...todo, isPriority, priorityOrder: isPriority ? maxOrder + 1 : todo.priorityOrder, updatedAt: today() } : todo
+  );
+  saveAllData(data);
+};
+
+api.reorderPriorityTodos = (orderedIds) => {
+  const data = getAllData();
+  const orderMap = new Map(orderedIds.map((id, index) => [id, index]));
+  data.todos = data.todos.map((todo) =>
+    orderMap.has(todo.id) ? { ...todo, priorityOrder: orderMap.get(todo.id), updatedAt: today() } : todo
+  );
+  saveAllData(data);
+};
 
 api.getHabitLogs = () => list("habitLogs");
 api.createHabitLog = (payload) => create("habitLogs", payload);
@@ -149,5 +269,10 @@ export const {
   getRecurringEvents, createRecurringEvent, updateRecurringEvent, deleteRecurringEvent,
   getBeautyItems, createBeautyItem, updateBeautyItem, deleteBeautyItem,
   getDigitalCareLogs, createDigitalCareLog, updateDigitalCareLog, deleteDigitalCareLog,
-  getMoodEntrys, createMoodEntry, updateMoodEntry, deleteMoodEntry
+  getMoodEntrys, createMoodEntry, updateMoodEntry, deleteMoodEntry,
+  getWorkSessions, createWorkSession, updateWorkSession, deleteWorkSession,
+  getWorkCategorys, createWorkCategory, updateWorkCategory, deleteWorkCategory,
+  getActiveSession, startActiveSession, pauseActiveSession, resumeActiveSession,
+  updateActiveSession, addActiveSessionMemo, endActiveSession, discardActiveSession,
+  setTodoPriority, reorderPriorityTodos
 } = api;

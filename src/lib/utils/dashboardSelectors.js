@@ -234,6 +234,14 @@ export function getTodayRoutines(data, today = toDateKey()) {
   return { items, doneCount, total: items.length, rate: items.length ? Math.round((doneCount / items.length) * 100) : 0 };
 }
 
+// Home Work 카드 요약 — 오늘 작업시간 / 진행 중인 업무.
+export function getWorkSummary(data, today = toDateKey()) {
+  const todaySec = (data.workSessions || [])
+    .filter((s) => s.date === today)
+    .reduce((sum, s) => sum + s.duration, 0);
+  return { todaySec, active: data.activeSession || null };
+}
+
 export function getCampaignAlerts(data, today = toDateKey()) {
   return (data.campaigns || [])
     .filter((item) => [item.applyDueDate, item.uploadDueDate].some((date) => date && date >= addDays(today, -1) && date <= addDays(today, 7)))

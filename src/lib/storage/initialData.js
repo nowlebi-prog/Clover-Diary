@@ -7,7 +7,7 @@ export const collections = [
   "reflections", "quotes", "ideas", "links", "inboxMemos", "contentPlans",
   "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
   "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
-  "moodEntries"
+  "moodEntries", "workSessions", "workCategories"
 ];
 
 export const initialData = {
@@ -60,7 +60,16 @@ export const initialData = {
   ],
   campaigns: [{ id: "camp-1", name: "여름 체험단", brand: "브랜드 A", product: "샘플 키트", recruits: 20, benefit: "제품 제공", applyDueDate: today, uploadDueDate: tomorrow, status: "모집중", memo: "", createdAt: today, updatedAt: today }],
   campaignParticipants: [{ id: "part-1", campaignId: "camp-1", name: "eunbibi", instagram: "@eunbibi", blogUrl: "", contact: "", appliedDate: today, selectedStatus: "미확정", shippingStatus: "미발송", uploadStatus: "미업로드", contentUrl: "", memo: "", createdAt: today, updatedAt: today }],
-  importantFiles: [{ id: "file-1", name: "A안 계약서", category: "계약서", url: "https://example.com", project: "A안 제안서", important: true, memo: "원본 링크", createdAt: today, updatedAt: today }]
+  importantFiles: [{ id: "file-1", name: "A안 계약서", category: "계약서", url: "https://example.com", project: "A안 제안서", important: true, memo: "원본 링크", createdAt: today, updatedAt: today }],
+  workCategories: [
+    { id: "wc-1", name: "위스티아", color: "#60A5FA", createdAt: today, updatedAt: today },
+    { id: "wc-2", name: "개인작업", color: "#8DDFA8", createdAt: today, updatedAt: today },
+    { id: "wc-3", name: "PPT 작업", color: "#F6C68D", createdAt: today, updatedAt: today },
+    { id: "wc-4", name: "회의", color: "#C9A9FA", createdAt: today, updatedAt: today },
+    { id: "wc-5", name: "공부", color: "#F4B6D2", createdAt: today, updatedAt: today }
+  ],
+  activeSession: null,
+  weeklyGoalHours: 40
 };
 
 collections.forEach((key) => {
