@@ -122,6 +122,118 @@ export function getWeeklyContentPlans(data, today = toDateKey()) {
     .sort((a, b) => a.publishDate.localeCompare(b.publishDate));
 }
 
+// Home "오늘 꼭 해야 할 일 TOP 3" — Work(Tasks)의 todos 원본을 그대로 참조.
+// priority:"high" 인 미완료 항목을 우선 노출하고, 3개가 안 채워지면 마감이 가까운 순으로 채운다.
+export function getHomeTop3(data) {
+  const incomplete = getIncompleteTodos(data);
+  const high = incomplete.filter((todo) => todo.priority === "high");
+  const rest = incomplete.filter((todo) => todo.priority !== "high");
+  return [...high, ...rest].slice(0, 3);
+}
+
+const PROJECT_PROGRESS = { 모집중: 25, 진행중: 60, 검수중: 80, 완료: 100, 보류: 10 };
+
+function projectFromCampaign(item, today) {
+  const dates = [item.applyDueDate, item.uploadDueDate].filter(Boolean);
+  const upcoming = dates.filter((date) => date >= today).sort();
+  const dueDate = upcoming[0] || dates.sort().slice(-1)[0] || "";
+  const nextAction = !upcoming.length
+    ? "마감 지남"
+    : upcoming[0] === item.applyDueDate
+      ? "모집 마감 처리"
+      : "업로드 확인";
+  return {
+    id: item.id,
+    name: item.name,
+    status: item.status || "진행중",
+    progress: PROJECT_PROGRESS[item.status] ?? 50,
+    dueDate,
+    dday: dueDate ? daysBetween(today, dueDate) : null,
+    nextAction
+  };
+}
+
+// Home "마감임박 프로젝트" — campaigns(Projects) 중 마감이 가까운 순.
+export function getDeadlineProjects(data, today = toDateKey(), limit = 3) {
+  return (data.campaigns || [])
+    .map((item) => projectFromCampaign(item, today))
+    .filter((item) => item.dueDate)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(0, limit);
+}
+
+// Home "프로젝트 진행률" — 진행 중인 프로젝트 3~4개.
+export function getProjectsProgress(data, today = toDateKey(), limit = 4) {
+  return (data.campaigns || [])
+    .filter((item) => item.status !== "완료")
+    .map((item) => projectFromCampaign(item, today))
+    .sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"))
+    .slice(0, limit);
+}
+
+// Home "이번달 예산 요약" — expenses/payments 기반 이번 달 수입·지출 요약.
+export function getBudgetSummary(data, today = toDateKey()) {
+  const monthKey = today.slice(0, 7);
+  const monthExpenses = (data.expenses || []).filter((item) => (item.date || "").startsWith(monthKey));
+  const income = (data.payments || [])
+    .filter((item) => item.status === "입금 완료" && ((item.paidDate || "").startsWith(monthKey) || (item.expectedDate || "").startsWith(monthKey)))
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const expense = monthExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const byCategory = {};
+  monthExpenses.forEach((item) => {
+    const key = item.category || "기타";
+    byCategory[key] = (byCategory[key] || 0) + Number(item.amount || 0);
+  });
+  const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
+  return {
+    income,
+    expense,
+    remaining: income - expense,
+    usageRate: income > 0 ? Math.min(Math.round((expense / income) * 100), 999) : null,
+    topCategory: topCategory ? { name: topCategory[0], amount: topCategory[1] } : null
+  };
+}
+
+const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+function isHabitDueToday(habit, weekday) {
+  if (habit.status && habit.status !== "active") return false;
+  if (habit.frequencyType === "weekdays") return weekday >= 1 && weekday <= 5;
+  if (habit.frequencyType === "custom" && habit.customDays?.length) return habit.customDays.includes(DAY_KEYS[weekday]);
+  return true; // daily / weekly_count 등은 매일 노출
+}
+
+function habitStreak(habitId, logs, today) {
+  let streak = 0;
+  let cursor = today;
+  const doneDates = new Set(logs.filter((log) => log.habitId === habitId && log.completed).map((log) => log.date));
+  while (doneDates.has(cursor)) {
+    streak += 1;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
+// Home "오늘 루틴" — habits/habitLogs 기반 오늘의 루틴 체크 리스트.
+export function getTodayRoutines(data, today = toDateKey()) {
+  const weekday = new Date(`${today}T00:00:00`).getDay();
+  const logs = data.habitLogs || [];
+  const items = (data.habits || [])
+    .filter((habit) => isHabitDueToday(habit, weekday))
+    .map((habit) => {
+      const log = logs.find((entry) => entry.habitId === habit.id && entry.date === today);
+      return {
+        id: habit.id,
+        name: habit.name,
+        color: habit.color,
+        completed: Boolean(log?.completed),
+        streak: habitStreak(habit.id, logs, today)
+      };
+    });
+  const doneCount = items.filter((item) => item.completed).length;
+  return { items, doneCount, total: items.length, rate: items.length ? Math.round((doneCount / items.length) * 100) : 0 };
+}
+
 export function getCampaignAlerts(data, today = toDateKey()) {
   return (data.campaigns || [])
     .filter((item) => [item.applyDueDate, item.uploadDueDate].some((date) => date && date >= addDays(today, -1) && date <= addDays(today, 7)))

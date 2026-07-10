@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { addDays, toDateKey } from "../../lib/utils/date";
 import { getTodayItems } from "../../lib/utils/dashboardSelectors";
 import StatusBadge from "../common/StatusBadge";
+import SectionLink from "./SectionLink";
 
 const weekDays = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -17,7 +18,7 @@ export default function WeeklyStripCalendar({ data, today }) {
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-clover-deep">Week plan</p>
           <h2 className="text-lg font-bold">이번 주 캘린더</h2>
         </div>
-        <span className="text-xs font-bold text-clover-sub">{selected}</span>
+        <SectionLink to="/calendar" />
       </div>
 
       <div className="grid grid-cols-7 gap-2">
