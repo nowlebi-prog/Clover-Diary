@@ -91,7 +91,10 @@ const names = {
   events: "Event", timelineEntries: "TimelineEntry", chores: "Chore",
   shoppingItems: "ShoppingItem", payments: "Payment", campaigns: "Campaign",
   campaignParticipants: "CampaignParticipant", contentPlans: "ContentPlan",
-  importantFiles: "ImportantFile"
+  importantFiles: "ImportantFile", goals: "Goal", gratitudeEntries: "GratitudeEntry",
+  questionPrompts: "QuestionPrompt", questionAnswers: "QuestionAnswer",
+  timeSessions: "TimeSession", recurringEvents: "RecurringEvent", beautyItems: "BeautyItem",
+  digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry"
 };
 
 Object.entries(names).forEach(([collection, name]) => {
@@ -136,5 +139,14 @@ export const {
   getCampaigns, createCampaign, updateCampaign, deleteCampaign,
   getCampaignParticipants, createCampaignParticipant, updateCampaignParticipant, deleteCampaignParticipant,
   getContentPlans, createContentPlan, updateContentPlan, deleteContentPlan,
-  getImportantFiles, createImportantFile, updateImportantFile, deleteImportantFile
+  getImportantFiles, createImportantFile, updateImportantFile, deleteImportantFile,
+  getGoals, createGoal, updateGoal, deleteGoal,
+  getGratitudeEntrys, createGratitudeEntry, updateGratitudeEntry, deleteGratitudeEntry,
+  getQuestionPrompts, createQuestionPrompt, updateQuestionPrompt, deleteQuestionPrompt,
+  getQuestionAnswers, createQuestionAnswer, updateQuestionAnswer, deleteQuestionAnswer,
+  getTimeSessions, createTimeSession, updateTimeSession, deleteTimeSession,
+  getRecurringEvents, createRecurringEvent, updateRecurringEvent, deleteRecurringEvent,
+  getBeautyItems, createBeautyItem, updateBeautyItem, deleteBeautyItem,
+  getDigitalCareLogs, createDigitalCareLog, updateDigitalCareLog, deleteDigitalCareLog,
+  getMoodEntrys, createMoodEntry, updateMoodEntry, deleteMoodEntry
 } = api;

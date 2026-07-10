@@ -3,11 +3,12 @@ import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
 import AppTextarea from "../../components/common/AppTextarea";
+import MobileWorkCalendar from "../../components/calendar/MobileWorkCalendar";
 import Modal from "../../components/common/Modal";
 import DayDetailPanel from "../../components/dashboard/DayDetailPanel";
 import MonthCalendar from "../../components/dashboard/MonthCalendar";
 import PageHeader from "../../components/layout/PageHeader";
-import { createEvent, deleteEvent, getAllData, updateEvent } from "../../lib/storage/localStorageAdapter";
+import { createEvent, createMoodEntry, deleteEvent, getAllData, updateEvent, updateMoodEntry } from "../../lib/storage/localStorageAdapter";
 import { getMonthCalendarItems } from "../../lib/utils/dashboardSelectors";
 import { toDateKey } from "../../lib/utils/date";
 
@@ -50,29 +51,52 @@ export default function CalendarPage() {
     setEditing(null);
     load();
   };
+  const saveMood = (mood) => {
+    const existing = (data.moodEntries || []).find((item) => item.date === mood.date);
+    if (existing) updateMoodEntry(existing.id, mood);
+    else createMoodEntry(mood);
+    load();
+  };
 
   return (
     <>
-      <PageHeader eyebrow="Calendar" title="Monthly calendar">
-        <AppButton onClick={() => setEditing(emptyEvent(selectedDate))}>+ Event</AppButton>
-      </PageHeader>
-      <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
-        <MonthCalendar
-          year={cursor.year}
-          month={cursor.month}
-          itemsByDate={itemsByDate}
+      <div className="md:hidden">
+        <MobileWorkCalendar
+          cursor={cursor}
           selectedDate={selectedDate}
+          selectedItems={selectedItems}
+          itemsByDate={itemsByDate}
+          data={data}
           onSelectDate={setSelectedDate}
           onMoveMonth={moveMonth}
           onToday={goToday}
-        />
-        <DayDetailPanel
-          date={selectedDate}
-          items={selectedItems}
           onAddEvent={() => setEditing(emptyEvent(selectedDate))}
-          onEditEvent={setEditing}
-          onDeleteEvent={(id) => deleteEvent(id)}
+          onSaveMood={saveMood}
         />
+      </div>
+
+      <div className="hidden md:block">
+        <PageHeader eyebrow="Calendar" title="Monthly calendar">
+          <AppButton onClick={() => setEditing(emptyEvent(selectedDate))}>+ Event</AppButton>
+        </PageHeader>
+        <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
+          <MonthCalendar
+            year={cursor.year}
+            month={cursor.month}
+            itemsByDate={itemsByDate}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onMoveMonth={moveMonth}
+            onToday={goToday}
+          />
+          <DayDetailPanel
+            date={selectedDate}
+            items={selectedItems}
+            onAddEvent={() => setEditing(emptyEvent(selectedDate))}
+            onEditEvent={setEditing}
+            onDeleteEvent={(id) => deleteEvent(id)}
+          />
+        </div>
       </div>
 
       <Modal title={editing ? (editing.id ? "Edit event" : "Add event") : ""} onClose={() => setEditing(null)}>

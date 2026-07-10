@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom";
-import AppButton from "../common/AppButton";
 import CustomCheckbox from "../common/CustomCheckbox";
 import StatusBadge from "../common/StatusBadge";
 import { daysBetween } from "../../lib/utils/date";
@@ -25,8 +23,7 @@ export default function IncompleteTodoList({ todos, today, onToggle }) {
           </article>
         );
       })}
-      {!todos.length && <p className="text-sm text-clover-sub">No open todos.</p>}
-      <Link to="/tasks"><AppButton variant="soft" className="mt-2 w-full">Go to Tasks</AppButton></Link>
+      {!todos.length && <p className="text-sm text-clover-sub">안 끝난 할 일이 없어요.</p>}
     </div>
   );
 }

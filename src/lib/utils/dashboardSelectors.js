@@ -2,6 +2,12 @@ import { addDays, daysBetween, toDateKey } from "./date";
 
 const titleOf = (item) => item.title || item.name || item.project || item.service || "Untitled";
 const compact = (item, type, date, meta = {}) => ({ ...item, type, date, displayTitle: titleOf(item), ...meta });
+const monthlyRecurringDate = (item, baseDate) => {
+  if (!item.dayOfMonth) return "";
+  const date = new Date(`${baseDate.slice(0, 8)}01T00:00:00`);
+  const last = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  return `${baseDate.slice(0, 8)}${String(Math.min(Number(item.dayOfMonth), last)).padStart(2, "0")}`;
+};
 
 export function getIncompleteTodos(data) {
   return [...(data.todos || [])]
@@ -26,6 +32,10 @@ export function getTodayItems(data, today = toDateKey()) {
   (data.todos || []).filter((item) => !item.completed && item.dueDate === today).forEach((item) => items.push(compact(item, "todo", item.dueDate, { tone: "red", label: "Todo" })));
   (data.contentPlans || []).filter((item) => item.publishDate === today).forEach((item) => items.push(compact(item, "content", item.publishDate, { tone: "blue", label: "Content" })));
   (data.payments || []).filter((item) => item.expectedDate === today).forEach((item) => items.push(compact(item, "payment", item.expectedDate, { tone: "red", label: "Payment" })));
+  (data.recurringEvents || []).forEach((item) => {
+    const date = monthlyRecurringDate(item, today);
+    if (date === today) items.push(compact(item, "recurring", date, { tone: "blue", label: item.kind || "Repeat" }));
+  });
   (data.campaigns || []).forEach((item) => {
     if (item.applyDueDate === today) items.push(compact(item, "campaign", item.applyDueDate, { tone: "mint", label: "Apply" }));
     if (item.uploadDueDate === today) items.push(compact(item, "campaign", item.uploadDueDate, { tone: "mint", label: "Upload" }));
@@ -44,6 +54,10 @@ export function getUpcomingDeadlines(data, today = toDateKey()) {
     if (item.uploadDueDate) items.push(compact(item, "campaign", item.uploadDueDate, { label: "Upload" }));
   });
   (data.subscriptions || []).forEach((item) => item.billingDay && items.push(compact(item, "subscription", `${today.slice(0, 8)}${String(item.billingDay).padStart(2, "0")}`, { label: "Sub" })));
+  (data.recurringEvents || []).forEach((item) => {
+    const date = monthlyRecurringDate(item, today);
+    if (date) items.push(compact(item, "recurring", date, { label: item.kind || "Repeat" }));
+  });
   return items
     .filter((item) => item.date >= addDays(today, -30))
     .map((item) => ({ ...item, dday: daysBetween(today, item.date) }))
@@ -61,6 +75,12 @@ export function getMonthCalendarItems(data, year, month) {
   (data.todos || []).filter((item) => !item.completed).forEach((item) => push(item.dueDate, compact(item, "todo", item.dueDate, { badge: "T", tone: "red" })));
   (data.contentPlans || []).forEach((item) => push(item.publishDate, compact(item, "content", item.publishDate, { badge: "C", tone: "blue" })));
   (data.payments || []).forEach((item) => push(item.expectedDate, compact(item, "payment", item.expectedDate, { badge: "P", tone: "red" })));
+  (data.recurringEvents || []).forEach((item) => {
+    if (item.frequency !== "monthly") return;
+    const base = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const date = monthlyRecurringDate(item, base);
+    push(date, compact(item, "recurring", date, { badge: "R", tone: "blue" }));
+  });
   (data.campaigns || []).forEach((item) => {
     push(item.applyDueDate, compact(item, "campaign", item.applyDueDate, { badge: "A", tone: "mint" }));
     push(item.uploadDueDate, compact(item, "campaign", item.uploadDueDate, { badge: "U", tone: "mint" }));

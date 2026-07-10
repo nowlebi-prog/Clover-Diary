@@ -3,7 +3,7 @@ import CustomCheckbox from "../common/CustomCheckbox";
 import StatusBadge from "../common/StatusBadge";
 import { daysBetween } from "../../lib/utils/date";
 
-export default function TaskSection({ title, items, today, onToggle, onEdit, onDelay }) {
+export default function TaskSection({ title, items, today, onToggle, onToggleSubTask, onEdit, onDelay }) {
   return (
     <section className="glass rounded-[28px] p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -20,6 +20,18 @@ export default function TaskSection({ title, items, today, onToggle, onEdit, onD
                 <div className="min-w-0 flex-1">
                   <h3 className={`font-bold ${todo.completed ? "line-through" : ""}`}>{todo.title}</h3>
                   {todo.memo && <p className="mt-1 line-clamp-2 text-sm text-clover-sub">{todo.memo}</p>}
+                  {!!todo.subTasks?.length && (
+                    <div className="mt-3 grid gap-1 rounded-2xl bg-white/45 p-3">
+                      {todo.subTasks.map((subTask) => (
+                        <CustomCheckbox
+                          key={subTask.id}
+                          checked={subTask.completed}
+                          label={subTask.title}
+                          onChange={(checked) => onToggleSubTask?.(todo.id, subTask.id, checked)}
+                        />
+                      ))}
+                    </div>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {todo.category && <StatusBadge tone="blue">{todo.category}</StatusBadge>}
                     {todo.priority && <StatusBadge tone={todo.priority === "high" ? "danger" : todo.priority === "low" ? "cream" : "mint"}>{todo.priority}</StatusBadge>}

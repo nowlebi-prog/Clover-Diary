@@ -5,7 +5,9 @@ export const collections = [
   "todos", "top3", "delayedTasks", "habits", "habitLogs", "events", "timelineEntries",
   "chores", "shoppingItems", "supplies", "expenses", "subscriptions", "payments",
   "reflections", "quotes", "ideas", "links", "inboxMemos", "contentPlans",
-  "campaigns", "campaignParticipants", "importantFiles"
+  "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
+  "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
+  "moodEntries"
 ];
 
 export const initialData = {

@@ -8,13 +8,15 @@ import { logout } from "../../lib/auth/localAuthAdapter";
 import { resetAllData } from "../../lib/storage/localStorageAdapter";
 
 const moreLinks = [
-  ["/habits", "Habits"],
+  ["/", "Today"],
+  ["/plan", "Planner"],
+  ["/tasks", "Tasks"],
   ["/life", "Life"],
+  ["/archive", "Archive"],
+  ["/habits", "Habits"],
   ["/money", "Money"],
-  ["/content", "Content"],
   ["/campaigns", "Campaigns"],
   ["/files", "Files"],
-  ["/archive", "Archive"],
   ["/settings", "Settings"]
 ];
 
@@ -31,10 +33,10 @@ export default function SettingsPage({ onLogout }) {
 
   return (
     <>
-      <PageHeader eyebrow="Settings" title="Settings and More" />
+      <PageHeader eyebrow="Settings" title="설정" />
       <div className="grid gap-4">
         <GlassCard className="md:hidden">
-          <SectionTitle>More</SectionTitle>
+          <SectionTitle>전체 메뉴</SectionTitle>
           <div className="grid grid-cols-2 gap-2">
             {moreLinks.map(([to, label]) => <Link key={to} to={to} className="rounded-full bg-white/55 px-4 py-3 text-center text-sm font-bold text-clover-deep">{label}</Link>)}
           </div>

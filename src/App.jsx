@@ -4,6 +4,7 @@ import { getSession } from "./lib/auth/localAuthAdapter";
 import { useState } from "react";
 import LoginPage from "./features/auth/LoginPage";
 import HomePage from "./features/home/HomePage";
+import PlanPage from "./features/plan/PlanPage";
 import CalendarPage from "./features/calendar/CalendarPage";
 import DailyPage from "./features/daily/DailyPage";
 import TasksPage from "./features/tasks/TasksPage";
@@ -28,6 +29,7 @@ export default function App() {
       <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage onLogin={setSession} />} />
       <Route element={<Protected session={session} />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/plan" element={<PlanPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/daily" element={<DailyPage />} />
         <Route path="/tasks" element={<TasksPage />} />

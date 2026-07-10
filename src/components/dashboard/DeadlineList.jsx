@@ -18,7 +18,7 @@ export default function DeadlineList({ items, today }) {
           </article>
         );
       })}
-      {!items.length && <p className="text-sm text-clover-sub">No urgent deadlines.</p>}
+      {!items.length && <p className="text-sm text-clover-sub">가까운 마감이 없어요.</p>}
     </div>
   );
 }

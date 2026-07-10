@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 
-const items = [["/", "Home"], ["/calendar", "Calendar"], ["/tasks", "Tasks"], ["/daily", "Daily"], ["/settings", "More"]];
+const items = [["/", "Today"], ["/plan", "Planner"], ["/tasks", "Tasks"], ["/life", "Life"], ["/archive", "Archive"]];
 
 export default function BottomNav() {
   return (
