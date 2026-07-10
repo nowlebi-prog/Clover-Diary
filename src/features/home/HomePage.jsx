@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import AppButton from "../../components/common/AppButton";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
-import QuickMemoPad from "../../components/dashboard/QuickMemoPad";
 import TodayTimeline from "../../components/dashboard/TodayTimeline";
 import WeatherCard from "../../components/dashboard/WeatherCard";
 import PageHeader from "../../components/layout/PageHeader";
@@ -42,7 +41,7 @@ export default function HomePage() {
     const next = getAllData();
     const current = next.reflections || [];
     next.reflections = [
-      { id: todayReflection?.id || `reflection-${Date.now()}`, date: today, title: "오늘의 한 줄", body, memo: body, createdAt: today, updatedAt: today },
+      { id: todayReflection?.id || `reflection-${Date.now()}`, date: today, title: "오늘 배운 한 줄", body, memo: body, createdAt: today, updatedAt: today },
       ...current.filter((item) => item.date !== today)
     ];
     saveAllData(next);
@@ -52,23 +51,20 @@ export default function HomePage() {
   return (
     <>
       <PageHeader eyebrow={today} title="오늘 대시보드">
-        <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
+        <div className="flex flex-wrap items-center gap-2">
+          <WeatherCard />
+          <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
+        </div>
       </PageHeader>
       <p className="-mt-3 mb-5 text-sm text-clover-sub">오늘은 딱 3가지만 끝내도 충분해요.</p>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-4">
-          <WeatherCard />
-
           <TodayTopThree items={data.top3} onToggle={(id, completed) => updateTop3(id, { completed })} />
 
-          <GlassCard>
-            <SectionTitle>오늘 일정</SectionTitle>
+          <GlassCard className="p-5">
+            <SectionTitle>오늘 일정 타임라인</SectionTitle>
             <TodayTimeline items={todayItems} />
-          </GlassCard>
-
-          <GlassCard>
-            <QuickMemoPad memos={data.inboxMemos} />
           </GlassCard>
         </div>
 
@@ -84,6 +80,7 @@ export default function HomePage() {
       <TodaySummaryGrid
         habitStatus={habitStatus}
         shopping={shopping}
+        memos={data.inboxMemos}
         reflection={reflection}
         setReflection={setReflection}
         todayReflection={todayReflection}

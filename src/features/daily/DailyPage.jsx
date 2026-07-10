@@ -108,6 +108,22 @@ export default function DailyPage() {
     setActive(null);
   };
 
+  const saveTimelineDrafts = (entries) => {
+    commit((next) => {
+      const savedAt = toDateKey(new Date());
+      const newEntries = entries.map((entry) => ({
+        id: makeId("timeline"),
+        date: today,
+        time: `${String(entry.hour).padStart(2, "0")}:00`,
+        title: entry.title,
+        memo: "",
+        createdAt: savedAt,
+        updatedAt: savedAt
+      }));
+      next.timelineEntries = [...newEntries, ...(next.timelineEntries || [])];
+    });
+  };
+
   return (
     <>
       <PageHeader eyebrow={today} title="Daily">
@@ -116,7 +132,7 @@ export default function DailyPage() {
 
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
         <div className="grid gap-4">
-          <DurationTimeline items={durationItems} date={today} />
+          <DurationTimeline items={durationItems} date={today} onSaveEntries={saveTimelineDrafts} />
 
           <GlassCard className="bg-[#F2F0FF]/70">
             <SectionTitle>Goals</SectionTitle>
