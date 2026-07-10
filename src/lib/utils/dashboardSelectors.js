@@ -2,6 +2,7 @@ import { addDays, daysBetween, toDateKey } from "./date";
 
 const titleOf = (item) => item.title || item.name || item.project || item.service || "Untitled";
 const compact = (item, type, date, meta = {}) => ({ ...item, type, date, displayTitle: titleOf(item), ...meta });
+const isImportant = (item) => item?.important || item?.isImportant || item?.priority === "high";
 const monthlyRecurringDate = (item, baseDate) => {
   if (!item.dayOfMonth) return "";
   const date = new Date(`${baseDate.slice(0, 8)}01T00:00:00`);
@@ -71,23 +72,29 @@ export function getMonthCalendarItems(data, year, month) {
     if (!date) return;
     map[date] = [...(map[date] || []), item];
   };
-  (data.events || []).forEach((item) => push(item.date, compact(item, "event", item.date, { badge: "E", tone: "green" })));
-  (data.todos || []).filter((item) => !item.completed).forEach((item) => push(item.dueDate, compact(item, "todo", item.dueDate, { badge: "T", tone: "red" })));
-  (data.contentPlans || []).forEach((item) => push(item.publishDate, compact(item, "content", item.publishDate, { badge: "C", tone: "blue" })));
-  (data.payments || []).forEach((item) => push(item.expectedDate, compact(item, "payment", item.expectedDate, { badge: "P", tone: "red" })));
+  (data.events || []).forEach((item) => push(item.date, compact(item, "event", item.date, { badge: "E", tone: "green", isImportant: isImportant(item) })));
+  (data.todos || []).filter((item) => !item.completed).forEach((item) => push(item.dueDate, compact(item, "todo", item.dueDate, { badge: "T", tone: "red", isImportant: isImportant(item) })));
+  (data.contentPlans || []).forEach((item) => push(item.publishDate, compact(item, "content", item.publishDate, { badge: "C", tone: "blue", isImportant: isImportant(item) })));
+  (data.payments || []).forEach((item) => push(item.expectedDate, compact(item, "payment", item.expectedDate, { badge: "P", tone: "red", isImportant: true })));
   (data.recurringEvents || []).forEach((item) => {
     if (item.frequency !== "monthly") return;
     const base = `${year}-${String(month + 1).padStart(2, "0")}-01`;
     const date = monthlyRecurringDate(item, base);
-    push(date, compact(item, "recurring", date, { badge: "R", tone: "blue" }));
+    push(date, compact(item, "recurring", date, { badge: "R", tone: "blue", isImportant: isImportant(item) }));
   });
   (data.campaigns || []).forEach((item) => {
-    push(item.applyDueDate, compact(item, "campaign", item.applyDueDate, { badge: "A", tone: "mint" }));
-    push(item.uploadDueDate, compact(item, "campaign", item.uploadDueDate, { badge: "U", tone: "mint" }));
+    push(item.applyDueDate, compact(item, "campaign", item.applyDueDate, { badge: "A", tone: "mint", isImportant: isImportant(item) }));
+    push(item.uploadDueDate, compact(item, "campaign", item.uploadDueDate, { badge: "U", tone: "mint", isImportant: isImportant(item) }));
   });
   const prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
   Object.keys(map).forEach((key) => {
     if (!key.startsWith(prefix)) delete map[key];
+    else {
+      map[key] = map[key].sort((a, b) => {
+        if (a.isImportant !== b.isImportant) return a.isImportant ? -1 : 1;
+        return (a.time || "99:99").localeCompare(b.time || "99:99") || a.displayTitle.localeCompare(b.displayTitle);
+      });
+    }
   });
   return map;
 }

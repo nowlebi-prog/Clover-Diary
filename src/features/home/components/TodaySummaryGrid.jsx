@@ -1,21 +1,15 @@
 import AppButton from "../../../components/common/AppButton";
 import SectionTitle from "../../../components/common/SectionTitle";
 import StatusBadge from "../../../components/common/StatusBadge";
-import QuickMemoPad from "../../../components/dashboard/QuickMemoPad";
-
-export default function TodaySummaryGrid({ habitStatus, shopping = [], memos = [], reflection, setReflection, todayReflection, onSaveReflection }) {
+export default function TodaySummaryGrid({ habitStatus, habitCircle, shopping = [], reflection, setReflection, todayReflection, onSaveReflection }) {
   return (
-    <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_0.8fr_0.8fr]">
       <section className="glass rounded-[24px] bg-[#F1FBF5]/70 p-4">
         <SectionTitle>오늘 루틴</SectionTitle>
-        <div className="mb-3 flex items-end justify-between">
-          <p className="text-2xl font-black text-clover-deep">{habitStatus.rate}%</p>
-          <StatusBadge tone={habitStatus.rate === 100 ? "done" : "warning"}>{habitStatus.doneCount}/{habitStatus.total}</StatusBadge>
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: Math.max(7, habitStatus.total || 7) }, (_, index) => (
-            <span key={index} className={`h-7 rounded-lg ${index < habitStatus.doneCount ? "bg-clover-deep" : "bg-white/70"}`} />
-          ))}
+        {habitCircle}
+        <div className="mt-3 flex items-center justify-between text-xs font-bold text-clover-sub">
+          <span>오늘 전체 {habitStatus.doneCount}/{habitStatus.total}</span>
+          <StatusBadge tone={habitStatus.rate === 100 ? "done" : "warning"}>{habitStatus.rate}%</StatusBadge>
         </div>
       </section>
 
@@ -28,10 +22,6 @@ export default function TodaySummaryGrid({ habitStatus, shopping = [], memos = [
           {shopping.length > 3 && <p className="text-xs font-bold text-clover-sub">+ {shopping.length - 3}개 더</p>}
           {!shopping.length && <p className="text-sm text-clover-sub">필요한 구매 목록이 없어요.</p>}
         </div>
-      </section>
-
-      <section className="glass rounded-[24px] bg-[#FFFDF5]/75 p-4">
-        <QuickMemoPad memos={memos} />
       </section>
 
       <section className="glass rounded-[24px] bg-[#F7F4FF]/70 p-4">

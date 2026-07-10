@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import AppButton from "../../components/common/AppButton";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import PageHeader from "../../components/layout/PageHeader";
+import LifeHabitTracker from "../../components/habits/LifeHabitTracker";
 import CrudPanel from "../shared/CrudPanel";
 import {
   createChore,
@@ -10,12 +12,21 @@ import {
   deleteChore,
   deleteShoppingItem,
   getChores,
+  getAllData,
   getShoppingItems,
   updateChore,
   updateShoppingItem
 } from "../../lib/storage/localStorageAdapter";
 
 export default function LifePage() {
+  const [data, setData] = useState(getAllData());
+  const load = () => setData(getAllData());
+
+  useEffect(() => {
+    window.addEventListener("clover-data-change", load);
+    return () => window.removeEventListener("clover-data-change", load);
+  }, []);
+
   return (
     <>
       <PageHeader eyebrow="Life" title="Life routines">
@@ -25,6 +36,8 @@ export default function LifePage() {
         </div>
       </PageHeader>
       <div className="grid gap-4">
+        <LifeHabitTracker data={data} onChange={load} />
+
         <GlassCard>
           <SectionTitle>Life spaces</SectionTitle>
           <p className="text-sm leading-relaxed text-clover-sub">

@@ -5,8 +5,10 @@ import { useState } from "react";
 import LoginPage from "./features/auth/LoginPage";
 import HomePage from "./features/home/HomePage";
 import PlanPage from "./features/plan/PlanPage";
+import MandalartPage from "./features/mandalart/MandalartPage";
 import CalendarPage from "./features/calendar/CalendarPage";
 import DailyPage from "./features/daily/DailyPage";
+import JournalPage from "./features/journal/JournalPage";
 import TasksPage from "./features/tasks/TasksPage";
 import HabitsPage from "./features/habits/HabitsPage";
 import LifePage from "./features/life/LifePage";
@@ -30,8 +32,10 @@ export default function App() {
       <Route element={<Protected session={session} />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/plan" element={<PlanPage />} />
+        <Route path="/mandalart" element={<MandalartPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/daily" element={<DailyPage />} />
+        <Route path="/journal" element={<JournalPage />} />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/habits" element={<HabitsPage />} />
         <Route path="/life" element={<LifePage />} />

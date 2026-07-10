@@ -18,6 +18,7 @@ const normalize = (data) => {
     frequencyType: habit.frequencyType || (habit.cycle === "매주" ? "weekly_count" : "daily"),
     targetCount: Number(habit.targetCount || 7),
     customDays: Array.isArray(habit.customDays) ? habit.customDays : [],
+    reminderTime: habit.reminderTime || "",
     memo: habit.memo || "",
     status: habit.status || "active",
     createdAt: habit.createdAt || today(),

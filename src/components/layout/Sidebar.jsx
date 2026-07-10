@@ -4,8 +4,10 @@ import CloverLogo from "../common/CloverLogo";
 const items = [
   ["/", "Today"],
   ["/plan", "Planner"],
+  ["/mandalart", "Mandalart"],
   ["/tasks", "Tasks"],
   ["/life", "Life"],
+  ["/journal", "Journal"],
   ["/archive", "Archive"]
 ];
 

@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import AppButton from "../../components/common/AppButton";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
+import HabitCircleSummary from "../../components/habits/HabitCircleSummary";
 import TodayTimeline from "../../components/dashboard/TodayTimeline";
 import WeatherCard from "../../components/dashboard/WeatherCard";
+import WeeklyStripCalendar from "../../components/dashboard/WeeklyStripCalendar";
 import PageHeader from "../../components/layout/PageHeader";
-import { getAllData, saveAllData, updateTodo, updateTop3 } from "../../lib/storage/localStorageAdapter";
+import { getAllData, saveAllData, toggleHabitLog, updateTodo, updateTop3 } from "../../lib/storage/localStorageAdapter";
 import { getTodayHabitStatus } from "../../lib/utils/habitSelectors";
 import { toDateKey } from "../../lib/utils/date";
 import { getIncompleteTodos, getTodayItems, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
@@ -53,6 +55,7 @@ export default function HomePage() {
       <PageHeader eyebrow={today} title="오늘 대시보드">
         <div className="flex flex-wrap items-center gap-2">
           <WeatherCard />
+          <AppButton variant="soft" onClick={() => window.dispatchEvent(new CustomEvent("clover-open-quick-add", { detail: "memo" }))}>빠른 메모</AppButton>
           <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
         </div>
       </PageHeader>
@@ -60,6 +63,7 @@ export default function HomePage() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-4">
+          <WeeklyStripCalendar data={data} today={today} />
           <TodayTopThree items={data.top3} onToggle={(id, completed) => updateTop3(id, { completed })} />
 
           <GlassCard className="p-5">
@@ -74,11 +78,13 @@ export default function HomePage() {
           delayed={delayed}
           today={today}
           onToggleTodo={(id, completed) => updateTodo(id, { completed, completedAt: completed ? today : "" })}
+          onUpdateTodo={(id, updates) => updateTodo(id, updates)}
         />
       </div>
 
       <TodaySummaryGrid
         habitStatus={habitStatus}
+        habitCircle={<HabitCircleSummary habits={data.habits} logs={data.habitLogs} onToggle={(id) => toggleHabitLog(id, today)} />}
         shopping={shopping}
         memos={data.inboxMemos}
         reflection={reflection}
