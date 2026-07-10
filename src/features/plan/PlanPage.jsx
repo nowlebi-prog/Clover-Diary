@@ -27,6 +27,7 @@ export default function PlanPage() {
       <PageHeader eyebrow="Planner" title="Planner">
         <div className="flex flex-wrap gap-2">
           <AppButton onClick={() => window.dispatchEvent(new CustomEvent("clover-open-quick-add", { detail: "event" }))}>+ Schedule</AppButton>
+          <Link to="/calendar"><AppButton variant="soft">Calendar</AppButton></Link>
           <Link to="/mandalart"><AppButton variant="soft">Mandalart</AppButton></Link>
           <Link to="/daily"><AppButton variant="soft">Daily timeline</AppButton></Link>
         </div>
@@ -60,7 +61,7 @@ export default function PlanPage() {
           </GlassCard>
 
           <GlassCard>
-            <SectionTitle>Plan spaces</SectionTitle>
+            <SectionTitle>PLAN 안의 기능</SectionTitle>
             <div className="grid gap-2">
               <Link to="/calendar" className="rounded-[20px] bg-white/55 px-4 py-3 text-sm font-bold text-clover-deep">Monthly schedule</Link>
               <Link to="/daily" className="rounded-[20px] bg-white/55 px-4 py-3 text-sm font-bold text-clover-deep">Daily timeline</Link>

@@ -32,20 +32,20 @@ export default function LifePage() {
       <PageHeader eyebrow="Life" title="Life routines">
         <div className="flex flex-wrap gap-2">
           <Link to="/habits"><AppButton variant="soft">Habits</AppButton></Link>
-          <Link to="/money"><AppButton variant="soft">Money</AppButton></Link>
+          <Link to="/journal"><AppButton variant="soft">Journal</AppButton></Link>
         </div>
       </PageHeader>
       <div className="grid gap-4">
         <LifeHabitTracker data={data} onChange={load} />
 
         <GlassCard>
-          <SectionTitle>Life spaces</SectionTitle>
+          <SectionTitle>LIFE 안의 기능</SectionTitle>
           <p className="text-sm leading-relaxed text-clover-sub">
-            Habits, chores, shopping, money, and subscriptions live together here.
+            Habits, home care, shopping, and daily journal live together here.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link to="/habits"><AppButton>Habit tracker</AppButton></Link>
-            <Link to="/money"><AppButton variant="soft">Money check</AppButton></Link>
+            <Link to="/journal"><AppButton variant="soft">Today journal</AppButton></Link>
           </div>
         </GlassCard>
         <CrudPanel title="Chores" getItems={getChores} createItem={createChore} updateItem={updateChore} deleteItem={deleteChore} fields={[{ name: "title", label: "Task", primary: true }, { name: "cycle", label: "Cycle", type: "select", options: ["Daily", "Weekly", "Monthly", "When needed"] }, { name: "lastDoneAt", label: "Last done", type: "date" }, { name: "nextDueDate", label: "Next due", type: "date" }, { name: "completed", label: "Done", type: "checkbox" }]} />

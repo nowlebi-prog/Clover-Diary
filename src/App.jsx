@@ -10,6 +10,7 @@ import CalendarPage from "./features/calendar/CalendarPage";
 import DailyPage from "./features/daily/DailyPage";
 import JournalPage from "./features/journal/JournalPage";
 import TasksPage from "./features/tasks/TasksPage";
+import WorkPage from "./features/work/WorkPage";
 import HabitsPage from "./features/habits/HabitsPage";
 import LifePage from "./features/life/LifePage";
 import MoneyPage from "./features/money/MoneyPage";
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/daily" element={<DailyPage />} />
         <Route path="/journal" element={<JournalPage />} />
+        <Route path="/work" element={<WorkPage />} />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/habits" element={<HabitsPage />} />
         <Route path="/life" element={<LifePage />} />
