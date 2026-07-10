@@ -7,6 +7,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: "auto",
+      cleanupOutdatedCaches: true,
+      workbox: {
+        clientsClaim: true,
+        skipWaiting: true,
+        cleanupOutdatedCaches: true
+      },
       includeAssets: ["icons/icon.svg"],
       manifest: {
         name: "Clover Desk",
