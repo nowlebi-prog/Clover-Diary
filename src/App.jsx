@@ -4,7 +4,6 @@ import { getSession } from "./lib/auth/localAuthAdapter";
 import { useState } from "react";
 import LoginPage from "./features/auth/LoginPage";
 import HomePage from "./features/home/HomePage";
-import PlanPage from "./features/plan/PlanPage";
 import MandalartPage from "./features/mandalart/MandalartPage";
 import CalendarPage from "./features/calendar/CalendarPage";
 import DailyPage from "./features/daily/DailyPage";
@@ -14,6 +13,7 @@ import WorkPage from "./features/work/WorkPage";
 import HabitsPage from "./features/habits/HabitsPage";
 import LifePage from "./features/life/LifePage";
 import MoneyPage from "./features/money/MoneyPage";
+import ContentPage from "./features/content/ContentPage";
 import ArchivePage from "./features/archive/ArchivePage";
 import CampaignsPage from "./features/campaigns/CampaignsPage";
 import FilesPage from "./features/files/FilesPage";
@@ -32,7 +32,7 @@ export default function App() {
       <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage onLogin={setSession} />} />
       <Route element={<Protected session={session} />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/plan" element={<PlanPage />} />
+        <Route path="/plan" element={<Navigate to="/work" replace />} />
         <Route path="/mandalart" element={<MandalartPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/daily" element={<DailyPage />} />
@@ -42,7 +42,7 @@ export default function App() {
         <Route path="/habits" element={<HabitsPage />} />
         <Route path="/life" element={<LifePage />} />
         <Route path="/money" element={<MoneyPage />} />
-        <Route path="/content" element={<ArchivePage />} />
+        <Route path="/content" element={<ContentPage />} />
         <Route path="/archive" element={<ArchivePage />} />
         <Route path="/campaigns" element={<CampaignsPage />} />
         <Route path="/files" element={<FilesPage />} />

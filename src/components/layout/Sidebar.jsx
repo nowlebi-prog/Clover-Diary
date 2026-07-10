@@ -3,9 +3,10 @@ import CloverLogo from "../common/CloverLogo";
 
 const items = [
   { to: "/", label: "HOME", paths: ["/"] },
-  { to: "/plan", label: "PLAN", paths: ["/plan", "/calendar", "/daily", "/mandalart"] },
-  { to: "/life", label: "LIFE", paths: ["/life", "/habits", "/journal"] },
-  { to: "/work", label: "WORK", paths: ["/work", "/tasks", "/content", "/archive", "/campaigns", "/files", "/money"] }
+  { to: "/life", label: "LIFE", paths: ["/life", "/habits", "/journal", "/mandalart"] },
+  { to: "/work", label: "WORK", paths: ["/work", "/tasks", "/calendar", "/daily", "/content", "/campaigns", "/files"] },
+  { to: "/money", label: "MONEY", paths: ["/money"] },
+  { to: "/archive", label: "ARCHIVE", paths: ["/archive"] }
 ];
 
 export default function Sidebar() {
@@ -18,11 +19,7 @@ export default function Sidebar() {
         {items.map(({ to, label, paths }) => {
           const active = paths.some((path) => (path === "/" ? location.pathname === "/" : location.pathname.startsWith(path)));
           return (
-            <Link
-              key={to}
-              to={to}
-              className={`rounded-full px-4 py-3 text-sm font-bold ${active ? "bg-clover-mint text-clover-deep" : "text-clover-sub hover:bg-white/60"}`}
-            >
+            <Link key={to} to={to} className={`rounded-full px-4 py-3 text-sm font-bold ${active ? "bg-clover-mint text-clover-deep" : "text-clover-sub hover:bg-white/60"}`}>
               {label}
             </Link>
           );

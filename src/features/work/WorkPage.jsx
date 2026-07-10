@@ -15,12 +15,11 @@ export default function WorkPage() {
   const todos = getIncompleteTodos(data);
   const deadlines = getUpcomingDeadlines(data, today);
   const contents = data.contentPlans || [];
-  const payments = data.payments || [];
   const campaigns = data.campaigns || [];
 
   return (
     <>
-      <PageHeader eyebrow="WORK" title="업무와 프로젝트">
+      <PageHeader eyebrow="WORK" title="업무 허브">
         <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
       </PageHeader>
 
@@ -58,9 +57,9 @@ export default function WorkPage() {
             <SectionTitle>WORK 안의 기능</SectionTitle>
             <div className="grid gap-2">
               <Link to="/tasks" className={spaceLink}>Tasks · 전체 할 일 {todos.length}개</Link>
+              <Link to="/daily" className={spaceLink}>Time Block · 오늘 작업 계획</Link>
               <Link to="/campaigns" className={spaceLink}>Projects · 프로젝트/캠페인 {campaigns.length}개</Link>
               <Link to="/content" className={spaceLink}>Content · 발행 계획 {contents.length}개</Link>
-              <Link to="/money" className={spaceLink}>Money · 결제/입금 {payments.length}개</Link>
               <Link to="/files" className={spaceLink}>Files · 중요 파일</Link>
             </div>
           </GlassCard>
@@ -68,7 +67,7 @@ export default function WorkPage() {
           <GlassCard>
             <SectionTitle>운영 메모</SectionTitle>
             <p className="text-sm leading-relaxed text-clover-sub">
-              업무, 콘텐츠, 결제와 마감은 WORK에서 관리하고 HOME과 PLAN에는 오늘 필요한 요약만 보여줍니다.
+              업무, 프로젝트, 콘텐츠, 레퍼런스와 타임블록은 WORK에서 관리하고 HOME에는 오늘 필요한 요약만 보여줍니다.
             </p>
           </GlassCard>
         </div>

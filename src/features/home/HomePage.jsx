@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import AppButton from "../../components/common/AppButton";
 import GlassCard from "../../components/common/GlassCard";
@@ -32,6 +33,11 @@ export default function HomePage() {
   const delayed = (data.todos || []).filter((todo) => !todo.completed && Number(todo.delayedCount || 0) > 0);
   const habitStatus = getTodayHabitStatus(data.habits, data.habitLogs, today);
   const shopping = (data.shoppingItems || []).filter((item) => !item.completed);
+  const monthKey = today.slice(0, 7);
+  const monthExpenses = (data.expenses || [])
+    .filter((item) => (item.date || "").startsWith(monthKey))
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const todayPayments = (data.payments || []).filter((item) => item.expectedDate === today && item.status !== "입금 완료");
   const todayReflection = useMemo(
     () => (data.reflections || []).find((item) => item.date === today),
     [data.reflections, today]
@@ -52,14 +58,45 @@ export default function HomePage() {
 
   return (
     <>
-      <PageHeader eyebrow={today} title="오늘 대시보드">
+      <PageHeader eyebrow={today} title="HOME">
         <div className="flex flex-wrap items-center gap-2">
           <WeatherCard />
           <AppButton variant="soft" onClick={() => window.dispatchEvent(new CustomEvent("clover-open-quick-add", { detail: "memo" }))}>빠른 메모</AppButton>
           <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
         </div>
       </PageHeader>
-      <p className="-mt-3 mb-5 text-sm text-clover-sub">오늘은 딱 3가지만 끝내도 충분해요.</p>
+      <p className="-mt-3 mb-5 text-sm font-bold text-clover-sub">
+        Life, Work, Money의 오늘 상태를 한눈에 보는 개인 현황판이에요.
+      </p>
+
+      <div className="mb-4 grid gap-3 md:grid-cols-3">
+        <Link to="/life" className="glass rounded-[22px] bg-white/62 p-4 transition hover:bg-white/80">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-clover-deep">Life</p>
+            <span className="rounded-full bg-clover-mint px-3 py-1 text-xs font-black text-clover-deep">{habitStatus.doneCount}/{habitStatus.total}</span>
+          </div>
+          <p className="mt-2 text-sm font-bold text-clover-ink">오늘 루틴 체크</p>
+          <div className="mt-3 h-2 rounded-full bg-white/70">
+            <div className="h-2 rounded-full bg-clover-deep" style={{ width: `${habitStatus.rate}%` }} />
+          </div>
+        </Link>
+        <Link to="/work" className="glass rounded-[22px] bg-white/62 p-4 transition hover:bg-white/80">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-clover-deep">Work</p>
+            <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-black text-orange-700">{getTodayItems(data, today).length}</span>
+          </div>
+          <p className="mt-2 text-sm font-bold text-clover-ink">오늘 할 일과 마감</p>
+          <p className="mt-2 text-xs font-bold text-clover-sub">남은 업무 {incomplete.length}개</p>
+        </Link>
+        <Link to="/money" className="glass rounded-[22px] bg-white/62 p-4 transition hover:bg-white/80">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-clover-deep">Money</p>
+            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">{todayPayments.length}</span>
+          </div>
+          <p className="mt-2 text-sm font-bold text-clover-ink">이번 달 지출 {monthExpenses.toLocaleString()}원</p>
+          <p className="mt-2 text-xs font-bold text-clover-sub">오늘 결제 예정 {todayPayments.length}건</p>
+        </Link>
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-4">
@@ -67,7 +104,7 @@ export default function HomePage() {
           <TodayTopThree items={data.top3} onToggle={(id, completed) => updateTop3(id, { completed })} />
 
           <GlassCard className="p-5">
-            <SectionTitle>오늘 일정 타임라인</SectionTitle>
+            <SectionTitle>오늘 일정 / 타임블록</SectionTitle>
             <TodayTimeline items={todayItems} />
           </GlassCard>
         </div>
