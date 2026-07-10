@@ -33,6 +33,11 @@ export function getTodayItems(data, today = toDateKey()) {
   (data.todos || []).filter((item) => !item.completed && item.dueDate === today).forEach((item) => items.push(compact(item, "todo", item.dueDate, { tone: "red", label: "Todo" })));
   (data.contentPlans || []).filter((item) => item.publishDate === today).forEach((item) => items.push(compact(item, "content", item.publishDate, { tone: "blue", label: "Content" })));
   (data.payments || []).filter((item) => item.expectedDate === today).forEach((item) => items.push(compact(item, "payment", item.expectedDate, { tone: "red", label: "Payment" })));
+  (data.expenses || []).filter((item) => item.date === today).forEach((item) => items.push(compact(item, "expense", item.date, { tone: "red", label: "Expense" })));
+  (data.subscriptions || []).forEach((item) => {
+    const billingDate = item.billingDay ? `${today.slice(0, 8)}${String(item.billingDay).padStart(2, "0")}` : "";
+    if (billingDate === today) items.push(compact(item, "subscription", billingDate, { tone: "red", label: "Sub" }));
+  });
   (data.recurringEvents || []).forEach((item) => {
     const date = monthlyRecurringDate(item, today);
     if (date === today) items.push(compact(item, "recurring", date, { tone: "blue", label: item.kind || "Repeat" }));
@@ -76,6 +81,11 @@ export function getMonthCalendarItems(data, year, month) {
   (data.todos || []).filter((item) => !item.completed).forEach((item) => push(item.dueDate, compact(item, "todo", item.dueDate, { badge: "T", tone: "red", isImportant: isImportant(item) })));
   (data.contentPlans || []).forEach((item) => push(item.publishDate, compact(item, "content", item.publishDate, { badge: "C", tone: "blue", isImportant: isImportant(item) })));
   (data.payments || []).forEach((item) => push(item.expectedDate, compact(item, "payment", item.expectedDate, { badge: "P", tone: "red", isImportant: true })));
+  (data.expenses || []).forEach((item) => push(item.date, compact(item, "expense", item.date, { badge: "E", tone: "red", isImportant: item.category === "특별 지출" })));
+  (data.subscriptions || []).forEach((item) => {
+    const date = item.billingDay ? `${year}-${String(month + 1).padStart(2, "0")}-${String(item.billingDay).padStart(2, "0")}` : "";
+    push(date, compact(item, "subscription", date, { badge: "S", tone: "red", isImportant: item.status === "해지 고민" }));
+  });
   (data.recurringEvents || []).forEach((item) => {
     if (item.frequency !== "monthly") return;
     const base = `${year}-${String(month + 1).padStart(2, "0")}-01`;

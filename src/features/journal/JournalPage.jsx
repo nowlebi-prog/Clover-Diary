@@ -20,79 +20,20 @@ const moods = [
   ["down", "☁️", "우울", "#D1D5DB", 1]
 ];
 
-const average = (values) => {
-  const filtered = values.map(Number).filter((value) => Number.isFinite(value) && value > 0);
-  if (!filtered.length) return 0;
-  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
-};
-
-const oneDecimal = (value) => Math.round(value * 10) / 10;
-
-const getWeekStart = (dateKey) => {
-  const date = new Date(`${dateKey}T00:00:00`);
-  const day = date.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + diff);
-  return toDateKey(date);
-};
-
-const getWeekNumber = (dateKey) => {
-  const date = new Date(`${dateKey}T00:00:00`);
-  return Math.ceil(date.getDate() / 7);
-};
-
-function TrendChart({ entries, today }) {
+function MiniTrend({ entries, today }) {
   const days = useMemo(() => Array.from({ length: 14 }, (_, index) => addDays(today, index - 13)), [today]);
-  const width = 720;
-  const height = 220;
-  const left = 54;
-  const right = 24;
-  const top = 28;
-  const bottom = 42;
-  const chartWidth = width - left - right;
-  const chartHeight = height - top - bottom;
-  const byDate = entries.reduce((map, entry) => ({ ...map, [entry.date]: entry }), {});
-  const xOf = (index) => left + (chartWidth / (days.length - 1)) * index;
-  const moodY = (score = 0) => top + chartHeight - ((score - 1) / 4) * chartHeight;
-  const sleepY = (hours = 0) => top + chartHeight - (Math.min(hours, 12) / 12) * chartHeight;
-  const moodPoints = days
-    .map((date, index) => ({ date, x: xOf(index), y: moodY(Number(byDate[date]?.score || 0)), value: Number(byDate[date]?.score || 0) }))
-    .filter((point) => point.value > 0);
-  const sleepPoints = days
-    .map((date, index) => ({ date, x: xOf(index), y: sleepY(Number(byDate[date]?.sleepHours || 0)), value: Number(byDate[date]?.sleepHours || 0) }))
-    .filter((point) => point.value > 0);
-  const pathOf = (points) => points.map((point, index) => `${index ? "L" : "M"} ${point.x} ${point.y}`).join(" ");
-
+  const byDate = entries.reduce((map, item) => ({ ...map, [item.date]: item }), {});
   return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[680px]">
-        {[1, 2, 3, 4, 5].map((score) => (
-          <g key={score}>
-            <text x="14" y={moodY(score) + 5} className="text-[18px]">{["", "😡", "😢", "🙂", "😎", "😊"][score]}</text>
-            <line x1={left} x2={width - right} y1={moodY(score)} y2={moodY(score)} stroke="#E9EEE9" strokeWidth="1" />
-          </g>
-        ))}
-
-        {sleepPoints.length > 1 && <path d={pathOf(sleepPoints)} fill="none" stroke="#9ADFCB" strokeWidth="3" strokeLinecap="round" />}
-        {moodPoints.length > 1 && <path d={pathOf(moodPoints)} fill="none" stroke="#14B8A6" strokeWidth="4" strokeLinecap="round" />}
-
-        {sleepPoints.map((point) => (
-          <circle key={`sleep-${point.date}`} cx={point.x} cy={point.y} r="4" fill="#9ADFCB" />
-        ))}
-        {moodPoints.map((point) => (
-          <circle key={`mood-${point.date}`} cx={point.x} cy={point.y} r="5" fill="#F59E0B" stroke="#fff" strokeWidth="2" />
-        ))}
-
-        {days.map((date, index) => (
-          <text key={date} x={xOf(index)} y={height - 12} textAnchor="middle" className="fill-slate-400 text-[11px] font-bold">
-            {new Date(`${date}T00:00:00`).getDate()}
-          </text>
-        ))}
-      </svg>
-      <div className="flex justify-center gap-5 text-xs font-black">
-        <span className="flex items-center gap-1 text-teal-600"><i className="h-2.5 w-2.5 rounded-full bg-teal-500" />기분</span>
-        <span className="flex items-center gap-1 text-emerald-300"><i className="h-2.5 w-2.5 rounded-full bg-emerald-200" />숙면시간</span>
-      </div>
+    <div className="grid grid-cols-14 items-end gap-1">
+      {days.map((date) => {
+        const score = Number(byDate[date]?.score || 0);
+        return (
+          <div key={date} className="grid gap-1 text-center">
+            <span className="mx-auto w-3 rounded-full bg-teal-400" style={{ height: `${Math.max(8, score * 14)}px`, opacity: score ? 1 : 0.2 }} />
+            <span className="text-[10px] font-bold text-clover-sub">{new Date(`${date}T00:00:00`).getDate()}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -116,23 +57,6 @@ export default function JournalPage() {
     return () => window.removeEventListener("clover-data-change", load);
   }, []);
 
-  useEffect(() => {
-    const mood = moods.find((item) => item[0] === moodKey);
-    if (mood && !todayMood?.score) setScore(mood[4]);
-  }, [moodKey]);
-
-  const weekStart = getWeekStart(today);
-  const lastWeekStart = addDays(weekStart, -7);
-  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
-  const lastWeekDays = Array.from({ length: 7 }, (_, index) => addDays(lastWeekStart, index));
-  const entriesByDate = (data.moodEntries || []).reduce((map, entry) => ({ ...map, [entry.date]: entry }), {});
-  const weekMood = oneDecimal(average(weekDays.map((date) => entriesByDate[date]?.score)));
-  const lastWeekMood = oneDecimal(average(lastWeekDays.map((date) => entriesByDate[date]?.score)));
-  const weekSleep = oneDecimal(average(weekDays.map((date) => entriesByDate[date]?.sleepHours)));
-  const lastWeekSleep = oneDecimal(average(lastWeekDays.map((date) => entriesByDate[date]?.sleepHours)));
-  const moodDiff = oneDecimal(weekMood - lastWeekMood);
-  const sleepDiff = oneDecimal(weekSleep - lastWeekSleep);
-
   const saveMoodAndSleep = () => {
     const mood = moods.find((item) => item[0] === moodKey) || moods[3];
     const next = getAllData();
@@ -152,6 +76,7 @@ export default function JournalPage() {
       ...(next.moodEntries || []).filter((item) => item.date !== today)
     ];
     saveAllData(next);
+    load();
   };
 
   const saveJournal = () => {
@@ -165,6 +90,7 @@ export default function JournalPage() {
       ...(next.gratitudeEntries || []).filter((item) => item.date !== today)
     ];
     saveAllData(next);
+    load();
   };
 
   return (
@@ -173,7 +99,7 @@ export default function JournalPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
         <div className="grid gap-4">
           <GlassCard>
-            <SectionTitle>오늘 기분과 숙면</SectionTitle>
+            <SectionTitle>기분과 숙면</SectionTitle>
             <div className="grid grid-cols-3 gap-3">
               {moods.map((mood) => (
                 <button
@@ -190,16 +116,9 @@ export default function JournalPage() {
                 </button>
               ))}
             </div>
-
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1 text-sm font-bold">
-                기분 점수 1-5
-                <AppInput type="number" min="1" max="5" step="0.5" value={score} onChange={(event) => setScore(event.target.value)} />
-              </label>
-              <label className="grid gap-1 text-sm font-bold">
-                숙면시간
-                <AppInput type="number" min="0" max="24" step="0.5" value={sleepHours} onChange={(event) => setSleepHours(event.target.value)} placeholder="예: 7.5" />
-              </label>
+              <label className="grid gap-1 text-sm font-bold">기분 점수 1-5<AppInput type="number" min="1" max="5" step="0.5" value={score} onChange={(event) => setScore(event.target.value)} /></label>
+              <label className="grid gap-1 text-sm font-bold">숙면시간<AppInput type="number" min="0" max="24" step="0.5" value={sleepHours} onChange={(event) => setSleepHours(event.target.value)} placeholder="예: 7.5" /></label>
             </div>
             <AppButton className="mt-3" onClick={saveMoodAndSleep}>기분/숙면 저장</AppButton>
           </GlassCard>
@@ -222,26 +141,26 @@ export default function JournalPage() {
 
         <div className="grid h-fit gap-4">
           <GlassCard>
-            <SectionTitle>📈 기분 & 숙면 트렌드 (14일)</SectionTitle>
-            <TrendChart entries={data.moodEntries || []} today={today} />
+            <SectionTitle>기분 흐름 14일</SectionTitle>
+            <MiniTrend entries={data.moodEntries || []} today={today} />
           </GlassCard>
-
           <GlassCard>
-            <SectionTitle>{getWeekNumber(today)}째주 요약</SectionTitle>
+            <SectionTitle>오늘 저장된 기록</SectionTitle>
             <div className="grid gap-3">
               <div className="rounded-2xl bg-white/55 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-clover-deep">기분 점수</p>
-                <p className="mt-1 text-3xl font-black">{weekMood || "-"}점</p>
-                <p className="mt-1 text-sm font-bold text-clover-sub">
-                  {lastWeekMood ? `지난주보다 ${Math.abs(moodDiff)}점 ${moodDiff >= 0 ? "좋아졌어요! 🙂" : "낮아졌어요. 오늘은 조금 느슨하게 가요."}` : "지난주 기록이 쌓이면 비교해줄게요."}
-                </p>
+                <p className="text-xs font-black text-clover-deep">기분</p>
+                <p className="mt-1 font-bold">{todayMood ? `${todayMood.emoji} ${todayMood.label} · ${todayMood.score}점 · ${todayMood.sleepHours || 0}시간` : "아직 저장 전이에요."}</p>
               </div>
               <div className="rounded-2xl bg-white/55 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-clover-deep">평균 1일 숙면시간</p>
-                <p className="mt-1 text-3xl font-black">{weekSleep || "-"}시간</p>
-                <p className="mt-1 text-sm font-bold text-clover-sub">
-                  {lastWeekSleep ? `지난주보다 ${Math.abs(sleepDiff)}시간 ${sleepDiff >= 0 ? "더 잤어요! 🙂" : "덜 잤어요. 회복 시간을 조금 챙겨요."}` : "지난주 수면 기록이 있으면 차이를 보여줄게요."}
-                </p>
+                <p className="text-xs font-black text-clover-deep">오늘 요약</p>
+                <p className="mt-1 text-sm font-bold">{todayReflection?.body || todayReflection?.memo || "아직 저장된 요약이 없어요."}</p>
+              </div>
+              <div className="rounded-2xl bg-white/55 p-4">
+                <p className="text-xs font-black text-clover-deep">감사 일기</p>
+                <ul className="mt-1 grid gap-1 text-sm font-bold">
+                  {(todayGratitude?.items || []).filter(Boolean).map((item, index) => <li key={index}>· {item}</li>)}
+                  {!(todayGratitude?.items || []).filter(Boolean).length && <li className="text-clover-sub">아직 저장된 감사 일기가 없어요.</li>}
+                </ul>
               </div>
             </div>
           </GlassCard>
