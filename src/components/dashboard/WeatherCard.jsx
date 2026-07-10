@@ -29,29 +29,40 @@ export default function WeatherCard() {
         return response.json();
       })
       .then(setWeather)
-      .catch(() => setError("weather off"));
+      .catch(() => setError("날씨 확인 불가"));
+
     fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${airParams}`)
-      .then((response) => response.ok ? response.json() : null)
+      .then((response) => (response.ok ? response.json() : null))
       .then(setDust)
       .catch(() => setDust(null));
   }, []);
 
   const summary = useMemo(() => {
-    if (!weather?.current) return null;
+    const current = weather?.current;
+    if (!current) return null;
+    const air = dust?.current || {};
     return {
-      temp: Math.round(weather.current.temperature_2m),
-      humidity: Math.round(weather.current.relative_humidity_2m),
-      pm10: dust?.current?.pm10 ? Math.round(dust.current.pm10) : null,
-      pm25: dust?.current?.pm2_5 ? Math.round(dust.current.pm2_5) : null
+      temp: Number.isFinite(current.temperature_2m) ? Math.round(current.temperature_2m) : null,
+      humidity: Number.isFinite(current.relative_humidity_2m) ? Math.round(current.relative_humidity_2m) : null,
+      pm10: Number.isFinite(air.pm10) ? Math.round(air.pm10) : null,
+      pm25: Number.isFinite(air.pm2_5) ? Math.round(air.pm2_5) : null
     };
   }, [weather, dust]);
 
-  const dustLabel = summary?.pm10 === null ? "미세먼지 확인중" : `미세 ${summary.pm10} · 초미세 ${summary.pm25}`;
+  const dustLabel = !summary
+    ? "날씨 확인중"
+    : summary.pm10 === null || summary.pm25 === null
+      ? "미세먼지 확인중"
+      : `미세 ${summary.pm10} · 초미세 ${summary.pm25}`;
+
+  const weatherLabel = summary
+    ? `Bucheon · ${summary.temp ?? "-"}°C · 습도 ${summary.humidity ?? "-"}% · ${dustLabel}`
+    : error || dustLabel;
 
   return (
     <span className="inline-flex min-h-11 items-center gap-3 rounded-full border border-white/70 bg-white/70 px-4 text-xs font-bold text-clover-deep shadow-glass backdrop-blur-xl">
       <span className="grid h-8 w-8 place-items-center rounded-full bg-[#E8F7FF] text-lg">☀️</span>
-      {summary ? `Bucheon · ${summary.temp}°C · 습도 ${summary.humidity}% · ${dustLabel}` : error || "weather loading"}
+      {weatherLabel}
     </span>
   );
 }
