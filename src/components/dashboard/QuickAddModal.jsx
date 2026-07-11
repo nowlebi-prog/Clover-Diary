@@ -4,6 +4,7 @@ import AppInput from "../common/AppInput";
 import AppSelect from "../common/AppSelect";
 import AppTextarea from "../common/AppTextarea";
 import Modal from "../common/Modal";
+import SubTaskEditor, { cleanSubTasks } from "../tasks/SubTaskEditor";
 import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
 
@@ -33,15 +34,7 @@ const defaults = (type) => {
 };
 
 const collectionFor = (type) => ({ todo: "todos", event: "events", memo: "inboxMemos", payment: "payments", expense: "expenses" }[type] || type);
-const subTaskText = (todo) => (todo.subTasks || []).map((item) => item.title).join("\n");
 const parseAmount = (text) => Number(String(text).replace(/[^0-9]/g, "")) || "";
-
-const parseSubTasks = (text, existing = []) =>
-  text.split("\n").map((line) => line.trim()).filter(Boolean).map((title, index) => ({
-    id: existing[index]?.id || `sub-${Date.now()}-${index}`,
-    title,
-    completed: Boolean(existing[index]?.completed)
-  }));
 
 function guessType(text) {
   const value = text.trim();
@@ -101,7 +94,7 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
     const category = (form.category || "개인").trim();
     const payload =
       type === "memo" ? { ...form, body: form.body || quickText, done: false }
-      : type === "todo" ? { ...form, category, project: category, projectName: category, dueTime: form.allDay ? "" : form.startTime || form.dueTime || "", startTime: form.allDay ? "" : form.startTime || form.dueTime || "", endTime: form.allDay ? "" : form.endTime || "" }
+      : type === "todo" ? { ...form, subTasks: cleanSubTasks(form.subTasks), category, project: category, projectName: category, dueTime: form.allDay ? "" : form.startTime || form.dueTime || "", startTime: form.allDay ? "" : form.startTime || form.dueTime || "", endTime: form.allDay ? "" : form.endTime || "" }
       : form;
     allData[collection] = [{ id: makeId(collection), createdAt: date, updatedAt: date, ...payload }, ...(allData[collection] || [])];
     saveAllData(allData);
@@ -138,7 +131,7 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
         {type === "todo" && (
           <>
             <label className="grid gap-1 text-sm font-bold">할 일<AppInput value={form.title} onChange={(event) => set("title", event.target.value)} /></label>
-            <label className="grid gap-1 text-sm font-bold">하위 목록<AppTextarea value={subTaskText(form)} onChange={(event) => set("subTasks", parseSubTasks(event.target.value, form.subTasks || []))} placeholder={"하위 작업을 줄마다 하나씩 적을 수 있어요"} /></label>
+            <SubTaskEditor value={form.subTasks || []} onChange={(subTasks) => set("subTasks", subTasks)} />
             <div className="grid gap-3 md:grid-cols-[1fr_120px_120px]">
               <label className="grid gap-1 text-sm font-bold">날짜<AppInput type="date" value={form.dueDate} onChange={(event) => set("dueDate", event.target.value)} /></label>
               <label className="grid gap-1 text-sm font-bold">시작<AppInput type="time" value={form.startTime || ""} disabled={form.allDay} onChange={(event) => { set("startTime", event.target.value); set("dueTime", event.target.value); }} /></label>

@@ -5,6 +5,7 @@ import AppSelect from "../../components/common/AppSelect";
 import AppTextarea from "../../components/common/AppTextarea";
 import Modal from "../../components/common/Modal";
 import TaskBoard from "../../components/tasks/TaskBoard";
+import SubTaskEditor, { cleanSubTasks } from "../../components/tasks/SubTaskEditor";
 import PageHeader from "../../components/layout/PageHeader";
 import { createDelayedTask, createTodo, deleteTodo, getAllData, updateTodo } from "../../lib/storage/localStorageAdapter";
 import { daysBetween, toDateKey } from "../../lib/utils/date";
@@ -29,23 +30,11 @@ const emptyTodo = () => ({
   delayedReason: ""
 });
 
-const subTaskText = (todo) => (todo.subTasks || []).map((item) => item.title).join("\n");
-
-const parseSubTasks = (text, existing = []) =>
-  text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((title, index) => ({
-      id: existing[index]?.id || `sub-${Date.now()}-${index}`,
-      title,
-      completed: Boolean(existing[index]?.completed)
-    }));
-
 const normalizeTodo = (todo) => {
   const category = (todo.category || "개인").trim();
   return {
     ...todo,
+    subTasks: cleanSubTasks(todo.subTasks),
     category,
     project: category,
     projectName: category,
@@ -193,14 +182,7 @@ export default function TasksPage() {
               <AppInput value={editing.title} onChange={(event) => setEditing({ ...editing, title: event.target.value })} placeholder="예: 클라이언트 수정본 전달" autoFocus />
             </label>
 
-            <label className="grid gap-1 text-sm font-bold">
-              하위 목록
-              <AppTextarea
-                value={subTaskText(editing)}
-                onChange={(event) => setEditing({ ...editing, subTasks: parseSubTasks(event.target.value, editing.subTasks || []) })}
-                placeholder={"하위 작업을 한 줄에 하나씩 적어주세요.\n예: 자료 확인\n예: 수정본 보내기"}
-              />
-            </label>
+            <SubTaskEditor value={editing.subTasks || []} onChange={(subTasks) => setEditing({ ...editing, subTasks })} />
 
             <div className="grid gap-3 md:grid-cols-[1fr_120px_120px]">
               <label className="grid gap-1 text-sm font-bold">
