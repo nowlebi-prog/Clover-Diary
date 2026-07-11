@@ -5,6 +5,7 @@ import { isCloudSyncEnabled, pullRemoteSnapshot, pushRemoteSnapshot } from "./su
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const today = () => new Date().toISOString().slice(0, 10);
 const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const DELETED_ITEM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 let pushTimer = null;
 let syncTimer = null;
 let syncingFromCloud = false;
@@ -38,6 +39,11 @@ const normalize = (data) => {
       createdAt: log.createdAt || today(),
       updatedAt: log.updatedAt || today()
     }));
+  const deletedCutoff = Date.now() - DELETED_ITEM_TTL_MS;
+  next.deletedItems = (next.deletedItems || []).filter((item) => {
+    const deletedAt = Date.parse(item.deletedAt || "");
+    return Number.isFinite(deletedAt) && deletedAt >= deletedCutoff && item.collection && item.item;
+  });
   return next;
 };
 
@@ -184,11 +190,43 @@ function update(collection, id, updates) {
 
 function remove(collection, id) {
   const data = getAllData();
+  const target = (data[collection] || []).find((item) => item.id === id);
+  if (!target) return;
   data[collection] = (data[collection] || []).filter((item) => item.id !== id);
+  data.deletedItems = [
+    { id: makeId("deleted"), collection, item: target, deletedAt: new Date().toISOString() },
+    ...(data.deletedItems || [])
+  ];
   saveAllData(data);
 }
 
-const api = { getAllData, saveAllData, resetAllData };
+export function moveToTrash(data, collection, itemOrId) {
+  const id = typeof itemOrId === "string" ? itemOrId : itemOrId?.id;
+  const target = typeof itemOrId === "string" ? (data[collection] || []).find((item) => item.id === id) : itemOrId;
+  if (!target?.id) return data;
+  data[collection] = (data[collection] || []).filter((item) => item.id !== target.id);
+  data.deletedItems = [
+    { id: makeId("deleted"), collection, item: target, deletedAt: new Date().toISOString() },
+    ...(data.deletedItems || [])
+  ];
+  return data;
+}
+
+export function restoreDeletedItem(trashId) {
+  const data = getAllData();
+  const entry = (data.deletedItems || []).find((item) => item.id === trashId);
+  if (!entry?.collection || !entry.item) return false;
+  data[entry.collection] = [entry.item, ...(data[entry.collection] || []).filter((item) => item.id !== entry.item.id)];
+  data.deletedItems = (data.deletedItems || []).filter((item) => item.id !== trashId);
+  saveAllData(data);
+  return true;
+}
+
+export function getDeletedItems() {
+  return getAllData().deletedItems || [];
+}
+
+const api = { getAllData, saveAllData, resetAllData, moveToTrash, restoreDeletedItem, getDeletedItems };
 const names = {
   todos: "Todo", top3: "Top3", delayedTasks: "DelayedTask", habits: "Habit",
   events: "Event", timelineEntries: "TimelineEntry", chores: "Chore",

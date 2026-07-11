@@ -7,7 +7,7 @@ import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import StarRating from "../../components/common/StarRating";
 import PageHeader from "../../components/layout/PageHeader";
-import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
+import { getAllData, moveToTrash, saveAllData } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
 import { shoppingCategories } from "../../lib/utils/shoppingConstants";
 
@@ -295,7 +295,7 @@ export default function MoneyPage() {
 
   const remove = (collection, id) => {
     const next = getAllData();
-    next[collection] = (next[collection] || []).filter((item) => item.id !== id);
+    moveToTrash(next, collection, id);
     persist(next);
     setEditor(null);
   };

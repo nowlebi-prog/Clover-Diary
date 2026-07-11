@@ -1,12 +1,15 @@
 import { useState } from "react";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
+import AppTextarea from "../../components/common/AppTextarea";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import PageHeader from "../../components/layout/PageHeader";
-import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
+import { getAllData, moveToTrash, saveAllData } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
-import { base64ToBlob, buildMonthlyArchivePackage, collectMonthData, downloadBlob, openMonthlyPdf } from "../../lib/utils/monthlyArchive";
+import { collectMonthData, openMonthlyPdf } from "../../lib/utils/monthlyArchive";
+
+const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 const previousMonth = () => {
   const now = new Date();
@@ -17,35 +20,17 @@ const previousMonth = () => {
 export default function ArchivePage() {
   const [data, setData] = useState(getAllData());
   const [month, setMonth] = useState(previousMonth());
-  const [busy, setBusy] = useState(false);
   const quotes = data.quotes || [];
   const ideas = data.ideas || [];
-  const links = data.links || [];
   const memos = (data.inboxMemos || []).filter((item) => !item.done);
   const reflections = data.reflections || [];
-  const archives = data.monthlyArchives || [];
-  const randomQuote = quotes[0];
 
   const refresh = () => setData(getAllData());
 
-  const saveArchive = async () => {
-    setBusy(true);
-    const current = getAllData();
-    const pack = await buildMonthlyArchivePackage(current, month);
+  const persist = (updater) => {
     const next = getAllData();
-    const item = {
-      id: `monthly-${month}`,
-      month,
-      filename: pack.filename,
-      size: pack.zip.size,
-      dataBase64: pack.base64,
-      summary: pack.summary,
-      createdAt: toDateKey(new Date()),
-      updatedAt: toDateKey(new Date())
-    };
-    next.monthlyArchives = [item, ...(next.monthlyArchives || []).filter((entry) => entry.month !== month)];
+    updater(next);
     saveAllData(next);
-    setBusy(false);
     refresh();
   };
 
@@ -53,83 +38,136 @@ export default function ArchivePage() {
     openMonthlyPdf(collectMonthData(getAllData(), month));
   };
 
-  const downloadArchive = (archive) => {
-    downloadBlob(base64ToBlob(archive.dataBase64), archive.filename || `clover-desk-${archive.month}.zip`);
+  const addQuote = () => {
+    persist((next) => {
+      next.quotes = [
+        {
+          id: makeId("quote"),
+          text: "",
+          source: "",
+          tags: "",
+          createdAt: toDateKey(new Date()),
+          updatedAt: toDateKey(new Date())
+        },
+        ...(next.quotes || [])
+      ];
+    });
+  };
+
+  const updateQuote = (id, updates) => {
+    persist((next) => {
+      next.quotes = (next.quotes || []).map((quote) => (quote.id === id ? { ...quote, ...updates, updatedAt: toDateKey(new Date()) } : quote));
+    });
+  };
+
+  const removeQuote = (quote) => {
+    persist((next) => moveToTrash(next, "quotes", quote));
+  };
+
+  const addIdea = () => {
+    persist((next) => {
+      next.ideas = [
+        {
+          id: makeId("idea"),
+          title: "",
+          body: "",
+          category: "",
+          status: "생각중",
+          completed: false,
+          createdAt: toDateKey(new Date()),
+          updatedAt: toDateKey(new Date())
+        },
+        ...(next.ideas || [])
+      ];
+    });
+  };
+
+  const updateIdea = (id, updates) => {
+    persist((next) => {
+      next.ideas = (next.ideas || []).map((idea) => (idea.id === id ? { ...idea, ...updates, updatedAt: toDateKey(new Date()) } : idea));
+    });
+  };
+
+  const removeIdea = (idea) => {
+    persist((next) => moveToTrash(next, "ideas", idea));
   };
 
   return (
     <>
-      <PageHeader eyebrow="ARCHIVE" title="생각과 기록 보관함" />
+      <PageHeader eyebrow="ARCHIVE" title="생각과 기록 보관함">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-xs font-bold text-clover-sub">
+            <span className="sr-only">월 선택</span>
+            <AppInput type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="min-h-10 w-36" />
+          </label>
+          <AppButton onClick={openPdf} className="min-h-10 px-3 text-xs">월별 리포트 PDF</AppButton>
+        </div>
+      </PageHeader>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
+      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
         <div className="grid gap-4">
           <GlassCard>
-            <SectionTitle>월별 리포트 / 지난달 기록</SectionTitle>
-            <div className="grid gap-3 md:grid-cols-[180px_1fr]">
-              <label className="grid gap-1 text-sm font-bold">
-                월 선택
-                <AppInput type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
-              </label>
-              <div className="flex flex-wrap items-end gap-2">
-                <AppButton onClick={openPdf}>월간 리포트 PDF로 저장</AppButton>
-                <AppButton variant="soft" onClick={saveArchive} disabled={busy}>{busy ? "저장 중..." : "월별 ZIP 서버 저장"}</AppButton>
-              </div>
-            </div>
-            <p className="mt-3 text-sm font-bold text-clover-sub">
-              PDF는 새 창에서 열리고, 인쇄 메뉴에서 PDF로 저장하면 돼요. ZIP은 월별 데이터와 리포트 HTML을 묶어서 Supabase 동기화 데이터 안에 저장합니다.
-            </p>
-          </GlassCard>
-
-          <GlassCard>
-            <SectionTitle>저장된 월별 기록</SectionTitle>
-            <div className="grid gap-2">
-              {archives.map((archive) => (
-                <article key={archive.id || archive.month} className="rounded-2xl bg-white/55 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-black">{archive.month} 기록</p>
-                      <p className="mt-1 text-xs font-bold text-clover-sub">
-                        {archive.filename} · {Math.round(Number(archive.size || 0) / 1024)}KB
-                      </p>
-                    </div>
-                    <AppButton variant="soft" onClick={() => downloadArchive(archive)}>ZIP 다운로드</AppButton>
+            <SectionTitle action={<AppButton variant="soft" onClick={addQuote} className="min-h-9 px-3 text-xs">+ 추가</AppButton>}>좋은 말</SectionTitle>
+            <div className="grid gap-3 md:grid-cols-2">
+              {quotes.map((quote, index) => (
+                <article key={quote.id} className={`grid gap-3 rounded-[8px] border border-white/70 p-4 shadow-sm ${index % 3 === 0 ? "bg-blue-50/85" : index % 3 === 1 ? "bg-pink-50/85" : "bg-amber-50/85"}`}>
+                  <AppTextarea
+                    value={quote.text || ""}
+                    onChange={(event) => updateQuote(quote.id, { text: event.target.value })}
+                    placeholder="기억하고 싶은 문장"
+                    className="min-h-28 bg-white/55 text-sm leading-6"
+                  />
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <AppInput value={quote.source || ""} onChange={(event) => updateQuote(quote.id, { source: event.target.value })} placeholder="출처나 제목" />
+                    <button type="button" onClick={() => removeQuote(quote)} className="rounded-full px-3 py-2 text-xs font-bold text-clover-sub transition hover:bg-white/60 hover:text-red-500">
+                      삭제
+                    </button>
                   </div>
-                  {archive.summary && (
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-clover-sub md:grid-cols-4">
-                      <span>할 일 {archive.summary.completedTodos}/{archive.summary.totalTodos}</span>
-                      <span>기분 {archive.summary.moodAvg}점</span>
-                      <span>수면 {archive.summary.sleepAvg}h</span>
-                      <span>기록 {archive.summary.journalCount}개</span>
-                    </div>
-                  )}
                 </article>
               ))}
-              {!archives.length && <p className="rounded-2xl bg-white/45 p-4 text-sm font-bold text-clover-sub">아직 저장된 월별 ZIP 기록이 없어요.</p>}
+              {!quotes.length && (
+                <button type="button" onClick={addQuote} className="rounded-[8px] border border-dashed border-clover-line bg-white/45 p-5 text-left text-sm font-bold text-clover-sub">
+                  마음에 남은 문장을 카드처럼 저장해보세요.
+                </button>
+              )}
             </div>
           </GlassCard>
 
           <GlassCard>
-            <SectionTitle>좋은 말</SectionTitle>
-            {randomQuote ? (
-              <div className="rounded-[24px] bg-[#FFF8E8]/80 p-5">
-                <p className="text-lg font-black leading-relaxed">“{randomQuote.text}”</p>
-                <p className="mt-3 text-sm font-bold text-clover-sub">{randomQuote.source || "내가 저장한 문장"}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-clover-sub">오늘 붙잡고 싶은 문장을 저장해보세요.</p>
-            )}
-          </GlassCard>
-
-          <GlassCard>
-            <SectionTitle>아이디어</SectionTitle>
-            <div className="grid gap-2 md:grid-cols-2">
-              {ideas.slice(0, 6).map((idea) => (
-                <article key={idea.id} className="rounded-2xl bg-white/55 p-4">
-                  <p className="font-black">{idea.title}</p>
-                  <p className="mt-2 line-clamp-2 text-sm text-clover-sub">{idea.body || idea.memo || "조금 더 구체화해볼 아이디어예요."}</p>
+            <SectionTitle action={<AppButton variant="soft" onClick={addIdea} className="min-h-9 px-3 text-xs">+ 추가</AppButton>}>아이디어</SectionTitle>
+            <div className="grid gap-2">
+              {ideas.map((idea) => (
+                <article key={idea.id} className="grid gap-2 rounded-[8px] bg-white/65 p-3 shadow-sm">
+                  <div className="grid grid-cols-[24px_1fr_auto] items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(idea.completed)}
+                      onChange={(event) => updateIdea(idea.id, { completed: event.target.checked, status: event.target.checked ? "완료" : "생각중" })}
+                      className="h-4 w-4 accent-clover-deep"
+                      aria-label="아이디어 완료"
+                    />
+                    <AppInput
+                      value={idea.title || ""}
+                      onChange={(event) => updateIdea(idea.id, { title: event.target.value })}
+                      placeholder="아이디어 제목"
+                    />
+                    <button type="button" onClick={() => removeIdea(idea)} className="rounded-full px-3 py-2 text-xs font-bold text-clover-sub transition hover:bg-red-50 hover:text-red-500">
+                      삭제
+                    </button>
+                  </div>
+                  <AppTextarea
+                    value={idea.body || idea.memo || ""}
+                    onChange={(event) => updateIdea(idea.id, { body: event.target.value })}
+                    placeholder="세부 항목, 다음 액션, 참고 메모"
+                    className="min-h-20 bg-white/55 text-sm"
+                  />
                 </article>
               ))}
-              {!ideas.length && <p className="text-sm text-clover-sub">사업, 콘텐츠, 디자인 아이디어를 모아둘 수 있어요.</p>}
+              {!ideas.length && (
+                <button type="button" onClick={addIdea} className="rounded-[8px] border border-dashed border-clover-line bg-white/45 p-4 text-left text-sm font-bold text-clover-sub">
+                  체크리스트처럼 바로 고칠 수 있는 아이디어를 추가해보세요.
+                </button>
+              )}
             </div>
           </GlassCard>
         </div>
@@ -138,34 +176,23 @@ export default function ArchivePage() {
           <GlassCard>
             <SectionTitle>회고 아카이브</SectionTitle>
             <div className="grid gap-2">
-              {reflections.slice(0, 6).map((item) => (
-                <article key={item.id} className="rounded-2xl bg-white/55 p-4">
+              {reflections.slice(0, 8).map((item) => (
+                <article key={item.id} className="rounded-[8px] bg-white/55 p-4">
                   <p className="text-xs font-black text-clover-deep">{item.date}</p>
-                  <p className="mt-1 text-sm font-bold">{item.body || item.memo || item.learned || "오늘의 기록"}</p>
+                  <p className="mt-1 text-sm font-bold leading-6">{item.body || item.memo || item.learned || item.good || "오늘의 기록"}</p>
                 </article>
               ))}
-            </div>
-          </GlassCard>
-
-          <GlassCard>
-            <SectionTitle>레퍼런스</SectionTitle>
-            <div className="grid gap-2">
-              {links.slice(0, 6).map((link) => (
-                <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold text-clover-deep">
-                  {link.title}
-                </a>
-              ))}
-              {!links.length && <p className="text-sm text-clover-sub">웹사이트, PPT 레이아웃, 카피 문구 링크를 모아둘 수 있어요.</p>}
+              {!reflections.length && <p className="text-sm font-bold text-clover-sub">아직 회고 기록이 없어요.</p>}
             </div>
           </GlassCard>
 
           <GlassCard>
             <SectionTitle>나중에 정리할 것</SectionTitle>
             <div className="grid gap-2">
-              {memos.slice(0, 6).map((memo) => (
-                <p key={memo.id} className="rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">{memo.body}</p>
+              {memos.slice(0, 8).map((memo) => (
+                <p key={memo.id} className="rounded-[8px] bg-white/55 px-4 py-3 text-sm font-bold">{memo.body}</p>
               ))}
-              {!memos.length && <p className="text-sm text-clover-sub">빠른 메모에서 넘어온 생각을 잠깐 맡겨둘게요.</p>}
+              {!memos.length && <p className="text-sm font-bold text-clover-sub">빠른 메모에서 들어온 생각이 없어요.</p>}
             </div>
           </GlassCard>
         </div>

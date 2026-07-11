@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
+import AppInput from "../../components/common/AppInput";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import StatusBadge from "../../components/common/StatusBadge";
 import PageHeader from "../../components/layout/PageHeader";
 import { logout } from "../../lib/auth/localAuthAdapter";
-import { getCloudSyncStatus, resetAllData, syncAllDataFromCloud } from "../../lib/storage/localStorageAdapter";
+import { base64ToBlob, buildMonthlyArchivePackage, downloadBlob } from "../../lib/utils/monthlyArchive";
+import {
+  getAllData,
+  getCloudSyncStatus,
+  getDeletedItems,
+  resetAllData,
+  restoreDeletedItem,
+  saveAllData,
+  syncAllDataFromCloud
+} from "../../lib/storage/localStorageAdapter";
+import { toDateKey } from "../../lib/utils/date";
 
 const moreLinks = [
   ["/", "Home"],
@@ -19,6 +30,137 @@ const moreLinks = [
   ["/journal", "Journal"],
   ["/settings", "Settings"]
 ];
+
+const previousMonth = () => {
+  const now = new Date();
+  now.setMonth(now.getMonth() - 1);
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const titleOf = (item) => item?.title || item?.name || item?.project || item?.body || item?.text || item?.memo || item?.id || "삭제된 항목";
+const collectionLabel = {
+  todos: "할 일",
+  events: "일정",
+  quotes: "좋은 말",
+  ideas: "아이디어",
+  inboxMemos: "메모",
+  payments: "입금",
+  expenses: "지출",
+  habits: "루틴",
+  reflections: "회고"
+};
+
+function MonthlyArchiveSettings() {
+  const [data, setData] = useState(getAllData());
+  const [month, setMonth] = useState(previousMonth());
+  const [busy, setBusy] = useState(false);
+  const archives = data.monthlyArchives || [];
+
+  const refresh = () => setData(getAllData());
+
+  const saveArchive = async () => {
+    setBusy(true);
+    const pack = await buildMonthlyArchivePackage(getAllData(), month);
+    const next = getAllData();
+    next.monthlyArchives = [
+      {
+        id: `monthly-${month}`,
+        month,
+        filename: pack.filename,
+        size: pack.zip.size,
+        dataBase64: pack.base64,
+        summary: pack.summary,
+        createdAt: toDateKey(new Date()),
+        updatedAt: toDateKey(new Date())
+      },
+      ...(next.monthlyArchives || []).filter((entry) => entry.month !== month)
+    ];
+    saveAllData(next);
+    setBusy(false);
+    refresh();
+  };
+
+  const downloadArchive = (archive) => {
+    downloadBlob(base64ToBlob(archive.dataBase64), archive.filename || `clover-desk-${archive.month}.zip`);
+  };
+
+  return (
+    <GlassCard>
+      <SectionTitle>월별 기록</SectionTitle>
+      <div className="grid gap-3 md:grid-cols-[180px_1fr]">
+        <label className="grid gap-1 text-sm font-bold">
+          월 선택
+          <AppInput type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
+        </label>
+        <div className="flex flex-wrap items-end gap-2">
+          <AppButton variant="soft" onClick={saveArchive} disabled={busy}>{busy ? "저장 중..." : "월별 ZIP 저장"}</AppButton>
+        </div>
+      </div>
+      <p className="mt-3 text-sm font-bold text-clover-sub">PDF는 아카이브 화면 우측 상단에서 바로 받을 수 있고, 여기는 월별 ZIP 기록을 보관하는 곳이에요.</p>
+
+      <div className="mt-4 grid gap-2">
+        {archives.map((archive) => (
+          <article key={archive.id || archive.month} className="rounded-[8px] bg-white/55 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-black">{archive.month} 기록</p>
+                <p className="mt-1 text-xs font-bold text-clover-sub">
+                  {archive.filename} · {Math.round(Number(archive.size || 0) / 1024)}KB
+                </p>
+              </div>
+              <AppButton variant="soft" onClick={() => downloadArchive(archive)}>ZIP 다운로드</AppButton>
+            </div>
+            {archive.summary && (
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-clover-sub md:grid-cols-4">
+                <span>완료 {archive.summary.completedTodos}/{archive.summary.totalTodos}</span>
+                <span>기분 {archive.summary.moodAvg}점</span>
+                <span>수면 {archive.summary.sleepAvg}h</span>
+                <span>기록 {archive.summary.journalCount}개</span>
+              </div>
+            )}
+          </article>
+        ))}
+        {!archives.length && <p className="rounded-[8px] bg-white/45 p-4 text-sm font-bold text-clover-sub">아직 저장된 월별 ZIP 기록이 없어요.</p>}
+      </div>
+    </GlassCard>
+  );
+}
+
+function TrashSettings() {
+  const [items, setItems] = useState(getDeletedItems());
+
+  useEffect(() => {
+    const refresh = () => setItems(getDeletedItems());
+    window.addEventListener("clover-data-change", refresh);
+    return () => window.removeEventListener("clover-data-change", refresh);
+  }, []);
+
+  const restore = (id) => {
+    restoreDeletedItem(id);
+    setItems(getDeletedItems());
+  };
+
+  return (
+    <GlassCard>
+      <SectionTitle>삭제 복구</SectionTitle>
+      <p className="mb-3 text-sm font-bold text-clover-sub">삭제한 항목은 7일 동안 여기에서 되돌릴 수 있어요.</p>
+      <div className="grid gap-2">
+        {items.slice(0, 12).map((entry) => (
+          <article key={entry.id} className="grid gap-2 rounded-[8px] bg-white/55 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black">{titleOf(entry.item)}</p>
+              <p className="mt-1 text-xs font-bold text-clover-sub">
+                {collectionLabel[entry.collection] || entry.collection} · {new Date(entry.deletedAt).toLocaleString("ko-KR")}
+              </p>
+            </div>
+            <AppButton variant="soft" onClick={() => restore(entry.id)}>되돌리기</AppButton>
+          </article>
+        ))}
+        {!items.length && <p className="rounded-[8px] bg-white/45 p-4 text-sm font-bold text-clover-sub">복구할 삭제 항목이 없어요.</p>}
+      </div>
+    </GlassCard>
+  );
+}
 
 export default function SettingsPage({ onLogout }) {
   const navigate = useNavigate();
@@ -65,6 +207,9 @@ export default function SettingsPage({ onLogout }) {
           </div>
         </GlassCard>
 
+        <MonthlyArchiveSettings />
+        <TrashSettings />
+
         <GlassCard>
           <SectionTitle>Supabase 동기화</SectionTitle>
           <div className="grid gap-3 text-sm text-clover-sub">
@@ -85,13 +230,11 @@ export default function SettingsPage({ onLogout }) {
         <GlassCard>
           <SectionTitle>앱 정보</SectionTitle>
           <div className="grid gap-3 text-sm text-clover-sub">
-            <p><b className="text-clover-text">Clover Desk</b>는 일상, 업무, 돈관리, 기록을 한 곳에서 보는 개인 생산성 PWA예요.</p>
+            <p><b className="text-clover-text">Clover Desk</b>는 일상, 업무, 돈관리, 기록을 한곳에서 보는 개인 생산성 PWA예요.</p>
             <p>Supabase 환경변수가 없으면 현재 브라우저에만 저장되고, 환경변수가 있으면 서버 snapshot과 동기화됩니다.</p>
-            <p>Vercel 배포 설정은 Vite preset, build command `pnpm run build`, output directory `dist`를 쓰면 됩니다.</p>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <StatusBadge>PWA Ready</StatusBadge>
-            <StatusBadge tone="blue">Vercel Ready</StatusBadge>
             <StatusBadge tone="lavender">Supabase Sync Ready</StatusBadge>
           </div>
         </GlassCard>

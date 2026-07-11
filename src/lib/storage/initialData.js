@@ -8,7 +8,7 @@ export const collections = [
   "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
   "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
   "moodEntries", "monthlyArchives", "studyCaptures", "studyCategories", "studyNotes", "studyCards", "studyExperiments", "studyWorkflows",
-  "workSessions", "savings"
+  "workSessions", "savings", "deletedItems"
 ];
 
 export const DEFAULT_WORK_CATEGORIES = ["업무", "회의", "기획", "잡무"];
@@ -54,7 +54,7 @@ export const initialData = {
   reflections: [{ id: "ref-1", date: today, mood: "보통", learned: "천천히 해도 쌓인다.", good: "대시보드 첫 정리", note: "", createdAt: today, updatedAt: today }],
   quotes: [{ id: "quote-1", text: "오늘도 가볍게 정리해볼까요?", source: "Clover Desk", tags: "routine", createdAt: today, updatedAt: today }],
   ideas: [{ id: "idea-1", title: "PPT 포트폴리오 글", body: "전후 비교 구조로 정리", category: "콘텐츠", status: "생각중", createdAt: today, updatedAt: today }],
-  links: [{ id: "link-1", title: "Vercel", url: "https://vercel.com", category: "배포", memo: "", createdAt: today, updatedAt: today }],
+  links: [],
   inboxMemos: [{ id: "memo-1", body: "월말 정산 카드 따로 만들기", done: false, createdAt: today, updatedAt: today }],
   contentPlans: [
     { id: "content-1", channel: "인스타", title: "인스타 카드뉴스", weeklyGoal: "1건", publishDate: tomorrow, status: "기획중", memo: "", link: "", createdAt: today, updatedAt: today },
@@ -182,6 +182,7 @@ initialData.studyWorkflows = [
 initialData.taskCategories = [...DEFAULT_WORK_CATEGORIES];
 initialData.workLogNotes = {};
 initialData.activeWorkTimer = null;
+initialData.deletedItems = [];
 
 collections.forEach((key) => {
   if (!initialData[key]) initialData[key] = [];

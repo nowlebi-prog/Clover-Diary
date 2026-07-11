@@ -7,9 +7,9 @@ import StatusBadge from "../../components/common/StatusBadge";
 import TodayTimeline from "../../components/dashboard/TodayTimeline";
 import WeatherCard from "../../components/dashboard/WeatherCard";
 import PageHeader from "../../components/layout/PageHeader";
-import { getAllData, saveAllData, syncAllDataFromCloud, updateTop3 } from "../../lib/storage/localStorageAdapter";
-import { getTodayHabitStatus, getMonthlyHabitStats } from "../../lib/utils/habitSelectors";
-import { toDateKey } from "../../lib/utils/date";
+import { getAllData, moveToTrash, saveAllData, syncAllDataFromCloud, updateTop3 } from "../../lib/storage/localStorageAdapter";
+import { getTodayHabitStatus } from "../../lib/utils/habitSelectors";
+import { addDays, toDateKey } from "../../lib/utils/date";
 import { getMonthCalendarItems, getTodayItems, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
 import HomeMonthCalendar from "./components/HomeMonthCalendar";
 import TodayTopThree from "./components/TodayTopThree";
@@ -20,40 +20,56 @@ const dateOf = (item) => item.updatedAt || item.createdAt || item.date || item.d
 
 const money = (value) => `${Number(value || 0).toLocaleString("ko-KR")}원`;
 
-function TodaySummary({ deadlines, expenses, habitStatus }) {
-  const totalExpense = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+const mergeCalendarItems = (data, dates) => {
+  const months = [...new Set(dates.map((date) => date.slice(0, 7)))];
+  return months.reduce((merged, monthKey) => {
+    const [year, month] = monthKey.split("-").map(Number);
+    return { ...merged, ...getMonthCalendarItems(data, year, month - 1) };
+  }, {});
+};
+
+const scheduleCategoryOf = (item) => {
+  const raw = `${item.category || item.project || item.kind || item.type || ""}`.toLowerCase();
+  if (item.type === "payment" || item.type === "expense" || raw.includes("money") || raw.includes("돈")) return "결제";
+  if (raw.includes("업무") || raw.includes("work") || raw.includes("콘텐츠") || raw.includes("캠페인")) return "업무";
+  return "개인";
+};
+
+function TodaySummary({ todayItems, deadlines, payments, chores, habitStatus, studyDue }) {
+  const scheduleCounts = todayItems.reduce((map, item) => {
+    const key = scheduleCategoryOf(item);
+    return { ...map, [key]: (map[key] || 0) + 1 };
+  }, {});
   const summary = [
     {
-      to: "/tasks",
-      label: "오늘 마감인 일",
-      value: `${deadlines.length}건`,
-      note: deadlines.slice(0, 2).map((item) => item.displayTitle).join(", ") || "오늘 마감은 없어요.",
-      tone: "bg-sky-50/85 text-sky-700"
+      to: "/calendar",
+      label: "오늘의 일정",
+      value: `${todayItems.length}개`,
+      note: `개인 ${scheduleCounts["개인"] || 0} · 업무 ${scheduleCounts["업무"] || 0} · 결제 ${scheduleCounts["결제"] || 0}`,
+      tone: "bg-emerald-50/85 text-emerald-700",
+      wide: true
     },
-    {
-      to: "/money",
-      label: "오늘 지출",
-      value: expenses.length ? money(totalExpense) : "0원",
-      note: expenses.length ? `${expenses.length}건 기록됨` : "오늘 지출 기록이 없어요.",
-      tone: "bg-rose-50/85 text-rose-700"
-    },
+    { to: "/tasks", label: "마감", value: `${deadlines.length}건`, note: deadlines[0]?.displayTitle || "급한 마감 없음", tone: "bg-sky-50/85 text-sky-700" },
+    { to: "/money", label: "결제", value: `${payments.length}건`, note: payments[0]?.project || "확인할 결제 없음", tone: "bg-rose-50/85 text-rose-700" },
+    { to: "/life", label: "집안일", value: `${chores.length}건`, note: chores[0]?.title || "오늘 집안일 없음", tone: "bg-violet-50/85 text-violet-700" },
     {
       to: "/life",
-      label: "루틴 달성률",
+      label: "루틴",
       value: `${habitStatus.rate || 0}%`,
       note: `${habitStatus.doneCount}/${habitStatus.total}개 완료`,
       tone: "bg-emerald-50/85 text-emerald-700"
-    }
+    },
+    { to: "/study", label: "스터디", value: `${studyDue.length}개`, note: studyDue[0]?.title || "오늘 복습 없음", tone: "bg-amber-50/85 text-amber-700" }
   ];
 
   return (
     <GlassCard className="mb-4">
       <SectionTitle>오늘의 요약!</SectionTitle>
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         {summary.map((item) => (
-          <Link key={item.label} to={item.to} className={`rounded-[22px] p-4 transition hover:-translate-y-0.5 ${item.tone}`}>
+          <Link key={item.label} to={item.to} className={`rounded-[22px] p-4 transition hover:-translate-y-0.5 ${item.tone} ${item.wide ? "md:col-span-3 xl:col-span-2" : ""}`}>
             <p className="text-xs font-black">{item.label}</p>
-            <p className="mt-2 text-2xl font-black text-clover-text">{item.value}</p>
+            <p className="mt-2 text-xl font-black text-clover-text">{item.value}</p>
             <p className="mt-1 line-clamp-2 text-xs font-bold opacity-75">{item.note}</p>
           </Link>
         ))}
@@ -85,7 +101,7 @@ function HomeDayDetails({ data, selectedDate, onChange }) {
 
   const deleteItem = (item) => {
     persist((next) => {
-      next[item.collection] = (next[item.collection] || []).filter((entry) => entry.id !== item.id);
+      moveToTrash(next, item.collection, item);
     });
   };
 
@@ -111,7 +127,7 @@ function HomeDayDetails({ data, selectedDate, onChange }) {
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-base font-black text-slate-900">{selectedDate.slice(5)} 세부항목</h3>
+          <h3 className="text-base font-black text-slate-900">{selectedDate.slice(5)} To do</h3>
           <p className="text-xs font-bold text-slate-400">이 영역에서 바로 수정, 삭제, 추가해요.</p>
         </div>
         <div className="flex gap-2">
@@ -145,10 +161,10 @@ function HomeDayDetails({ data, selectedDate, onChange }) {
 
 function MonthlyMoodSleep({ entries, today }) {
   const monthKey = today.slice(0, 7);
-  const monthEntries = (entries || []).filter((item) => (item.date || "").startsWith(monthKey)).sort((a, b) => a.date.localeCompare(b.date));
+  const monthEntries = (entries || []).filter((item) => item.date && item.date.startsWith(monthKey)).sort((a, b) => a.date.localeCompare(b.date));
   return (
     <GlassCard>
-      <SectionTitle>이달의 기분 · 수면</SectionTitle>
+      <SectionTitle>월의 나</SectionTitle>
       <div className="flex h-40 items-end gap-2 overflow-x-auto rounded-[24px] bg-white/45 p-4">
         {monthEntries.map((item) => (
           <div key={item.id || item.date} className="flex min-w-8 flex-col items-center justify-end gap-1">
@@ -159,28 +175,6 @@ function MonthlyMoodSleep({ entries, today }) {
           </div>
         ))}
         {!monthEntries.length && <p className="self-center text-sm font-bold text-clover-sub">아직 이달 기록이 없어요.</p>}
-      </div>
-    </GlassCard>
-  );
-}
-
-function RoutineCircle({ data, today }) {
-  const now = new Date(`${today}T00:00:00`);
-  const stats = getMonthlyHabitStats(data.habits || [], data.habitLogs || [], now.getFullYear(), now.getMonth());
-  const done = stats.reduce((sum, item) => sum + item.doneDays.length, 0);
-  const total = stats.reduce((sum, item) => sum + item.days.length, 0);
-  const rate = total ? Math.round((done / total) * 100) : 0;
-  return (
-    <GlassCard>
-      <SectionTitle>오늘 루틴 달성률</SectionTitle>
-      <div className="grid place-items-center gap-3">
-        <div className="grid h-40 w-40 place-items-center rounded-full" style={{ background: `conic-gradient(#35A06D ${rate * 3.6}deg, rgba(255,255,255,.72) 0deg)` }}>
-          <div className="grid h-28 w-28 place-items-center rounded-full bg-white text-center">
-            <b className="text-3xl">{rate}%</b>
-            <span className="text-xs font-bold text-clover-sub">{done}/{total}</span>
-          </div>
-        </div>
-        <Link to="/life" className="rounded-full bg-white/70 px-4 py-2 text-sm font-black text-clover-deep">습관 보러가기</Link>
       </div>
     </GlassCard>
   );
@@ -199,6 +193,26 @@ function BudgetPreview({ data, today }) {
         <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-black text-emerald-700">수입 기록</p><b>{incomeCount}건</b></div>
         <div className="rounded-2xl bg-rose-50 p-4"><p className="text-xs font-black text-rose-700">지출 기록</p><b>{expenseCount}건</b></div>
         <div className="rounded-2xl bg-amber-50 p-4"><p className="text-xs font-black text-amber-700">확인할 결제</p><b>{upcomingPayments}건</b></div>
+      </div>
+    </GlassCard>
+  );
+}
+
+function StudyPreview({ data, today }) {
+  const items = (data.studyCaptures || [])
+    .filter((item) => !item.isReviewed || item.reviewSchedule?.nextReviewAt <= today || item.status === "waiting")
+    .slice(0, 3);
+  return (
+    <GlassCard>
+      <SectionTitle action={<Link to="/study" className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">Study</Link>}>오늘의 스터디</SectionTitle>
+      <div className="grid gap-2">
+        {items.map((item) => (
+          <Link key={item.id} to="/study" className="rounded-2xl bg-white/55 p-3 text-sm font-bold">
+            <span className="line-clamp-2">{item.title}</span>
+            <span className="mt-1 block text-xs text-clover-sub">오늘 다시 볼 캡처</span>
+          </Link>
+        ))}
+        {!items.length && <p className="rounded-2xl bg-white/45 p-4 text-sm font-bold text-clover-sub">오늘 다시 볼 캡처는 없어요.</p>}
       </div>
     </GlassCard>
   );
@@ -235,9 +249,7 @@ function RecentActivity({ data }) {
 export default function HomePage() {
   const [data, setData] = useState(getAllData());
   const today = toDateKey(new Date());
-  const now = new Date(`${today}T00:00:00`);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [calendarMonth, setCalendarMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
 
   const load = () => setData(getAllData());
 
@@ -254,10 +266,13 @@ export default function HomePage() {
   const todayItems = getTodayItems(data, today);
   const deadlines = getUpcomingDeadlines(data, today);
   const habitStatus = getTodayHabitStatus(data.habits, data.habitLogs, today);
-  const monthItems = useMemo(() => getMonthCalendarItems(data, calendarMonth.year, calendarMonth.month), [data, calendarMonth]);
+  const calendarDates = useMemo(() => Array.from({ length: 21 }, (_, index) => addDays(today, index - 7)), [today]);
+  const monthItems = useMemo(() => mergeCalendarItems(data, calendarDates), [data, calendarDates]);
   const closeDeadlines = deadlines.filter((item) => item.dday <= 7).slice(0, 5);
   const todayDeadlines = deadlines.filter((item) => item.dday === 0);
-  const todayExpenses = (data.expenses || []).filter((item) => item.date === today);
+  const todayPayments = (data.payments || []).filter((item) => item.expectedDate === today && item.status !== "입금 완료");
+  const todayChores = (data.chores || []).filter((item) => item.lastDoneAt !== today && (!item.nextDueDate || item.nextDueDate <= today));
+  const studyDue = (data.studyCaptures || []).filter((item) => !item.isReviewed || item.reviewSchedule?.nextReviewAt <= today || item.status === "waiting");
 
   return (
     <>
@@ -270,33 +285,10 @@ export default function HomePage() {
         </div>
       </PageHeader>
 
-      <TodaySummary deadlines={todayDeadlines} expenses={todayExpenses} habitStatus={habitStatus} />
+      <TodaySummary todayItems={todayItems} deadlines={todayDeadlines} payments={todayPayments} chores={todayChores} habitStatus={habitStatus} studyDue={studyDue} />
 
-      <HomeMonthCalendar
-        year={calendarMonth.year}
-        month={calendarMonth.month}
-        itemsByDate={monthItems}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-        onMoveMonth={(amount) => setCalendarMonth((current) => {
-          const next = new Date(current.year, current.month + amount, 1);
-          return { year: next.getFullYear(), month: next.getMonth() };
-        })}
-        onToday={() => {
-          setSelectedDate(today);
-          setCalendarMonth({ year: now.getFullYear(), month: now.getMonth() });
-        }}
-      >
-        <HomeDayDetails data={data} selectedDate={selectedDate} onChange={load} />
-      </HomeMonthCalendar>
-
-      <GlassCard className="mt-4">
-        <SectionTitle action={<Link to="/work" className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">Work</Link>}>오늘 일정 / 타임라인</SectionTitle>
-        <TodayTimeline items={todayItems} />
-      </GlassCard>
-
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <TodayTopThree items={data.top3} onToggle={(id, completed) => updateTop3(id, { completed })} />
+      <div className="mb-4 grid gap-4 xl:grid-cols-2">
+        <TodayTopThree items={data.top3} todos={data.todos || []} onToggle={(id, completed) => updateTop3(id, { completed })} />
         <GlassCard>
           <SectionTitle>마감 임박</SectionTitle>
           <div className="grid gap-2">
@@ -311,14 +303,31 @@ export default function HomePage() {
         </GlassCard>
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_360px]">
+      <HomeMonthCalendar
+        itemsByDate={monthItems}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+        onToday={() => setSelectedDate(today)}
+      />
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,.95fr)_minmax(0,1.05fr)]">
+        <GlassCard>
+          <HomeDayDetails data={data} selectedDate={selectedDate} onChange={load} />
+        </GlassCard>
+        <GlassCard>
+          <SectionTitle action={<Link to="/work" className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">Work</Link>}>타임라인</SectionTitle>
+          <TodayTimeline items={todayItems} />
+        </GlassCard>
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <MonthlyMoodSleep entries={data.moodEntries || []} today={today} />
-        <RoutineCircle data={data} today={today} />
+        <RecentActivity data={data} />
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <BudgetPreview data={data} today={today} />
-        <RecentActivity data={data} />
+        <StudyPreview data={data} today={today} />
       </div>
     </>
   );
