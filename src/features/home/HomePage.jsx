@@ -249,7 +249,9 @@ function RecentActivity({ data }) {
 export default function HomePage() {
   const [data, setData] = useState(getAllData());
   const today = toDateKey(new Date());
+  const now = new Date(`${today}T00:00:00`);
   const [selectedDate, setSelectedDate] = useState(today);
+  const [calendarMonth, setCalendarMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
 
   const load = () => setData(getAllData());
 
@@ -304,10 +306,19 @@ export default function HomePage() {
       </div>
 
       <HomeMonthCalendar
+        year={calendarMonth.year}
+        month={calendarMonth.month}
         itemsByDate={monthItems}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
-        onToday={() => setSelectedDate(today)}
+        onMoveMonth={(amount) => setCalendarMonth((current) => {
+          const next = new Date(current.year, current.month + amount, 1);
+          return { year: next.getFullYear(), month: next.getMonth() };
+        })}
+        onToday={() => {
+          setSelectedDate(today);
+          setCalendarMonth({ year: now.getFullYear(), month: now.getMonth() });
+        }}
       />
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,.95fr)_minmax(0,1.05fr)]">
