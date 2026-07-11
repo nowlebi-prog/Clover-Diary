@@ -4,18 +4,26 @@ import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import CloverLogo from "../../components/common/CloverLogo";
 import GlassCard from "../../components/common/GlassCard";
-import { login } from "../../lib/auth/localAuthAdapter";
+import { login, signUp, usingCloud } from "../../lib/auth/authAdapter";
 
 export default function LoginPage({ onLogin }) {
-  const [username, setUsername] = useState("eunbibi");
+  const [mode, setMode] = useState("login"); // login | signup
+  const [username, setUsername] = useState(usingCloud ? "" : "eunbibi");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
-    const result = login(username, password);
+    setError("");
+    setInfo("");
+    setBusy(true);
+    const result = mode === "signup" ? await signUp(username, password) : await login(username, password);
+    setBusy(false);
     if (!result.ok) return setError(result.message);
+    if (result.needsConfirm) return setInfo(result.message);
     onLogin(result.session);
     navigate("/");
   };
@@ -29,12 +37,35 @@ export default function LoginPage({ onLogin }) {
           <h1 className="mt-2 text-3xl font-bold">나만의 작업 책상</h1>
         </div>
         <form onSubmit={submit} className="grid gap-3">
-          <AppInput value={username} onChange={(event) => setUsername(event.target.value)} placeholder="아이디" />
+          <AppInput
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            placeholder={usingCloud ? "이메일" : "아이디"}
+            type={usingCloud ? "email" : "text"}
+          />
           <AppInput value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" type="password" />
           {error && <p className="rounded-2xl bg-red-100 px-4 py-3 text-sm font-semibold text-red-600">{error}</p>}
-          <AppButton>로그인</AppButton>
+          {info && <p className="rounded-2xl bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-700">{info}</p>}
+          <AppButton disabled={busy}>{busy ? "처리 중…" : mode === "signup" ? "가입하고 시작하기" : "로그인"}</AppButton>
         </form>
-        <p className="mt-4 text-xs leading-relaxed text-clover-sub">MVP용 로컬 로그인입니다. 비밀번호는 프론트엔드에 남아 있으므로 실제 보안 인증이 아니며, 추후 Supabase Auth 어댑터로 교체하는 구조입니다.</p>
+
+        {usingCloud ? (
+          <button
+            className="mt-4 w-full text-center text-xs font-bold text-clover-sub underline"
+            onClick={() => {
+              setMode((m) => (m === "login" ? "signup" : "login"));
+              setError("");
+              setInfo("");
+            }}
+          >
+            {mode === "login" ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인"}
+          </button>
+        ) : (
+          <p className="mt-4 text-xs leading-relaxed text-clover-sub">
+            클라우드 동기화가 아직 연결되지 않아 이 브라우저에만 데이터가 저장돼요. Vercel 환경변수에
+            VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY를 추가하면 자동으로 로그인 방식이 전환돼요.
+          </p>
+        )}
       </GlassCard>
     </main>
   );
