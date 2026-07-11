@@ -4,6 +4,7 @@ import BottomNav from "./BottomNav";
 import Sidebar from "./Sidebar";
 import QuickAddModal from "../dashboard/QuickAddModal";
 import RoutineCoachModal from "../dashboard/RoutineCoachModal";
+import TodayTaskReminder from "../dashboard/TodayTaskReminder";
 import WeeklyReportModal from "../dashboard/WeeklyReportModal";
 import { getAllData } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
@@ -52,6 +53,7 @@ export default function AppShell() {
       <QuickAddModal open={Boolean(quickAddType)} initialType={quickAddType || "todo"} onClose={() => setQuickAddType(null)} />
       {weeklyReport && <WeeklyReportModal data={weeklyReport.data} today={weeklyReport.today} onClose={closeWeeklyReport} />}
       {!weeklyReport && routineCoach && <RoutineCoachModal data={routineCoach.data} today={routineCoach.today} onClose={closeRoutineCoach} />}
+      {!quickAddType && !weeklyReport && !routineCoach && <TodayTaskReminder />}
       <BottomNav />
     </div>
   );
