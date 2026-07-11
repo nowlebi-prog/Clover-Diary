@@ -6,8 +6,8 @@ export default function TodayTopThree({ items = [], onToggle }) {
 
   return (
     <section className="glass rounded-[28px] bg-gradient-to-br from-[#FFF8EA]/90 to-[#E9F8EF]/80 p-5">
-      <SectionTitle>오늘 반드시 할 TOP 3</SectionTitle>
-      <p className="mb-4 text-sm text-clover-sub">오늘은 이 세 가지만 끝내도 충분해요.</p>
+      <SectionTitle>오늘 꼭 해야 할 TOP 3</SectionTitle>
+      <p className="mb-4 text-sm font-bold text-clover-sub">오늘은 이 세 가지만 끝내도 충분해요.</p>
       <div className="grid gap-2">
         {topItems.map((item, index) => (
           <article
@@ -25,8 +25,8 @@ export default function TodayTopThree({ items = [], onToggle }) {
           </article>
         ))}
         {!topItems.length && (
-          <div className="rounded-[20px] bg-white/55 p-4 text-sm text-clover-sub">
-            오늘 꼭 끝낼 일 3개를 Tasks에서 정해보세요.
+          <div className="rounded-[20px] bg-white/55 p-4 text-sm font-bold text-clover-sub">
+            오늘 꼭 끝낼 세 가지를 Tasks에서 정해보세요.
           </div>
         )}
       </div>

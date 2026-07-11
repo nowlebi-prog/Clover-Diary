@@ -9,13 +9,45 @@ import PageHeader from "../../components/layout/PageHeader";
 import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
 
+const MONEY_PASSWORD = "986454";
 const sum = (items, field = "amount") => items.reduce((total, item) => total + Number(item[field] || 0), 0);
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const money = (value) => `${Number(value || 0).toLocaleString()}원`;
 
+function MoneyGate({ onUnlock }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const submit = () => {
+    if (password === MONEY_PASSWORD) {
+      sessionStorage.setItem("clover-money-unlocked", "true");
+      onUnlock();
+    } else {
+      setError("비밀번호가 맞지 않아요.");
+    }
+  };
+  return (
+    <>
+      <PageHeader eyebrow="MONEY" title="돈 관리 잠금" />
+      <GlassCard className="mx-auto max-w-md">
+        <SectionTitle>비밀번호 입력</SectionTitle>
+        <p className="mb-4 text-sm font-bold text-clover-sub">금액 정보는 한 번 더 확인한 뒤 열리게 했어요.</p>
+        <div className="grid gap-3">
+          <AppInput type="password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => event.key === "Enter" && submit()} placeholder="비밀번호" autoFocus />
+          {error && <p className="text-sm font-bold text-red-500">{error}</p>}
+          <AppButton onClick={submit}>Money 열기</AppButton>
+        </div>
+      </GlassCard>
+    </>
+  );
+}
+
 export default function MoneyPage() {
+  const [unlocked, setUnlocked] = useState(sessionStorage.getItem("clover-money-unlocked") === "true");
   const [data, setData] = useState(getAllData());
   const [editor, setEditor] = useState(null);
+
+  if (!unlocked) return <MoneyGate onUnlock={() => setUnlocked(true)} />;
+
   const today = toDateKey(new Date());
   const monthKey = today.slice(0, 7);
   const expenses = data.expenses || [];
@@ -24,9 +56,10 @@ export default function MoneyPage() {
   const shoppingItems = data.shoppingItems || [];
   const monthExpenses = expenses.filter((item) => (item.date || "").startsWith(monthKey));
   const incomeItems = payments.filter((item) => (item.expectedDate || item.paidDate || "").startsWith(monthKey));
+  const invoiceIncome = incomeItems.filter((item) => item.status === "세금계산서 발행" || item.source === "hometax-sales");
   const income = sum(incomeItems);
   const spending = sum(monthExpenses);
-  const taxReserve = Math.round(income * 0.1);
+  const taxReserve = Math.round(sum(invoiceIncome.length ? invoiceIncome : incomeItems) * 0.1);
   const saving = Math.max(0, income - spending - taxReserve);
 
   const persist = (next) => {
@@ -50,9 +83,16 @@ export default function MoneyPage() {
     setEditor(null);
   };
 
+  const lock = () => {
+    sessionStorage.removeItem("clover-money-unlocked");
+    setUnlocked(false);
+  };
+
   return (
     <>
-      <PageHeader eyebrow="MONEY" title="돈 관리 현황판" />
+      <PageHeader eyebrow="MONEY" title="돈 관리 현황판">
+        <AppButton variant="soft" onClick={lock}>잠그기</AppButton>
+      </PageHeader>
 
       <div className="mb-4 grid gap-3 md:grid-cols-4">
         <MoneyStat label="수입" value={income} tone="emerald" />
@@ -63,20 +103,20 @@ export default function MoneyPage() {
 
       <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
         <div className="grid gap-4">
-          <MoneySection title="수입 관리" action="+ 수입 추가" onAction={() => setEditor({ type: "payment", item: { category: "유별난", status: "입금 예정", expectedDate: today } })}>
-            {payments.slice(0, 6).map((item) => (
+          <MoneySection title="수입 관리" action="+ 수입" onAction={() => setEditor({ type: "payment", item: { category: "유별난", status: "입금 예정", expectedDate: today } })}>
+            {payments.slice(0, 8).map((item) => (
               <button key={item.id} onClick={() => setEditor({ type: "payment", item })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
                 <div className="flex justify-between gap-3">
                   <span className="truncate">{item.project || item.client || "외주 수입"}</span>
                   <span className="text-emerald-700">{money(item.amount)}</span>
                 </div>
-                <p className="mt-1 text-xs text-clover-sub">{item.client || "클라이언트"} · {item.category || "유별난"} · {item.status || "상태 미정"}</p>
+                <p className="mt-1 text-xs text-clover-sub">{item.client || "거래처 미입력"} · {item.category || "기타"} · {item.status || "상태 미정"}</p>
               </button>
             ))}
           </MoneySection>
 
-          <MoneySection title="지출 관리" action="+ 지출 추가" onAction={() => setEditor({ type: "expense", item: { date: today, category: "식비" } })}>
-            {expenses.slice(0, 6).map((item) => (
+          <MoneySection title="지출 관리" action="+ 지출" onAction={() => setEditor({ type: "expense", item: { date: today, category: "식비" } })}>
+            {expenses.slice(0, 8).map((item) => (
               <button key={item.id} onClick={() => setEditor({ type: "expense", item })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
                 <div className="flex justify-between gap-3">
                   <span className="truncate">{item.title}</span>
@@ -90,7 +130,7 @@ export default function MoneyPage() {
 
         <div className="grid content-start gap-4">
           <MoneySection title="구독 관리" action="+ 구독" onAction={() => setEditor({ type: "subscription", item: { active: true, billingDay: "1", status: "유지" } })}>
-            {subscriptions.slice(0, 6).map((item) => (
+            {subscriptions.slice(0, 8).map((item) => (
               <button key={item.id} onClick={() => setEditor({ type: "subscription", item })} className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
                 <span>{item.title}</span>
                 <span className="text-clover-deep">{money(item.amount)} · {item.billingDay}일</span>
@@ -99,15 +139,15 @@ export default function MoneyPage() {
           </MoneySection>
 
           <MoneySection title="결제 예정" action="+ 예정" onAction={() => setEditor({ type: "expense", item: { date: today, category: "반복 지출", title: "월세" } })}>
-            {["월세", "핸드폰비", "보험료", "관리비", "세금", "집안일"].map((name) => (
-              <button key={name} onClick={() => setEditor({ type: "expense", item: { date: today, category: ["월세", "핸드폰비", "보험료", "관리비"].includes(name) ? "반복 지출" : "특별 지출", title: name } })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
+            {["월세", "핸드폰비", "보험료", "관리비", "세금", "집안일", "식비", "교통비"].map((name) => (
+              <button key={name} onClick={() => setEditor({ type: "expense", item: { date: today, category: ["월세", "핸드폰비", "보험료", "관리비"].includes(name) ? "반복 지출" : "개별 지출", title: name } })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
                 {name}
               </button>
             ))}
           </MoneySection>
 
-          <MoneySection title="구매 필요 항목" action="+ 구매 항목" onAction={() => setEditor({ type: "shopping", item: { importance: 3, category: "생필품" } })}>
-            {shoppingItems.filter((item) => !item.completed).slice(0, 6).map((item) => (
+          <MoneySection title="구매 필요 항목" action="+ 구매 항목" onAction={() => setEditor({ type: "shopping", item: { importance: 3, category: "생활" } })}>
+            {shoppingItems.filter((item) => !item.completed).slice(0, 8).map((item) => (
               <button key={item.id} onClick={() => setEditor({ type: "shopping", item })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
                 <div className="flex justify-between gap-3">
                   <span>{item.title}</span>
@@ -167,7 +207,7 @@ function MoneyEditor({ editor, onClose, onSave, onDelete }) {
         <div className="grid gap-3">
           {type === "payment" && (
             <>
-              <AppInput value={form.client || ""} onChange={(e) => set("client", e.target.value)} placeholder="클라이언트명" />
+              <AppInput value={form.client || ""} onChange={(e) => set("client", e.target.value)} placeholder="거래처명" />
               <AppInput value={form.project || ""} onChange={(e) => set("project", e.target.value)} placeholder="프로젝트명" />
               <AppSelect value={form.category || "유별난"} onChange={(e) => set("category", e.target.value)}><option>유별난</option><option>기타</option></AppSelect>
               <AppInput type="number" value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} placeholder="총액" />
@@ -178,7 +218,7 @@ function MoneyEditor({ editor, onClose, onSave, onDelete }) {
           {type === "expense" && (
             <>
               <AppInput value={form.title || ""} onChange={(e) => set("title", e.target.value)} placeholder="지출 항목" />
-              <AppSelect value={form.category || "식비"} onChange={(e) => set("category", e.target.value)}><option>식비</option><option>교통비</option><option>업무용</option><option>반복 지출</option><option>특별 지출</option><option>기타</option></AppSelect>
+              <AppSelect value={form.category || "식비"} onChange={(e) => set("category", e.target.value)}><option>식비</option><option>교통비</option><option>업무용</option><option>반복 지출</option><option>특별 지출</option><option>개별 지출</option><option>기타</option></AppSelect>
               <AppInput type="number" value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} placeholder="금액" />
               <AppInput type="date" value={form.date || ""} onChange={(e) => set("date", e.target.value)} />
             </>

@@ -197,7 +197,7 @@ const names = {
   importantFiles: "ImportantFile", goals: "Goal", gratitudeEntries: "GratitudeEntry",
   questionPrompts: "QuestionPrompt", questionAnswers: "QuestionAnswer",
   timeSessions: "TimeSession", recurringEvents: "RecurringEvent", beautyItems: "BeautyItem",
-  digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry"
+  digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry", monthlyArchives: "MonthlyArchive"
 };
 
 Object.entries(names).forEach(([collection, name]) => {
@@ -251,5 +251,6 @@ export const {
   getRecurringEvents, createRecurringEvent, updateRecurringEvent, deleteRecurringEvent,
   getBeautyItems, createBeautyItem, updateBeautyItem, deleteBeautyItem,
   getDigitalCareLogs, createDigitalCareLog, updateDigitalCareLog, deleteDigitalCareLog,
-  getMoodEntrys, createMoodEntry, updateMoodEntry, deleteMoodEntry
+  getMoodEntrys, createMoodEntry, updateMoodEntry, deleteMoodEntry,
+  getMonthlyArchives, createMonthlyArchive, updateMonthlyArchive, deleteMonthlyArchive
 } = api;

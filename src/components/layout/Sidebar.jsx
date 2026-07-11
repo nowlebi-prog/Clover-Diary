@@ -1,5 +1,6 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
 import CloverLogo from "../common/CloverLogo";
+import { logout } from "../../lib/auth/localAuthAdapter";
 
 const items = [
   { to: "/", label: "HOME", paths: ["/"] },
@@ -11,6 +12,10 @@ const items = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const signOut = () => {
+    logout();
+    window.location.href = "/login";
+  };
 
   return (
     <aside className="sticky top-5 hidden h-[calc(100vh-40px)] w-56 shrink-0 rounded-[28px] border border-white/70 bg-white/45 p-4 backdrop-blur-xl md:flex md:flex-col">
@@ -25,14 +30,19 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <NavLink
-        to="/settings"
-        aria-label="Settings"
-        title="Settings"
-        className={({ isActive }) => `mt-auto flex h-11 w-11 items-center justify-center rounded-full text-lg ${isActive ? "bg-clover-mint text-clover-deep" : "bg-white/45 text-clover-sub hover:bg-white/70"}`}
-      >
-        <span aria-hidden="true">⚙</span>
-      </NavLink>
+      <div className="mt-auto grid gap-2">
+        <NavLink
+          to="/settings"
+          aria-label="Settings"
+          title="Settings"
+          className={({ isActive }) => `flex h-11 w-11 items-center justify-center rounded-full text-lg ${isActive ? "bg-clover-mint text-clover-deep" : "bg-white/45 text-clover-sub hover:bg-white/70"}`}
+        >
+          <span aria-hidden="true">⚙</span>
+        </NavLink>
+        <button type="button" onClick={signOut} className="rounded-full bg-white/55 px-4 py-3 text-left text-sm font-bold text-clover-sub hover:bg-white/80">
+          로그아웃
+        </button>
+      </div>
     </aside>
   );
 }

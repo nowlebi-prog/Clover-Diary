@@ -11,7 +11,6 @@ export function getSession() {
 }
 
 export function login(username, password) {
-  // MVP-only local login. This is not real security; replace with Supabase Auth later.
   if (username === DEMO_USER.username && password === DEMO_USER.password) {
     const session = { user: { id: "local-user-eunbibi", username }, loggedInAt: new Date().toISOString() };
     localStorage.setItem(STORAGE_KEYS.auth, JSON.stringify(session));
@@ -22,4 +21,5 @@ export function login(username, password) {
 
 export function logout() {
   localStorage.removeItem(STORAGE_KEYS.auth);
+  sessionStorage.removeItem("clover-money-unlocked");
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { addDays, toDateKey } from "../../lib/utils/date";
+import { addDays } from "../../lib/utils/date";
 import { getTodayItems } from "../../lib/utils/dashboardSelectors";
 import StatusBadge from "../common/StatusBadge";
 
@@ -54,7 +54,7 @@ export default function WeeklyStripCalendar({ data, today }) {
         <div className="grid gap-2">
           {selectedItems.slice(0, 5).map((item, index) => (
             <p key={`${item.type}-${index}`} className="text-sm text-clover-text">
-              <span className="mr-2 font-black text-clover-deep">•</span>
+              <span className="mr-2 font-black text-clover-deep">·</span>
               <b>{item.label}</b> {item.displayTitle}
             </p>
           ))}

@@ -7,7 +7,7 @@ export const collections = [
   "reflections", "quotes", "ideas", "links", "inboxMemos", "contentPlans",
   "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
   "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
-  "moodEntries"
+  "moodEntries", "monthlyArchives"
 ];
 
 export const initialData = {
