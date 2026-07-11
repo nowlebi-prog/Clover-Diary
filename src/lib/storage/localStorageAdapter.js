@@ -197,7 +197,9 @@ const names = {
   importantFiles: "ImportantFile", goals: "Goal", gratitudeEntries: "GratitudeEntry",
   questionPrompts: "QuestionPrompt", questionAnswers: "QuestionAnswer",
   timeSessions: "TimeSession", recurringEvents: "RecurringEvent", beautyItems: "BeautyItem",
-  digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry", monthlyArchives: "MonthlyArchive"
+  digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry", monthlyArchives: "MonthlyArchive",
+  studyCaptures: "StudyCapture", studyCategories: "StudyCategory", studyCards: "StudyCard",
+  studyExperiments: "StudyExperiment", studyWorkflows: "StudyWorkflow"
 };
 
 Object.entries(names).forEach(([collection, name]) => {
@@ -252,5 +254,10 @@ export const {
   getBeautyItems, createBeautyItem, updateBeautyItem, deleteBeautyItem,
   getDigitalCareLogs, createDigitalCareLog, updateDigitalCareLog, deleteDigitalCareLog,
   getMoodEntrys, createMoodEntry, updateMoodEntry, deleteMoodEntry,
-  getMonthlyArchives, createMonthlyArchive, updateMonthlyArchive, deleteMonthlyArchive
+  getMonthlyArchives, createMonthlyArchive, updateMonthlyArchive, deleteMonthlyArchive,
+  getStudyCaptures, createStudyCapture, updateStudyCapture, deleteStudyCapture,
+  getStudyCategorys, createStudyCategory, updateStudyCategory, deleteStudyCategory,
+  getStudyCards, createStudyCard, updateStudyCard, deleteStudyCard,
+  getStudyExperiments, createStudyExperiment, updateStudyExperiment, deleteStudyExperiment,
+  getStudyWorkflows, createStudyWorkflow, updateStudyWorkflow, deleteStudyWorkflow
 } = api;

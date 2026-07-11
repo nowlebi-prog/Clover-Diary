@@ -6,6 +6,7 @@ const items = [
   { to: "/", label: "Home", paths: ["/"] },
   { to: "/life", label: "Life", paths: ["/life", "/habits", "/journal", "/mandalart"] },
   { to: "/work", label: "Work", paths: ["/work", "/tasks", "/calendar", "/daily", "/content", "/campaigns", "/files"] },
+  { to: "/study", label: "Study", paths: ["/study"] },
   { to: "/money", label: "Money", paths: ["/money"] },
   { to: "/archive", label: "Archive", paths: ["/archive"] }
 ];

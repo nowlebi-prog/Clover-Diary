@@ -4,6 +4,7 @@ const items = [
   { to: "/", label: "Home", paths: ["/"] },
   { to: "/life", label: "Life", paths: ["/life", "/habits", "/journal", "/mandalart"] },
   { to: "/work", label: "Work", paths: ["/work", "/tasks", "/calendar", "/daily", "/content", "/campaigns", "/files"] },
+  { to: "/study", label: "Study", paths: ["/study"] },
   { to: "/money", label: "Money", paths: ["/money"] },
   { to: "/archive", label: "Archive", paths: ["/archive"] }
 ];
@@ -13,7 +14,7 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-3 left-3 right-3 z-30 rounded-full border border-white/70 bg-white/85 p-1.5 shadow-glass backdrop-blur-xl md:hidden">
-      <div className="grid grid-cols-5 gap-1">
+      <div className="grid grid-cols-6 gap-1">
         {items.map(({ to, label, paths }) => {
           const active = paths.some((path) => (path === "/" ? location.pathname === "/" : location.pathname.startsWith(path)));
           return (

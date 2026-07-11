@@ -7,7 +7,7 @@ export const collections = [
   "reflections", "quotes", "ideas", "links", "inboxMemos", "contentPlans",
   "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
   "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
-  "moodEntries", "monthlyArchives"
+  "moodEntries", "monthlyArchives", "studyCaptures", "studyCategories", "studyCards", "studyExperiments", "studyWorkflows"
 ];
 
 export const initialData = {
@@ -62,6 +62,99 @@ export const initialData = {
   campaignParticipants: [{ id: "part-1", campaignId: "camp-1", name: "eunbibi", instagram: "@eunbibi", blogUrl: "", contact: "", appliedDate: today, selectedStatus: "미확정", shippingStatus: "미발송", uploadStatus: "미업로드", contentUrl: "", memo: "", createdAt: today, updatedAt: today }],
   importantFiles: [{ id: "file-1", name: "A안 계약서", category: "계약서", url: "https://example.com", project: "A안 제안서", important: true, memo: "원본 링크", createdAt: today, updatedAt: today }]
 };
+
+initialData.studyCategories = [
+  { id: "study-cat-1", name: "AI 기초", icon: "AI", order: 1, isDefault: true },
+  { id: "study-cat-2", name: "프롬프트", icon: "PR", order: 2, isDefault: true },
+  { id: "study-cat-3", name: "AI 툴", icon: "TL", order: 3, isDefault: true },
+  { id: "study-cat-4", name: "디자인·PPT", icon: "PT", order: 4, isDefault: true },
+  { id: "study-cat-5", name: "코딩·앱", icon: "CD", order: 5, isDefault: true },
+  { id: "study-cat-6", name: "콘텐츠·마케팅", icon: "MK", order: 6, isDefault: true },
+  { id: "study-cat-7", name: "사업·수익화", icon: "BZ", order: 7, isDefault: true },
+  { id: "study-cat-8", name: "워크플로우", icon: "WF", order: 8, isDefault: true },
+  { id: "study-cat-9", name: "기타", icon: "ET", order: 9, isDefault: true }
+];
+
+initialData.studyCaptures = [
+  {
+    id: "study-cap-1",
+    images: [],
+    title: "Claude Code로 웹사이트 수정 자동화",
+    summary: "개발 중인 웹앱을 AI와 함께 빠르게 수정하는 흐름. 나중에 실제 업무 절차로 바꿔볼 만함.",
+    memo: "업무 적용 가능성이 높음",
+    sourceUrl: "",
+    categoryId: "study-cat-3",
+    type: "사용법",
+    status: "waiting",
+    reason: "study",
+    customReason: "",
+    tags: ["Claude", "자동화", "웹앱"],
+    relatedTools: ["Claude", "Codex"],
+    projectIds: [],
+    ocrText: "",
+    aiAnalysis: {
+      status: "completed",
+      suggestedTitle: "Claude Code 웹앱 수정 자동화",
+      summary: "AI 코딩 도구를 업무 수정 흐름에 연결하는 자료",
+      keywords: ["Claude", "Codex", "자동화"],
+      suggestedCategoryId: "study-cat-3",
+      relatedTools: ["Claude", "Codex"],
+      possibleUses: ["업무 수정 흐름 만들기"],
+      importanceScore: 4,
+      containsSensitiveInfo: false
+    },
+    isImportant: true,
+    isReviewed: false,
+    reviewSchedule: { nextReviewAt: today, reviewCount: 0, lastReviewedAt: "" },
+    createdAt: today,
+    updatedAt: today
+  }
+];
+
+initialData.studyCards = [];
+initialData.studyExperiments = [
+  {
+    id: "study-exp-1",
+    title: "ChatGPT·Claude·Gemini 소개글 구성 비교",
+    purpose: "같은 입력으로 결과 품질을 비교하기",
+    question: "어떤 AI가 소개글 구조를 가장 잘 잡을까?",
+    toolNames: ["ChatGPT", "Claude", "Gemini"],
+    commonPrompt: "",
+    evaluationCriteria: ["정확도", "문장력", "수정 용이성"],
+    results: [],
+    conclusion: "",
+    nextExperiment: "",
+    status: "planned",
+    captureIds: [],
+    studyCardIds: [],
+    projectIds: [],
+    createdAt: today,
+    updatedAt: today
+  }
+];
+
+initialData.studyWorkflows = [
+  {
+    id: "study-wf-1",
+    title: "AI로 회사소개서 기획하기",
+    description: "자료 수집부터 초안 비교, 최종 정리까지 이어지는 개인 업무 흐름",
+    category: "PPT·제안서",
+    projectIds: [],
+    steps: [
+      { id: "study-wf-step-1", order: 1, title: "레퍼런스 캡처 저장", description: "좋아 보이는 구성과 문구를 Study에 모은다." },
+      { id: "study-wf-step-2", order: 2, title: "AI별 초안 비교", description: "같은 조건으로 ChatGPT, Claude, Gemini 결과를 비교한다." },
+      { id: "study-wf-step-3", order: 3, title: "내 톤으로 재정리", description: "좋은 부분만 가져와 실제 제안서 흐름으로 바꾼다." }
+    ],
+    estimatedTime: 40,
+    previousEstimatedTime: 90,
+    resultExample: "",
+    captureIds: [],
+    experimentIds: ["study-exp-1"],
+    isPublic: false,
+    createdAt: today,
+    updatedAt: today
+  }
+];
 
 collections.forEach((key) => {
   if (!initialData[key]) initialData[key] = [];

@@ -14,6 +14,7 @@ import WorkPage from "./features/work/WorkPage";
 import HabitsPage from "./features/habits/HabitsPage";
 import LifePage from "./features/life/LifePage";
 import MoneyPage from "./features/money/MoneyPage";
+import StudyPage from "./features/study/StudyPage";
 import ContentPage from "./features/content/ContentPage";
 import ArchivePage from "./features/archive/ArchivePage";
 import CampaignsPage from "./features/campaigns/CampaignsPage";
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/habits" element={<HabitsPage />} />
         <Route path="/life" element={<LifePage />} />
         <Route path="/money" element={<MoneyPage />} />
+        <Route path="/study" element={<StudyPage />} />
         <Route path="/content" element={<ContentPage />} />
         <Route path="/archive" element={<ArchivePage />} />
         <Route path="/campaigns" element={<CampaignsPage />} />
