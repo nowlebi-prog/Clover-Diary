@@ -36,6 +36,30 @@ export const studyTypes = [
   "콘텐츠 아이디어"
 ];
 
+export const noteTopics = [
+  "홈페이지 제작",
+  "AI 툴",
+  "디자인",
+  "자동화",
+  "글쓰기",
+  "이미지/Asset 제작",
+  "마케팅",
+  "업무 시스템"
+];
+
+export const noteFunctionTags = [
+  "툴 사용법",
+  "프롬프트",
+  "Asset 제작법",
+  "오류 해결",
+  "체크리스트",
+  "워크플로우",
+  "예시 모음",
+  "템플릿"
+];
+
+export const noteStatuses = ["캡처", "정리중", "써먹음", "보관"];
+
 const today = () => toDateKey(new Date());
 const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const splitWords = (text = "") =>
@@ -50,11 +74,111 @@ export function getStudyData() {
   return {
     captures: data.studyCaptures || [],
     categories: data.studyCategories || [],
+    notes: data.studyNotes || [],
     cards: data.studyCards || [],
     experiments: data.studyExperiments || [],
     workflows: data.studyWorkflows || [],
     projects: data.todos || []
   };
+}
+
+export function createStudyNote(payload = {}) {
+  const current = getStudyData();
+  const now = today();
+  const note = {
+    id: makeId("study-note"),
+    title: payload.title || "새 Study 노트",
+    summary: payload.summary || "",
+    memo: payload.memo || "",
+    steps: payload.steps || "",
+    prompts: payload.prompts || "",
+    links: payload.links || "",
+    nextTry: payload.nextTry || "",
+    topic: payload.topic || noteTopics[0],
+    functionTag: payload.functionTag || noteFunctionTags[0],
+    status: payload.status || "정리중",
+    captureIds: payload.captureIds || [],
+    workflowIds: payload.workflowIds || [],
+    templateSaved: Boolean(payload.templateSaved),
+    createdAt: now,
+    updatedAt: now
+  };
+  saveStudyPatch({ studyNotes: [note, ...current.notes] });
+  return note;
+}
+
+export function updateStudyNote(id, updates) {
+  const current = getStudyData();
+  saveStudyPatch({
+    studyNotes: current.notes.map((item) =>
+      item.id === id ? { ...item, ...updates, updatedAt: today() } : item
+    )
+  });
+}
+
+export function deleteStudyNote(id) {
+  const current = getStudyData();
+  saveStudyPatch({ studyNotes: current.notes.filter((item) => item.id !== id) });
+}
+
+export function createNoteFromCapture(capture) {
+  const note = createStudyNote({
+    title: capture.title || capture.aiAnalysis?.suggestedTitle || "캡처에서 만든 노트",
+    summary: capture.summary || capture.aiAnalysis?.summary || "",
+    memo: capture.memo || "",
+    steps: "",
+    prompts: "",
+    links: capture.sourceUrl || "",
+    nextTry: (capture.aiAnalysis?.possibleUses || [])[0] || "직접 한 번 써보기",
+    topic: capture.categoryId ? "AI 툴" : noteTopics[0],
+    functionTag: capture.type === "프롬프트" ? "프롬프트" : "툴 사용법",
+    status: "캡처",
+    captureIds: [capture.id]
+  });
+  updateCapture(capture.id, { status: "summarized", isReviewed: true });
+  return note;
+}
+
+export function createWorkflowFromNote(note) {
+  const current = getStudyData();
+  const now = today();
+  const stepLines = String(note.steps || "")
+    .split("\n")
+    .map((line) => line.replace(/^\d+[\.\)]\s*/, "").trim())
+    .filter(Boolean);
+  const workflow = {
+    id: makeId("study-workflow"),
+    title: `${note.title} 실행법`,
+    description: note.summary || note.memo || "노트에서 정리한 내용을 실행 순서로 바꿨어요.",
+    category: note.topic || "Study 노트",
+    projectIds: [],
+    steps: (stepLines.length ? stepLines : ["자료 확인", "AI에 요청", "결과를 내 업무에 맞게 수정"]).map((title, index) => ({
+      id: makeId("step"),
+      order: index + 1,
+      title,
+      description: index === 1 && note.prompts ? note.prompts : ""
+    })),
+    estimatedTime: 30,
+    previousEstimatedTime: 60,
+    resultExample: note.nextTry || "",
+    captureIds: note.captureIds || [],
+    experimentIds: [],
+    noteIds: [note.id],
+    isPublic: false,
+    createdAt: now,
+    updatedAt: now
+  };
+  saveStudyPatch({
+    studyWorkflows: [workflow, ...current.workflows],
+    studyNotes: current.notes.map((item) =>
+      item.id === note.id ? { ...item, status: "써먹음", workflowIds: [...(item.workflowIds || []), workflow.id], updatedAt: now } : item
+    )
+  });
+  return workflow;
+}
+
+export function saveNoteAsTemplate(note) {
+  updateStudyNote(note.id, { templateSaved: true, status: note.status === "캡처" ? "정리중" : note.status });
 }
 
 export function saveStudyPatch(patch) {

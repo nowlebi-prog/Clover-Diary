@@ -7,7 +7,7 @@ export const collections = [
   "reflections", "quotes", "ideas", "links", "inboxMemos", "contentPlans",
   "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
   "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
-  "moodEntries", "monthlyArchives", "studyCaptures", "studyCategories", "studyCards", "studyExperiments", "studyWorkflows"
+  "moodEntries", "monthlyArchives", "studyCaptures", "studyCategories", "studyNotes", "studyCards", "studyExperiments", "studyWorkflows"
 ];
 
 export const initialData = {
@@ -112,6 +112,26 @@ initialData.studyCaptures = [
 ];
 
 initialData.studyCards = [];
+initialData.studyNotes = [
+  {
+    id: "study-note-1",
+    title: "Claude Code로 웹앱 수정 흐름 정리",
+    summary: "캡처한 자동화 자료를 실제 Clover Desk 수정 루틴으로 바꾸기 위한 짧은 노트",
+    memo: "수정 요청을 작은 단위로 쪼개고, 빌드 확인 후 GitHub에 올리는 흐름을 반복한다.",
+    steps: "1. 수정할 화면과 목표를 적는다.\n2. 관련 파일을 먼저 확인한다.\n3. 작은 컴포넌트 단위로 수정한다.\n4. 빌드 후 커밋한다.",
+    prompts: "이 기능을 기존 저장 로직은 유지하면서 UI 중심으로 리팩토링해줘.",
+    links: "",
+    nextTry: "Study 캡처에서 노트로 확장하는 흐름 직접 써보기",
+    topic: "업무 시스템",
+    functionTag: "워크플로우",
+    status: "정리중",
+    captureIds: ["study-cap-1"],
+    workflowIds: [],
+    templateSaved: false,
+    createdAt: today,
+    updatedAt: today
+  }
+];
 initialData.studyExperiments = [
   {
     id: "study-exp-1",

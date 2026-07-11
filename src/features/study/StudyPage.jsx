@@ -11,22 +11,32 @@ import StatusBadge from "../../components/common/StatusBadge";
 import {
   createCapture,
   createExperimentFromCapture,
+  createNoteFromCapture,
   createStudyCardFromCapture,
+  createStudyNote,
+  createWorkflowFromNote,
   createWorkflowFromExperiment,
   deleteCapture,
+  deleteStudyNote,
   getStudyData,
   markCaptureReason,
+  noteFunctionTags,
+  noteStatuses,
+  noteTopics,
+  saveNoteAsTemplate,
   saveStudyPatch,
   studyReasons,
   studyStatuses,
   studyTypes,
-  updateCapture
+  updateCapture,
+  updateStudyNote
 } from "../../lib/study/studyRepository";
 import { toDateKey } from "../../lib/utils/date";
 
 const tabs = [
   ["home", "홈"],
   ["inbox", "캡처"],
+  ["notes", "노트"],
   ["archive", "아카이브"],
   ["experiments", "실험"],
   ["workflows", "워크플로우"]
@@ -91,6 +101,7 @@ function CaptureCard({ capture, categories, onOpen, onAction }) {
       <div className="flex flex-wrap gap-2 border-t border-white/70 p-3">
         <button className="rounded-full bg-white px-3 py-2 text-xs font-black text-clover-deep" onClick={() => onAction("study", capture)}>공부</button>
         <button className="rounded-full bg-white px-3 py-2 text-xs font-black text-sky-700" onClick={() => onAction("work", capture)}>업무 적용</button>
+        <button className="rounded-full bg-white px-3 py-2 text-xs font-black text-emerald-700" onClick={() => onAction("note", capture)}>노트로 확장</button>
         <button className="rounded-full bg-white px-3 py-2 text-xs font-black text-violet-700" onClick={() => onAction("card", capture)}>카드</button>
       </div>
     </article>
@@ -153,6 +164,11 @@ function CaptureDetailModal({ capture, data, onClose, onRefresh }) {
     onRefresh();
   };
 
+  const makeNote = () => {
+    createNoteFromCapture(draft);
+    onRefresh();
+  };
+
   return (
     <Modal title="캡처 상세" onClose={onClose}>
       <div className="grid gap-4">
@@ -180,6 +196,7 @@ function CaptureDetailModal({ capture, data, onClose, onRefresh }) {
           <button className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-600" onClick={() => { deleteCapture(capture.id); onRefresh(); }}>삭제</button>
           <div className="flex flex-wrap gap-2">
             <AppButton variant="soft" onClick={makeCard}>학습카드로 변환</AppButton>
+            <AppButton variant="soft" onClick={makeNote}>노트로 확장</AppButton>
             <AppButton variant="soft" onClick={makeExperiment}>실험 만들기</AppButton>
             <AppButton onClick={save}>저장</AppButton>
           </div>
@@ -222,9 +239,10 @@ function HomeTab({ data, setTab, onOpen, onUpload }) {
         </div>
       </GlassCard>
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-5">
         <button className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass" onClick={() => setTab("inbox")}><p className="text-sm font-black">미분류 캡처</p><b className="text-2xl text-clover-deep">{unclassified.length}</b></button>
         <button className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass" onClick={() => setTab("archive")}><p className="text-sm font-black">공부 대기</p><b className="text-2xl text-clover-deep">{data.captures.filter((item) => item.status === "waiting").length}</b></button>
+        <button className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass" onClick={() => setTab("notes")}><p className="text-sm font-black">정리한 노트</p><b className="text-2xl text-clover-deep">{data.notes.length}</b></button>
         <button className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass" onClick={() => setTab("experiments")}><p className="text-sm font-black">실험 대기</p><b className="text-2xl text-clover-deep">{data.experiments.filter((item) => item.status !== "completed").length}</b></button>
         <button className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass" onClick={() => setTab("workflows")}><p className="text-sm font-black">워크플로우</p><b className="text-2xl text-clover-deep">{data.workflows.length}</b></button>
       </div>
@@ -249,6 +267,7 @@ function HomeTab({ data, setTab, onOpen, onUpload }) {
           <SectionTitle>이번 주 기록</SectionTitle>
           <div className="grid gap-2 text-sm font-bold text-clover-sub">
             <p>확인한 캡처 {data.captures.filter((item) => item.isReviewed).length}개</p>
+            <p>정리한 노트 {data.notes.length}개</p>
             <p>학습카드 {data.cards.length}개</p>
             <p>프로젝트 연결 {data.captures.filter((item) => item.projectIds?.length).length}개</p>
             <p>완료한 실험 {data.experiments.filter((item) => item.status === "completed").length}개</p>
@@ -359,6 +378,187 @@ function CardsList({ data }) {
   );
 }
 
+const emptyNote = () => ({
+  title: "",
+  summary: "",
+  memo: "",
+  steps: "",
+  prompts: "",
+  links: "",
+  nextTry: "",
+  topic: noteTopics[0],
+  functionTag: noteFunctionTags[0],
+  status: "정리중",
+  captureIds: [],
+  workflowIds: [],
+  templateSaved: false
+});
+
+function NoteEditorModal({ note, data, onClose, onSaved }) {
+  const [draft, setDraft] = useState(note || emptyNote());
+  const set = (name, value) => setDraft((current) => ({ ...current, [name]: value }));
+
+  const save = () => {
+    const payload = { ...draft, title: draft.title.trim() || "제목 없는 노트" };
+    if (payload.id) updateStudyNote(payload.id, payload);
+    else createStudyNote(payload);
+    onSaved();
+  };
+
+  return (
+    <Modal title={draft.id ? "Study 노트 수정" : "Study 노트 추가"} onClose={onClose}>
+      <div className="grid gap-4">
+        <label className="grid gap-1 text-sm font-bold">제목<AppInput value={draft.title || ""} onChange={(event) => set("title", event.target.value)} placeholder="예: 홈페이지 제작 툴 비교" autoFocus /></label>
+        <label className="grid gap-1 text-sm font-bold">한 줄 요약<AppInput value={draft.summary || ""} onChange={(event) => set("summary", event.target.value)} placeholder="나중에 다시 볼 때 바로 이해되는 한 줄" /></label>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="grid gap-1 text-sm font-bold">주제<AppSelect value={draft.topic || noteTopics[0]} onChange={(event) => set("topic", event.target.value)}>{noteTopics.map((item) => <option key={item}>{item}</option>)}</AppSelect></label>
+          <label className="grid gap-1 text-sm font-bold">기능 태그<AppSelect value={draft.functionTag || noteFunctionTags[0]} onChange={(event) => set("functionTag", event.target.value)}>{noteFunctionTags.map((item) => <option key={item}>{item}</option>)}</AppSelect></label>
+          <label className="grid gap-1 text-sm font-bold">상태<AppSelect value={draft.status || "정리중"} onChange={(event) => set("status", event.target.value)}>{noteStatuses.map((item) => <option key={item}>{item}</option>)}</AppSelect></label>
+        </div>
+        <label className="grid gap-1 text-sm font-bold">핵심 메모<AppTextarea value={draft.memo || ""} onChange={(event) => set("memo", event.target.value)} placeholder="내 말로 이해한 핵심만 짧게" /></label>
+        <label className="grid gap-1 text-sm font-bold">따라하는 순서<AppTextarea value={draft.steps || ""} onChange={(event) => set("steps", event.target.value)} placeholder={"1. 자료 준비\n2. 프롬프트 입력\n3. 결과 수정"} /></label>
+        <label className="grid gap-1 text-sm font-bold">자주 쓸 프롬프트<AppTextarea value={draft.prompts || ""} onChange={(event) => set("prompts", event.target.value)} placeholder="복붙해서 다시 쓸 문장" /></label>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="grid gap-1 text-sm font-bold">관련 링크/이미지<AppTextarea value={draft.links || ""} onChange={(event) => set("links", event.target.value)} placeholder="URL이나 이미지 설명을 한 줄씩" /></label>
+          <label className="grid gap-1 text-sm font-bold">다음에 해볼 것<AppTextarea value={draft.nextTry || ""} onChange={(event) => set("nextTry", event.target.value)} placeholder="실제로 써먹을 다음 행동" /></label>
+        </div>
+        {!!draft.captureIds?.length && (
+          <div className="rounded-2xl bg-white/55 p-3 text-sm font-bold text-clover-sub">
+            연결된 캡처 {draft.captureIds.length}개 · {draft.captureIds.map((id) => data.captures.find((capture) => capture.id === id)?.title).filter(Boolean).slice(0, 2).join(", ")}
+          </div>
+        )}
+        <div className="flex flex-wrap justify-between gap-2">
+          {draft.id && <button className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-600" onClick={() => { deleteStudyNote(draft.id); onSaved(); }}>삭제</button>}
+          <AppButton onClick={save}>노트 저장</AppButton>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function NoteCard({ note, data, onEdit, onRefresh }) {
+  const linkedCaptures = (note.captureIds || [])
+    .map((id) => data.captures.find((capture) => capture.id === id))
+    .filter(Boolean);
+
+  const makeWorkflow = () => {
+    createWorkflowFromNote(note);
+    onRefresh();
+  };
+
+  const saveTemplate = () => {
+    saveNoteAsTemplate(note);
+    onRefresh();
+  };
+
+  return (
+    <article className="rounded-[26px] border border-white/70 bg-white/70 p-4 shadow-glass">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            <StatusBadge tone={note.status === "써먹음" ? "done" : note.status === "캡처" ? "warning" : "blue"}>{note.status}</StatusBadge>
+            {note.templateSaved && <StatusBadge tone="mint">템플릿</StatusBadge>}
+          </div>
+          <h3 className="line-clamp-2 text-lg font-black text-clover-text">{note.title}</h3>
+          <p className="mt-1 line-clamp-2 text-sm font-bold text-clover-sub">{note.summary || note.memo || "짧게 쌓아두는 Study 노트"}</p>
+        </div>
+        <button type="button" onClick={() => onEdit(note)} className="rounded-full bg-white px-3 py-2 text-xs font-black text-clover-deep">수정</button>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <span className="rounded-full bg-clover-mint/70 px-3 py-1 text-xs font-black text-clover-deep">{note.topic}</span>
+        <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-700">{note.functionTag}</span>
+      </div>
+
+      {note.steps && (
+        <div className="mt-4 rounded-2xl bg-white/55 p-3">
+          <p className="mb-1 text-xs font-black text-clover-sub">따라하는 순서</p>
+          <p className="line-clamp-3 whitespace-pre-wrap text-sm font-bold text-clover-text">{note.steps}</p>
+        </div>
+      )}
+
+      {note.prompts && (
+        <div className="mt-2 rounded-2xl bg-[#FFF8E7]/80 p-3">
+          <p className="mb-1 text-xs font-black text-amber-700">자주 쓸 프롬프트</p>
+          <p className="line-clamp-2 whitespace-pre-wrap text-sm font-bold text-clover-text">{note.prompts}</p>
+        </div>
+      )}
+
+      {!!linkedCaptures.length && <p className="mt-3 text-xs font-bold text-clover-sub">연결 캡처: {linkedCaptures.slice(0, 2).map((item) => item.title).join(", ")}</p>}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <AppButton variant="soft" onClick={makeWorkflow}>워크플로우로 만들기</AppButton>
+        <AppButton variant="soft" onClick={saveTemplate}>{note.templateSaved ? "템플릿 저장됨" : "템플릿으로 저장"}</AppButton>
+      </div>
+    </article>
+  );
+}
+
+function NotesTab({ data, onRefresh }) {
+  const [mode, setMode] = useState("topic");
+  const [filter, setFilter] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState(null);
+
+  const groups = mode === "topic" ? noteTopics : noteFunctionTags;
+  const filtered = data.notes.filter((note) => {
+    const text = `${note.title} ${note.summary} ${note.memo} ${note.steps} ${note.prompts} ${note.topic} ${note.functionTag}`.toLowerCase();
+    const groupValue = mode === "topic" ? note.topic : note.functionTag;
+    return (!query || text.includes(query.toLowerCase())) &&
+      (filter === "all" || groupValue === filter) &&
+      (status === "all" || note.status === status);
+  });
+
+  return (
+    <div className="grid gap-4">
+      <GlassCard>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <SectionTitle>노트 / 글쓰기</SectionTitle>
+            <p className="text-sm font-bold text-clover-sub">캡처는 재료, 노트는 이해, 워크플로우는 실행법으로 이어져요.</p>
+          </div>
+          <AppButton onClick={() => setEditing(emptyNote())}>+ 노트 추가</AppButton>
+        </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_150px_180px_150px]">
+          <AppInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder="노트 검색" />
+          <AppSelect value={mode} onChange={(event) => { setMode(event.target.value); setFilter("all"); }}>
+            <option value="topic">주제별 보기</option>
+            <option value="function">기능별 보기</option>
+          </AppSelect>
+          <AppSelect value={filter} onChange={(event) => setFilter(event.target.value)}>
+            <option value="all">전체 {mode === "topic" ? "주제" : "기능"}</option>
+            {groups.map((item) => <option key={item}>{item}</option>)}
+          </AppSelect>
+          <AppSelect value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="all">전체 상태</option>
+            {noteStatuses.map((item) => <option key={item}>{item}</option>)}
+          </AppSelect>
+        </div>
+      </GlassCard>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        {groups.slice(0, 8).map((item) => {
+          const count = data.notes.filter((note) => (mode === "topic" ? note.topic : note.functionTag) === item).length;
+          return (
+            <button key={item} type="button" onClick={() => setFilter(item)} className={`rounded-[22px] p-4 text-left shadow-glass ${filter === item ? "bg-clover-deep text-white" : "bg-white/70 text-clover-text"}`}>
+              <p className="text-sm font-black">{item}</p>
+              <p className={`mt-1 text-2xl font-black ${filter === item ? "text-white" : "text-clover-deep"}`}>{count}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        {filtered.map((note) => <NoteCard key={note.id} note={note} data={data} onEdit={setEditing} onRefresh={onRefresh} />)}
+        {!filtered.length && <p className="rounded-[24px] bg-white/60 p-8 text-sm font-bold text-clover-sub xl:col-span-2">아직 조건에 맞는 노트가 없어요. 캡처를 하나 골라 노트로 확장해보세요.</p>}
+      </div>
+
+      {editing && <NoteEditorModal note={editing.id ? editing : null} data={data} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onRefresh(); }} />}
+    </div>
+  );
+}
+
 function ExperimentsTab({ data, onRefresh }) {
   const complete = (experiment) => {
     const next = getStudyData();
@@ -443,6 +643,10 @@ export default function StudyPage() {
 
   const quickAction = (action, capture) => {
     if (action === "card") createStudyCardFromCapture(capture);
+    else if (action === "note") {
+      createNoteFromCapture(capture);
+      setTab("notes");
+    }
     else markCaptureReason(capture, action);
     refresh();
   };
@@ -450,6 +654,7 @@ export default function StudyPage() {
   const content = useMemo(() => {
     if (tab === "home") return <HomeTab data={data} setTab={setTab} onOpen={setDetail} onUpload={() => setUploadOpen(true)} />;
     if (tab === "inbox") return <InboxTab data={data} onOpen={setDetail} onRefresh={refresh} />;
+    if (tab === "notes") return <NotesTab data={data} onRefresh={refresh} />;
     if (tab === "archive") return <ArchiveTab data={data} onOpen={setDetail} onAction={quickAction} />;
     if (tab === "experiments") return <ExperimentsTab data={data} onRefresh={refresh} />;
     return <WorkflowsTab data={data} />;

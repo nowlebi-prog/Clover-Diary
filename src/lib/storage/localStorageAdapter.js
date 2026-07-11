@@ -198,7 +198,7 @@ const names = {
   questionPrompts: "QuestionPrompt", questionAnswers: "QuestionAnswer",
   timeSessions: "TimeSession", recurringEvents: "RecurringEvent", beautyItems: "BeautyItem",
   digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry", monthlyArchives: "MonthlyArchive",
-  studyCaptures: "StudyCapture", studyCategories: "StudyCategory", studyCards: "StudyCard",
+  studyCaptures: "StudyCapture", studyCategories: "StudyCategory", studyNotes: "StudyNote", studyCards: "StudyCard",
   studyExperiments: "StudyExperiment", studyWorkflows: "StudyWorkflow"
 };
 
@@ -257,6 +257,7 @@ export const {
   getMonthlyArchives, createMonthlyArchive, updateMonthlyArchive, deleteMonthlyArchive,
   getStudyCaptures, createStudyCapture, updateStudyCapture, deleteStudyCapture,
   getStudyCategorys, createStudyCategory, updateStudyCategory, deleteStudyCategory,
+  getStudyNotes, createStudyNote, updateStudyNote, deleteStudyNote,
   getStudyCards, createStudyCard, updateStudyCard, deleteStudyCard,
   getStudyExperiments, createStudyExperiment, updateStudyExperiment, deleteStudyExperiment,
   getStudyWorkflows, createStudyWorkflow, updateStudyWorkflow, deleteStudyWorkflow
