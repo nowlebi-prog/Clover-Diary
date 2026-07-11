@@ -6,7 +6,6 @@ import SectionTitle from "../../components/common/SectionTitle";
 import StatusBadge from "../../components/common/StatusBadge";
 import TodayTimeline from "../../components/dashboard/TodayTimeline";
 import WeatherCard from "../../components/dashboard/WeatherCard";
-import WeeklyStripCalendar from "../../components/dashboard/WeeklyStripCalendar";
 import PageHeader from "../../components/layout/PageHeader";
 import { getAllData, saveAllData, syncAllDataFromCloud, updateTop3 } from "../../lib/storage/localStorageAdapter";
 import { getTodayHabitStatus, getMonthlyHabitStats } from "../../lib/utils/habitSelectors";
@@ -15,6 +14,7 @@ import { getIncompleteTodos, getMonthCalendarItems, getTodayItems, getUpcomingDe
 import HomeMonthCalendar from "./components/HomeMonthCalendar";
 import TodayTopThree from "./components/TodayTopThree";
 
+const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const titleOf = (item) => item.title || item.name || item.project || item.body || item.text || item.displayTitle || "기록";
 const dateOf = (item) => item.updatedAt || item.createdAt || item.date || item.dueDate || item.expectedDate || "";
 
@@ -36,36 +36,83 @@ function StatCard({ to, label, title, value, note, tone }) {
   );
 }
 
-function EditableDayItems({ data, selectedDate, onChange }) {
+function HomeDayDetails({ data, selectedDate, onChange }) {
   const items = [
-    ...(data.todos || []).filter((item) => item.dueDate === selectedDate).map((item) => ({ ...item, collection: "todos", typeLabel: "할 일" })),
-    ...(data.events || []).filter((item) => item.date === selectedDate).map((item) => ({ ...item, collection: "events", typeLabel: "일정" })),
-    ...(data.payments || []).filter((item) => item.expectedDate === selectedDate).map((item) => ({ ...item, collection: "payments", typeLabel: "Money" }))
+    ...(data.todos || []).filter((item) => item.dueDate === selectedDate).map((item) => ({ ...item, collection: "todos", typeLabel: "할 일", field: "title" })),
+    ...(data.events || []).filter((item) => item.date === selectedDate).map((item) => ({ ...item, collection: "events", typeLabel: "일정", field: "title" })),
+    ...(data.payments || []).filter((item) => item.expectedDate === selectedDate).map((item) => ({ ...item, collection: "payments", typeLabel: "Money", field: "project" })),
+    ...(data.expenses || []).filter((item) => item.date === selectedDate).map((item) => ({ ...item, collection: "expenses", typeLabel: "지출", field: "title" }))
   ];
 
-  const updateItem = (item, updates) => {
+  const persist = (updater) => {
     const next = getAllData();
-    next[item.collection] = (next[item.collection] || []).map((entry) => entry.id === item.id ? { ...entry, ...updates, updatedAt: toDateKey(new Date()) } : entry);
+    updater(next);
     saveAllData(next);
     onChange();
   };
 
+  const updateItem = (item, updates) => {
+    persist((next) => {
+      next[item.collection] = (next[item.collection] || []).map((entry) => entry.id === item.id ? { ...entry, ...updates, updatedAt: selectedDate } : entry);
+    });
+  };
+
+  const deleteItem = (item) => {
+    persist((next) => {
+      next[item.collection] = (next[item.collection] || []).filter((entry) => entry.id !== item.id);
+    });
+  };
+
+  const addTodo = () => {
+    persist((next) => {
+      next.todos = [
+        { id: makeId("todo"), title: "새 할 일", dueDate: selectedDate, category: "개인", priority: "normal", completed: false, subTasks: [], memo: "", createdAt: selectedDate, updatedAt: selectedDate },
+        ...(next.todos || [])
+      ];
+    });
+  };
+
+  const addEvent = () => {
+    persist((next) => {
+      next.events = [
+        { id: makeId("event"), title: "새 일정", date: selectedDate, time: "09:00", category: "개인", memo: "", createdAt: selectedDate, updatedAt: selectedDate },
+        ...(next.events || [])
+      ];
+    });
+  };
+
   return (
-    <div className="grid gap-2">
-      {items.slice(0, 6).map((item) => (
-        <div key={`${item.collection}-${item.id}`} className="grid gap-2 rounded-2xl bg-white/55 p-3">
-          <div className="flex items-center gap-2">
-            {item.collection === "todos" && <input type="checkbox" checked={Boolean(item.completed)} onChange={(event) => updateItem(item, { completed: event.target.checked, completedAt: event.target.checked ? selectedDate : "" })} />}
-            <StatusBadge tone={item.collection === "payments" ? "danger" : item.collection === "events" ? "mint" : "blue"}>{item.typeLabel}</StatusBadge>
-          </div>
-          <input
-            className="rounded-2xl border border-white/70 bg-white/70 px-3 py-2 text-sm font-bold outline-none"
-            value={item.title || item.project || item.client || ""}
-            onChange={(event) => updateItem(item, item.collection === "payments" ? { project: event.target.value } : { title: event.target.value })}
-          />
+    <div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-base font-black text-slate-900">{selectedDate.slice(5)} 세부항목</h3>
+          <p className="text-xs font-bold text-slate-400">이 영역에서 바로 수정, 삭제, 추가해요.</p>
         </div>
-      ))}
-      {!items.length && <p className="rounded-2xl bg-white/45 p-4 text-sm font-bold text-clover-sub">이 날짜에는 아직 일정이 없어요.</p>}
+        <div className="flex gap-2">
+          <button type="button" onClick={addTodo} className="rounded-full bg-white px-3 py-2 text-xs font-black text-clover-deep shadow-sm">+ 할 일</button>
+          <button type="button" onClick={addEvent} className="rounded-full bg-white px-3 py-2 text-xs font-black text-sky-700 shadow-sm">+ 일정</button>
+        </div>
+      </div>
+
+      <div className="grid gap-2">
+        {items.map((item) => (
+          <div key={`${item.collection}-${item.id}`} className="grid gap-2 rounded-2xl bg-white/80 p-3 shadow-sm md:grid-cols-[auto_1fr_auto] md:items-center">
+            <div className="flex items-center gap-2">
+              {item.collection === "todos" && <input type="checkbox" checked={Boolean(item.completed)} onChange={(event) => updateItem(item, { completed: event.target.checked, completedAt: event.target.checked ? selectedDate : "" })} />}
+              <StatusBadge tone={item.collection === "payments" || item.collection === "expenses" ? "danger" : item.collection === "events" ? "mint" : "blue"}>{item.typeLabel}</StatusBadge>
+            </div>
+            <input
+              className="min-h-10 rounded-2xl border border-transparent bg-white/70 px-3 text-sm font-bold outline-none focus:border-clover-primary"
+              value={item[item.field] || ""}
+              onChange={(event) => updateItem(item, { [item.field]: event.target.value })}
+            />
+            <button type="button" onClick={() => deleteItem(item)} className="rounded-full bg-red-50 px-3 py-2 text-xs font-black text-red-500">
+              삭제
+            </button>
+          </div>
+        ))}
+        {!items.length && <p className="rounded-2xl bg-white/70 p-4 text-sm font-bold text-clover-sub">이 날짜에는 아직 항목이 없어요. 바로 추가해도 됩니다.</p>}
+      </div>
     </div>
   );
 }
@@ -203,30 +250,23 @@ export default function HomePage() {
         <StatCard to="/money" label="Money" title="돈관리 잠금" value={todayPayments.length} note={`오늘 확인할 결제 ${todayPayments.length}건`} tone="money" />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-        <HomeMonthCalendar
-          year={calendarMonth.year}
-          month={calendarMonth.month}
-          itemsByDate={monthItems}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          onMoveMonth={(amount) => setCalendarMonth((current) => {
-            const next = new Date(current.year, current.month + amount, 1);
-            return { year: next.getFullYear(), month: next.getMonth() };
-          })}
-          onToday={() => {
-            setSelectedDate(today);
-            setCalendarMonth({ year: now.getFullYear(), month: now.getMonth() });
-          }}
-        />
-        <div className="grid gap-4">
-          <WeeklyStripCalendar data={data} today={today} />
-          <GlassCard>
-            <SectionTitle>{selectedDate.slice(5)} 바로 수정</SectionTitle>
-            <EditableDayItems data={data} selectedDate={selectedDate} onChange={load} />
-          </GlassCard>
-        </div>
-      </div>
+      <HomeMonthCalendar
+        year={calendarMonth.year}
+        month={calendarMonth.month}
+        itemsByDate={monthItems}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+        onMoveMonth={(amount) => setCalendarMonth((current) => {
+          const next = new Date(current.year, current.month + amount, 1);
+          return { year: next.getFullYear(), month: next.getMonth() };
+        })}
+        onToday={() => {
+          setSelectedDate(today);
+          setCalendarMonth({ year: now.getFullYear(), month: now.getMonth() });
+        }}
+      >
+        <HomeDayDetails data={data} selectedDate={selectedDate} onChange={load} />
+      </HomeMonthCalendar>
 
       <GlassCard className="mt-4">
         <SectionTitle action={<Link to="/work" className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">Work</Link>}>오늘 일정 / 타임라인</SectionTitle>
