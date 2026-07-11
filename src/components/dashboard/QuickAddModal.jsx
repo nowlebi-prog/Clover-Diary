@@ -24,10 +24,10 @@ const defaults = (type) => {
   const map = {
     todo: { title: "", dueDate: today, allDay: false, startTime: "", endTime: "", dueTime: "", priority: "normal", category: "개인", completed: false, subTasks: [], memo: "" },
     event: { title: "", date: today, allDay: false, time: "09:00", endTime: "", category: "개인", memo: "" },
-    payment: { project: "", client: "", amount: "", category: "유별난", status: "입금 예정", expectedDate: today, memo: "" },
-    expense: { title: "", amount: "", date: today, category: "식비", memo: "" },
+    payment: { project: "", client: "", amount: "", category: "자유소득", status: "입금 예정", expectedDate: today, memo: "" },
+    expense: { title: "", amount: "", date: today, category: "생활비", memo: "" },
     memo: { body: "" },
-    shoppingItems: { title: "", category: "생활", memo: "", completed: false }
+    shoppingItems: { title: "", category: "생활", memo: "", completed: false, importance: 3 }
   };
   return map[type] || map.todo;
 };
@@ -47,7 +47,7 @@ function guessType(text) {
   const value = text.trim();
   if (!value) return null;
   if (/입금|수입|받음|계약금|잔금|세금계산서/.test(value)) return "payment";
-  if (/지출|결제|구매|샀|커피|식비|교통|월세|보험|관리비/.test(value)) return "expense";
+  if (/지출|결제|구매|샀|커피|생활비|교통|월세|보험|관리비/.test(value)) return "expense";
   if (/메모|아이디어|기억|나중에/.test(value)) return "memo";
   return "todo";
 }
@@ -71,11 +71,11 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
     if (next === "event") nextForm.title = seed;
     if (next === "memo") nextForm.body = seed;
     if (next === "payment") {
-      nextForm.project = seed.replace(/[0-9,원\s]+/g, " ").trim();
+      nextForm.project = seed.replace(/[0-9,\s원]+/g, " ").trim();
       nextForm.amount = amount;
     }
     if (next === "expense") {
-      nextForm.title = seed.replace(/[0-9,원\s]+/g, " ").trim();
+      nextForm.title = seed.replace(/[0-9,\s원]+/g, " ").trim();
       nextForm.amount = amount;
     }
     if (next === "shoppingItems") nextForm.title = seed;
@@ -112,18 +112,18 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
     <Modal title="빠른 추가" onClose={onClose}>
       <div className="grid gap-3">
         <label className="grid gap-1 text-sm font-bold">
-          빠른 문장 입력
-          <AppInput value={quickText} onChange={(event) => setQuickText(event.target.value)} placeholder="예: 인스타 견적서 보내기 / A클라이언트 입금 500000원" autoFocus />
+          자연어로 먼저 적기
+          <AppInput value={quickText} onChange={(event) => setQuickText(event.target.value)} placeholder="예: 인스타 견적서 보내기 / 커피 4500원 / A 클라이언트 입금 500000원" autoFocus />
         </label>
 
         {quickText.trim() && guessedType && (
           <div className="rounded-[22px] bg-white/55 p-3">
-            <p className="mb-2 text-sm font-bold text-clover-sub">자동 분류해볼까요?</p>
+            <p className="mb-2 text-sm font-bold text-clover-sub">이렇게 분류할까요?</p>
             <div className="flex flex-wrap gap-2">
-              <AppButton variant={guessedType === "todo" ? "primary" : "soft"} onClick={() => changeType("todo")}>To do에 추가할까요?</AppButton>
-              <AppButton variant={guessedType === "payment" ? "primary" : "soft"} onClick={() => changeType("payment")}>수입에 추가할까요?</AppButton>
-              <AppButton variant={guessedType === "expense" ? "primary" : "soft"} onClick={() => changeType("expense")}>지출에 추가할까요?</AppButton>
-              <AppButton variant={guessedType === "memo" ? "primary" : "soft"} onClick={() => changeType("memo")}>메모에 추가할까요?</AppButton>
+              <AppButton variant={guessedType === "todo" ? "primary" : "soft"} onClick={() => changeType("todo")}>To do에 추가</AppButton>
+              <AppButton variant={guessedType === "payment" ? "primary" : "soft"} onClick={() => changeType("payment")}>수입에 추가</AppButton>
+              <AppButton variant={guessedType === "expense" ? "primary" : "soft"} onClick={() => changeType("expense")}>지출에 추가</AppButton>
+              <AppButton variant={guessedType === "memo" ? "primary" : "soft"} onClick={() => changeType("memo")}>메모에 추가</AppButton>
             </div>
           </div>
         )}
@@ -138,7 +138,7 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
         {type === "todo" && (
           <>
             <label className="grid gap-1 text-sm font-bold">할 일<AppInput value={form.title} onChange={(event) => set("title", event.target.value)} /></label>
-            <label className="grid gap-1 text-sm font-bold">하위 목록<AppTextarea value={subTaskText(form)} onChange={(event) => set("subTasks", parseSubTasks(event.target.value, form.subTasks || []))} placeholder={"하위 작업을 한 줄에 하나씩 추가할 수 있어요."} /></label>
+            <label className="grid gap-1 text-sm font-bold">하위 목록<AppTextarea value={subTaskText(form)} onChange={(event) => set("subTasks", parseSubTasks(event.target.value, form.subTasks || []))} placeholder={"하위 작업을 줄마다 하나씩 적을 수 있어요"} /></label>
             <div className="grid gap-3 md:grid-cols-[1fr_120px_120px]">
               <label className="grid gap-1 text-sm font-bold">날짜<AppInput type="date" value={form.dueDate} onChange={(event) => set("dueDate", event.target.value)} /></label>
               <label className="grid gap-1 text-sm font-bold">시작<AppInput type="time" value={form.startTime || ""} disabled={form.allDay} onChange={(event) => { set("startTime", event.target.value); set("dueTime", event.target.value); }} /></label>

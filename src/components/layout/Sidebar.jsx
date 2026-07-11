@@ -3,16 +3,17 @@ import CloverLogo from "../common/CloverLogo";
 import { logout } from "../../lib/auth/localAuthAdapter";
 
 const items = [
-  { to: "/", label: "HOME", paths: ["/"] },
-  { to: "/life", label: "LIFE", paths: ["/life", "/habits", "/journal", "/mandalart"] },
-  { to: "/work", label: "WORK", paths: ["/work", "/tasks", "/calendar", "/daily", "/content", "/campaigns", "/files"] },
-  { to: "/money", label: "MONEY", paths: ["/money"] },
-  { to: "/archive", label: "ARCHIVE", paths: ["/archive"] }
+  { to: "/", label: "Home", paths: ["/"] },
+  { to: "/life", label: "Life", paths: ["/life", "/habits", "/journal", "/mandalart"] },
+  { to: "/work", label: "Work", paths: ["/work", "/tasks", "/calendar", "/daily", "/content", "/campaigns", "/files"] },
+  { to: "/money", label: "Money", paths: ["/money"] },
+  { to: "/archive", label: "Archive", paths: ["/archive"] }
 ];
 
 export default function Sidebar() {
   const location = useLocation();
   const signOut = () => {
+    sessionStorage.removeItem("clover-money-unlocked");
     logout();
     window.location.href = "/login";
   };

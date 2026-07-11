@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import AppButton from "../../components/common/AppButton";
-import AppInput from "../../components/common/AppInput";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import StatusBadge from "../../components/common/StatusBadge";
@@ -10,14 +9,14 @@ import TodayTimeline from "../../components/dashboard/TodayTimeline";
 import WeatherCard from "../../components/dashboard/WeatherCard";
 import WeeklyStripCalendar from "../../components/dashboard/WeeklyStripCalendar";
 import PageHeader from "../../components/layout/PageHeader";
-import { getAllData, saveAllData, syncAllDataFromCloud, updateTodo, updateTop3 } from "../../lib/storage/localStorageAdapter";
+import { getAllData, saveAllData, syncAllDataFromCloud, updateTop3 } from "../../lib/storage/localStorageAdapter";
 import { getTodayHabitStatus, getMonthlyHabitStats } from "../../lib/utils/habitSelectors";
 import { toDateKey } from "../../lib/utils/date";
 import { getIncompleteTodos, getMonthCalendarItems, getTodayItems, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
 import TodayTopThree from "./components/TodayTopThree";
 
-const recentDate = (item) => item.updatedAt || item.createdAt || item.date || item.dueDate || item.expectedDate || "";
-const recentTitle = (item) => item.title || item.name || item.project || item.body || item.text || item.displayTitle || "기록";
+const titleOf = (item) => item.title || item.name || item.project || item.body || item.text || item.displayTitle || "기록";
+const dateOf = (item) => item.updatedAt || item.createdAt || item.date || item.dueDate || item.expectedDate || "";
 
 function StatCard({ to, label, title, value, note, tone }) {
   const tones = {
@@ -31,7 +30,7 @@ function StatCard({ to, label, title, value, note, tone }) {
         <p className="text-xs font-black uppercase tracking-[0.16em]">{label}</p>
         <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-black">{value}</span>
       </div>
-      <p className="mt-2 text-sm font-black text-clover-ink">{title}</p>
+      <p className="mt-2 text-sm font-black text-clover-text">{title}</p>
       <p className="mt-1 text-xs font-bold opacity-75">{note}</p>
     </Link>
   );
@@ -39,9 +38,9 @@ function StatCard({ to, label, title, value, note, tone }) {
 
 function EditableDayItems({ data, selectedDate, onChange }) {
   const items = [
-    ...(data.todos || []).filter((item) => item.dueDate === selectedDate).map((item) => ({ ...item, collection: "todos", dateField: "dueDate", typeLabel: "Todo" })),
-    ...(data.events || []).filter((item) => item.date === selectedDate).map((item) => ({ ...item, collection: "events", dateField: "date", typeLabel: "Event" })),
-    ...(data.payments || []).filter((item) => item.expectedDate === selectedDate).map((item) => ({ ...item, collection: "payments", dateField: "expectedDate", typeLabel: "Money" }))
+    ...(data.todos || []).filter((item) => item.dueDate === selectedDate).map((item) => ({ ...item, collection: "todos", typeLabel: "할 일" })),
+    ...(data.events || []).filter((item) => item.date === selectedDate).map((item) => ({ ...item, collection: "events", typeLabel: "일정" })),
+    ...(data.payments || []).filter((item) => item.expectedDate === selectedDate).map((item) => ({ ...item, collection: "payments", typeLabel: "Money" }))
   ];
 
   const updateItem = (item, updates) => {
@@ -59,7 +58,11 @@ function EditableDayItems({ data, selectedDate, onChange }) {
             {item.collection === "todos" && <input type="checkbox" checked={Boolean(item.completed)} onChange={(event) => updateItem(item, { completed: event.target.checked, completedAt: event.target.checked ? selectedDate : "" })} />}
             <StatusBadge tone={item.collection === "payments" ? "danger" : item.collection === "events" ? "mint" : "blue"}>{item.typeLabel}</StatusBadge>
           </div>
-          <AppInput value={item.title || item.project || item.client || ""} onChange={(event) => updateItem(item, item.collection === "payments" ? { project: event.target.value } : { title: event.target.value })} />
+          <input
+            className="rounded-2xl border border-white/70 bg-white/70 px-3 py-2 text-sm font-bold outline-none"
+            value={item.title || item.project || item.client || ""}
+            onChange={(event) => updateItem(item, item.collection === "payments" ? { project: event.target.value } : { title: event.target.value })}
+          />
         </div>
       ))}
       {!items.length && <p className="rounded-2xl bg-white/45 p-4 text-sm font-bold text-clover-sub">이 날짜에는 아직 일정이 없어요.</p>}
@@ -72,17 +75,17 @@ function MonthlyMoodSleep({ entries, today }) {
   const monthEntries = (entries || []).filter((item) => (item.date || "").startsWith(monthKey)).sort((a, b) => a.date.localeCompare(b.date));
   return (
     <GlassCard>
-      <SectionTitle>이번달 기분 · 수면</SectionTitle>
+      <SectionTitle>이달의 기분 · 수면</SectionTitle>
       <div className="flex h-40 items-end gap-2 overflow-x-auto rounded-[24px] bg-white/45 p-4">
         {monthEntries.map((item) => (
           <div key={item.id || item.date} className="flex min-w-8 flex-col items-center justify-end gap-1">
-            <span className="text-base">{item.emoji}</span>
+            <span className="grid h-7 w-7 place-items-center rounded-[35%] text-sm font-black" style={{ background: item.color || "#E7F0EA" }}>{item.emoji || "·"}</span>
             <span className="w-2 rounded-full bg-teal-400" style={{ height: `${Math.max(8, Number(item.score || 0) * 18)}px` }} />
             <span className="w-2 rounded-full bg-sky-300" style={{ height: `${Math.max(6, Number(item.sleepHours || 0) * 6)}px` }} />
             <span className="text-[10px] font-bold text-clover-sub">{Number(item.date.slice(-2))}</span>
           </div>
         ))}
-        {!monthEntries.length && <p className="self-center text-sm font-bold text-clover-sub">아직 이번달 기록이 없어요.</p>}
+        {!monthEntries.length && <p className="self-center text-sm font-bold text-clover-sub">아직 이달 기록이 없어요.</p>}
       </div>
     </GlassCard>
   );
@@ -96,7 +99,7 @@ function RoutineCircle({ data, today }) {
   const rate = total ? Math.round((done / total) * 100) : 0;
   return (
     <GlassCard>
-      <SectionTitle>오늘 루틴 한달 달성률</SectionTitle>
+      <SectionTitle>오늘 루틴 달성률</SectionTitle>
       <div className="grid place-items-center gap-3">
         <div className="grid h-40 w-40 place-items-center rounded-full" style={{ background: `conic-gradient(#35A06D ${rate * 3.6}deg, rgba(255,255,255,.72) 0deg)` }}>
           <div className="grid h-28 w-28 place-items-center rounded-full bg-white text-center">
@@ -117,7 +120,8 @@ function BudgetPreview({ data, today }) {
   const upcomingPayments = (data.payments || []).filter((item) => item.expectedDate >= today && item.status !== "입금 완료").length;
   return (
     <GlassCard>
-      <SectionTitle action={<Link to="/money" className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">Money</Link>}>예산</SectionTitle>
+      <SectionTitle action={<Link to="/money" className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">Money</Link>}>돈관리 요약</SectionTitle>
+      <p className="mb-3 text-xs font-bold text-clover-sub">Home에서는 민감한 금액을 직접 보여주지 않아요.</p>
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-black text-emerald-700">수입 기록</p><b>{incomeCount}건</b></div>
         <div className="rounded-2xl bg-rose-50 p-4"><p className="text-xs font-black text-rose-700">지출 기록</p><b>{expenseCount}건</b></div>
@@ -135,7 +139,7 @@ function RecentActivity({ data }) {
     ...(data.inboxMemos || []).map((item) => ({ ...item, kind: "Memo", title: item.body })),
     ...(data.payments || []).map((item) => ({ ...item, kind: "Money" })),
     ...(data.reflections || []).map((item) => ({ ...item, kind: "Journal", title: item.body || item.memo }))
-  ].filter((item) => recentDate(item)).sort((a, b) => recentDate(b).localeCompare(recentDate(a))).slice(0, 10);
+  ].filter((item) => dateOf(item)).sort((a, b) => dateOf(b).localeCompare(dateOf(a))).slice(0, 10);
 
   return (
     <GlassCard>
@@ -144,8 +148,8 @@ function RecentActivity({ data }) {
         {items.map((item, index) => (
           <div key={`${item.kind}-${item.id || index}`} className="flex items-center justify-between gap-3 rounded-2xl bg-white/55 px-4 py-3 text-sm">
             <div className="min-w-0">
-              <p className="truncate font-bold">{recentTitle(item)}</p>
-              <p className="mt-1 text-xs font-bold text-clover-sub">{item.kind} · {recentDate(item)}</p>
+              <p className="truncate font-bold">{titleOf(item)}</p>
+              <p className="mt-1 text-xs font-bold text-clover-sub">{item.kind} · {dateOf(item)}</p>
             </div>
             <span className="shrink-0 rounded-full bg-clover-mint px-2.5 py-1 text-[11px] font-black text-clover-deep">{index + 1}</span>
           </div>
@@ -184,7 +188,7 @@ export default function HomePage() {
 
   return (
     <>
-      <PageHeader eyebrow={today} title="HOME">
+      <PageHeader eyebrow={today} title="오늘의 현황">
         <div className="flex flex-wrap items-center gap-2">
           <WeatherCard />
           <AppButton variant="soft" onClick={refreshNow}>새로고침</AppButton>
@@ -194,9 +198,9 @@ export default function HomePage() {
       </PageHeader>
 
       <div className="mb-4 grid gap-3 md:grid-cols-3">
-        <StatCard to="/life" label="Life" title="오늘 루틴 체크" value={`${habitStatus.doneCount}/${habitStatus.total}`} note="습관과 오늘 기록" tone="life" />
-        <StatCard to="/work" label="Work" title="오늘 할 일과 마감" value={todayItems.length} note={`남은 업무 ${incomplete.length}개`} tone="work" />
-        <StatCard to="/money" label="Money" title="돈 관리 잠금" value={todayPayments.length} note={`오늘 확인할 결제 ${todayPayments.length}건`} tone="money" />
+        <StatCard to="/life" label="Life" title="오늘 루틴 체크" value={`${habitStatus.doneCount}/${habitStatus.total}`} note="습관과 컨디션 기록" tone="life" />
+        <StatCard to="/work" label="Work" title="오늘 일정과 마감" value={todayItems.length} note={`남은 업무 ${incomplete.length}건`} tone="work" />
+        <StatCard to="/money" label="Money" title="돈관리 잠금" value={todayPayments.length} note={`오늘 확인할 결제 ${todayPayments.length}건`} tone="money" />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
@@ -218,7 +222,7 @@ export default function HomePage() {
         <div className="grid gap-4">
           <WeeklyStripCalendar data={data} today={today} />
           <GlassCard>
-            <SectionTitle>{selectedDate.slice(5)} 세부 항목</SectionTitle>
+            <SectionTitle>{selectedDate.slice(5)} 바로 수정</SectionTitle>
             <EditableDayItems data={data} selectedDate={selectedDate} onChange={load} />
           </GlassCard>
         </div>
@@ -232,7 +236,7 @@ export default function HomePage() {
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <TodayTopThree items={data.top3} onToggle={(id, completed) => updateTop3(id, { completed })} />
         <GlassCard>
-          <SectionTitle>마감 임박!</SectionTitle>
+          <SectionTitle>마감 임박</SectionTitle>
           <div className="grid gap-2">
             {closeDeadlines.map((item, index) => (
               <Link key={`${item.type}-${item.id || index}`} to={item.type === "payment" ? "/money" : item.type === "content" ? "/content" : "/tasks"} className="flex items-center justify-between rounded-2xl bg-rose-50/70 px-4 py-3 text-sm font-bold">

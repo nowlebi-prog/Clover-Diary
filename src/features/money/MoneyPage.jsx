@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
@@ -9,7 +9,7 @@ import PageHeader from "../../components/layout/PageHeader";
 import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
 
-const MONEY_PASSWORD = "986454";
+const MONEY_PASSWORD = import.meta.env.VITE_MONEY_PASSWORD || "986454";
 const sum = (items, field = "amount") => items.reduce((total, item) => total + Number(item[field] || 0), 0);
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const money = (value) => `${Number(value || 0).toLocaleString()}원`;
@@ -27,7 +27,7 @@ function MoneyGate({ onUnlock }) {
   };
   return (
     <>
-      <PageHeader eyebrow="MONEY" title="돈 관리 잠금" />
+      <PageHeader eyebrow="Money" title="돈관리 잠금" />
       <GlassCard className="mx-auto max-w-md">
         <SectionTitle>비밀번호 입력</SectionTitle>
         <p className="mb-4 text-sm font-bold text-clover-sub">금액 정보는 한 번 더 확인한 뒤 열리게 했어요.</p>
@@ -41,10 +41,27 @@ function MoneyGate({ onUnlock }) {
   );
 }
 
+function parseCsv(text) {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const [headerLine, ...rows] = lines;
+  if (!headerLine) return [];
+  const headers = headerLine.split(",").map((item) => item.trim());
+  return rows.map((line) => {
+    const values = line.split(",").map((item) => item.trim());
+    return Object.fromEntries(headers.map((header, index) => [header, values[index] || ""]));
+  });
+}
+
+function pick(row, keys) {
+  const found = keys.find((key) => row[key] !== undefined && row[key] !== "");
+  return found ? row[found] : "";
+}
+
 export default function MoneyPage() {
   const [unlocked, setUnlocked] = useState(sessionStorage.getItem("clover-money-unlocked") === "true");
   const [data, setData] = useState(getAllData());
   const [editor, setEditor] = useState(null);
+  const [importMessage, setImportMessage] = useState("");
 
   if (!unlocked) return <MoneyGate onUnlock={() => setUnlocked(true)} />;
 
@@ -61,6 +78,12 @@ export default function MoneyPage() {
   const spending = sum(monthExpenses);
   const taxReserve = Math.round(sum(invoiceIncome.length ? invoiceIncome : incomeItems) * 0.1);
   const saving = Math.max(0, income - spending - taxReserve);
+
+  const calendarDays = useMemo(() => {
+    const start = new Date(`${monthKey}-01T00:00:00`);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+    return Array.from({ length: end }, (_, index) => `${monthKey}-${String(index + 1).padStart(2, "0")}`);
+  }, [monthKey]);
 
   const persist = (next) => {
     saveAllData(next);
@@ -83,6 +106,34 @@ export default function MoneyPage() {
     setEditor(null);
   };
 
+  const importCsv = (file, mode) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const rows = parseCsv(String(reader.result || ""));
+      const next = getAllData();
+      const imported = rows.map((row) => {
+        const date = pick(row, ["날짜", "작성일자", "거래일자", "date"]) || today;
+        const vendor = pick(row, ["거래처", "상호", "공급자", "client", "vendor"]);
+        const amount = Number(String(pick(row, ["합계금액", "총액", "금액", "amount"])).replace(/[^0-9.-]/g, "")) || 0;
+        const invoiceId = pick(row, ["승인번호", "invoiceId", "id"]);
+        return mode === "expense"
+          ? { id: invoiceId || makeId("expense"), title: vendor || "CSV 지출", amount, date, category: "CSV 업로드", source: "csv", invoiceId, createdAt: today, updatedAt: today }
+          : { id: invoiceId || makeId("payment"), project: vendor || "CSV 수입", client: vendor, amount, expectedDate: date, category: "CSV 업로드", status: mode === "tax" ? "세금계산서 발행" : "입금 예정", source: mode === "tax" ? "hometax-sales" : "csv", invoiceId, createdAt: today, updatedAt: today };
+      });
+      const collection = mode === "expense" ? "expenses" : "payments";
+      const existingKeys = new Set((next[collection] || []).map((item) => item.invoiceId || `${item.date || item.expectedDate}-${item.client || item.title}-${item.amount}`));
+      const fresh = imported.filter((item) => {
+        const key = item.invoiceId || `${item.date || item.expectedDate}-${item.client || item.title}-${item.amount}`;
+        return !existingKeys.has(key);
+      });
+      next[collection] = [...fresh, ...(next[collection] || [])];
+      persist(next);
+      setImportMessage(`${fresh.length}건을 가져왔어요. 중복으로 보이는 항목은 제외했어요.`);
+    };
+    reader.readAsText(file, "utf-8");
+  };
+
   const lock = () => {
     sessionStorage.removeItem("clover-money-unlocked");
     setUnlocked(false);
@@ -90,7 +141,7 @@ export default function MoneyPage() {
 
   return (
     <>
-      <PageHeader eyebrow="MONEY" title="돈 관리 현황판">
+      <PageHeader eyebrow="Money" title="돈관리 현황">
         <AppButton variant="soft" onClick={lock}>잠그기</AppButton>
       </PageHeader>
 
@@ -101,13 +152,23 @@ export default function MoneyPage() {
         <MoneyStat label="세금 저축 10%" value={taxReserve} tone="amber" note="세금계산서 발행 수입 기준" />
       </div>
 
+      <GlassCard className="mb-4">
+        <SectionTitle>CSV 업로드</SectionTitle>
+        <div className="grid gap-3 md:grid-cols-3">
+          <CsvButton label="매출 CSV" onFile={(file) => importCsv(file, "income")} />
+          <CsvButton label="매입 CSV" onFile={(file) => importCsv(file, "expense")} />
+          <CsvButton label="세금계산서 CSV" onFile={(file) => importCsv(file, "tax")} />
+        </div>
+        {importMessage && <p className="mt-3 rounded-2xl bg-white/55 p-3 text-sm font-bold text-clover-deep">{importMessage}</p>}
+      </GlassCard>
+
       <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
         <div className="grid gap-4">
-          <MoneySection title="수입 관리" action="+ 수입" onAction={() => setEditor({ type: "payment", item: { category: "유별난", status: "입금 예정", expectedDate: today } })}>
+          <MoneySection title="수입 관리" action="+ 수입" onAction={() => setEditor({ type: "payment", item: { category: "자유소득", status: "입금 예정", expectedDate: today } })}>
             {payments.slice(0, 8).map((item) => (
               <button key={item.id} onClick={() => setEditor({ type: "payment", item })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
                 <div className="flex justify-between gap-3">
-                  <span className="truncate">{item.project || item.client || "외주 수입"}</span>
+                  <span className="truncate">{item.project || item.client || "수입"}</span>
                   <span className="text-emerald-700">{money(item.amount)}</span>
                 </div>
                 <p className="mt-1 text-xs text-clover-sub">{item.client || "거래처 미입력"} · {item.category || "기타"} · {item.status || "상태 미정"}</p>
@@ -115,7 +176,7 @@ export default function MoneyPage() {
             ))}
           </MoneySection>
 
-          <MoneySection title="지출 관리" action="+ 지출" onAction={() => setEditor({ type: "expense", item: { date: today, category: "식비" } })}>
+          <MoneySection title="지출 관리" action="+ 지출" onAction={() => setEditor({ type: "expense", item: { date: today, category: "생활비" } })}>
             {expenses.slice(0, 8).map((item) => (
               <button key={item.id} onClick={() => setEditor({ type: "expense", item })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
                 <div className="flex justify-between gap-3">
@@ -126,6 +187,23 @@ export default function MoneyPage() {
               </button>
             ))}
           </MoneySection>
+
+          <GlassCard>
+            <SectionTitle>지출 캘린더</SectionTitle>
+            <div className="grid grid-cols-7 gap-1.5">
+              {calendarDays.map((date) => {
+                const incomeOfDay = payments.filter((item) => (item.expectedDate || item.paidDate) === date);
+                const expenseOfDay = expenses.filter((item) => item.date === date);
+                const value = sum(incomeOfDay) - sum(expenseOfDay);
+                return (
+                  <div key={date} className={`min-h-16 rounded-2xl p-2 text-xs font-bold ${value > 0 ? "bg-emerald-50 text-emerald-700" : value < 0 ? "bg-rose-50 text-rose-700" : "bg-white/45 text-clover-sub"}`}>
+                    <p>{Number(date.slice(-2))}</p>
+                    {value !== 0 && <p className="mt-2 truncate">{money(Math.abs(value))}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          </GlassCard>
         </div>
 
         <div className="grid content-start gap-4">
@@ -138,20 +216,12 @@ export default function MoneyPage() {
             ))}
           </MoneySection>
 
-          <MoneySection title="결제 예정" action="+ 예정" onAction={() => setEditor({ type: "expense", item: { date: today, category: "반복 지출", title: "월세" } })}>
-            {["월세", "핸드폰비", "보험료", "관리비", "세금", "집안일", "식비", "교통비"].map((name) => (
-              <button key={name} onClick={() => setEditor({ type: "expense", item: { date: today, category: ["월세", "핸드폰비", "보험료", "관리비"].includes(name) ? "반복 지출" : "개별 지출", title: name } })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
-                {name}
-              </button>
-            ))}
-          </MoneySection>
-
           <MoneySection title="구매 필요 항목" action="+ 구매 항목" onAction={() => setEditor({ type: "shopping", item: { importance: 3, category: "생활" } })}>
             {shoppingItems.filter((item) => !item.completed).slice(0, 8).map((item) => (
               <button key={item.id} onClick={() => setEditor({ type: "shopping", item })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
                 <div className="flex justify-between gap-3">
                   <span>{item.title}</span>
-                  <span className="text-amber-600">★ {item.importance || 3}</span>
+                  <span className="text-amber-600">중요 {item.importance || 3}</span>
                 </div>
                 <p className="mt-1 text-xs text-clover-sub">{item.category || "기타"} · {money(item.amount)}</p>
               </button>
@@ -162,6 +232,15 @@ export default function MoneyPage() {
 
       {editor && <MoneyEditor editor={editor} onClose={() => setEditor(null)} onSave={upsert} onDelete={remove} />}
     </>
+  );
+}
+
+function CsvButton({ label, onFile }) {
+  return (
+    <label className="cursor-pointer rounded-2xl bg-white/55 px-4 py-3 text-center text-sm font-black text-clover-deep hover:bg-white/80">
+      {label}
+      <input type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => onFile(event.target.files?.[0])} />
+    </label>
   );
 }
 
@@ -209,7 +288,7 @@ function MoneyEditor({ editor, onClose, onSave, onDelete }) {
             <>
               <AppInput value={form.client || ""} onChange={(e) => set("client", e.target.value)} placeholder="거래처명" />
               <AppInput value={form.project || ""} onChange={(e) => set("project", e.target.value)} placeholder="프로젝트명" />
-              <AppSelect value={form.category || "유별난"} onChange={(e) => set("category", e.target.value)}><option>유별난</option><option>기타</option></AppSelect>
+              <AppSelect value={form.category || "자유소득"} onChange={(e) => set("category", e.target.value)}><option>자유소득</option><option>급여</option><option>기타</option></AppSelect>
               <AppInput type="number" value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} placeholder="총액" />
               <AppSelect value={form.status || "입금 예정"} onChange={(e) => set("status", e.target.value)}><option>입금 예정</option><option>계약금 완료</option><option>잔금 미입금</option><option>입금 완료</option><option>세금계산서 발행</option></AppSelect>
               <AppInput type="date" value={form.expectedDate || ""} onChange={(e) => set("expectedDate", e.target.value)} />
@@ -218,7 +297,7 @@ function MoneyEditor({ editor, onClose, onSave, onDelete }) {
           {type === "expense" && (
             <>
               <AppInput value={form.title || ""} onChange={(e) => set("title", e.target.value)} placeholder="지출 항목" />
-              <AppSelect value={form.category || "식비"} onChange={(e) => set("category", e.target.value)}><option>식비</option><option>교통비</option><option>업무용</option><option>반복 지출</option><option>특별 지출</option><option>개별 지출</option><option>기타</option></AppSelect>
+              <AppSelect value={form.category || "생활비"} onChange={(e) => set("category", e.target.value)}><option>생활비</option><option>교통비</option><option>업무비</option><option>반복 지출</option><option>월별 지출</option><option>개별 지출</option><option>기타</option></AppSelect>
               <AppInput type="number" value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} placeholder="금액" />
               <AppInput type="date" value={form.date || ""} onChange={(e) => set("date", e.target.value)} />
             </>
@@ -234,7 +313,7 @@ function MoneyEditor({ editor, onClose, onSave, onDelete }) {
           {type === "shopping" && (
             <>
               <AppInput value={form.title || ""} onChange={(e) => set("title", e.target.value)} placeholder="항목 이름 *" />
-              <AppSelect value={form.importance || 3} onChange={(e) => set("importance", e.target.value)}><option value="1">★ 1</option><option value="2">★ 2</option><option value="3">★ 3</option><option value="4">★ 4</option><option value="5">★ 5</option></AppSelect>
+              <AppSelect value={form.importance || 3} onChange={(e) => set("importance", e.target.value)}><option value="1">중요도 1</option><option value="2">중요도 2</option><option value="3">중요도 3</option><option value="4">중요도 4</option><option value="5">중요도 5</option></AppSelect>
               <AppInput type="number" value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} placeholder="금액" />
               <AppInput value={form.link || ""} onChange={(e) => set("link", e.target.value)} placeholder="링크" />
               <AppTextarea value={form.memo || ""} onChange={(e) => set("memo", e.target.value)} placeholder="메모" />
