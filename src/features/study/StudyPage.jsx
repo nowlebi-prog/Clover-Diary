@@ -6,7 +6,6 @@ import AppTextarea from "../../components/common/AppTextarea";
 import GlassCard from "../../components/common/GlassCard";
 import Modal from "../../components/common/Modal";
 import PageHeader from "../../components/layout/PageHeader";
-import HubNav from "../../components/common/HubNav";
 import SectionTitle from "../../components/common/SectionTitle";
 import StatusBadge from "../../components/common/StatusBadge";
 import {
@@ -887,10 +886,7 @@ export default function StudyPage() {
   return (
     <>
       <PageHeader eyebrow="Study" title="AI Study">
-        <div className="flex flex-wrap items-center gap-2">
-          <HubNav links={[["/", "Home"], ["/life", "Life"], ["/work", "Work"]]} />
-          <AppButton onClick={() => setUploadOpen(true)}>+ 캡처 추가</AppButton>
-        </div>
+        <AppButton onClick={() => setUploadOpen(true)}>+ 캡처 추가</AppButton>
       </PageHeader>
 
       <p className="mb-4 max-w-2xl text-sm font-bold text-clover-sub">저장한 자료를 다시 보고, 실험하고, 내 일에 쓰는 방식으로 바꾸는 공간이에요.</p>

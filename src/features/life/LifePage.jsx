@@ -6,7 +6,6 @@ import AppSelect from "../../components/common/AppSelect";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import StarRating from "../../components/common/StarRating";
-import HubNav from "../../components/common/HubNav";
 import PageHeader from "../../components/layout/PageHeader";
 import LifeHabitTracker from "../../components/habits/LifeHabitTracker";
 import { addDays, getHabitCompletionRate, toDateKey } from "../../lib/utils/habitSelectors";
@@ -304,7 +303,11 @@ export default function LifePage() {
   return (
     <>
       <PageHeader eyebrow="LIFE" title="생활 허브">
-        <HubNav links={[["/habits", "Habits"], ["/journal", "Journal"], ["/mandalart", "Mandalart"], ["/money", "Money"]]} />
+        <div className="flex flex-wrap gap-2">
+          <Link to="/habits"><AppButton variant="soft">Habits</AppButton></Link>
+          <Link to="/journal"><AppButton variant="soft">Journal</AppButton></Link>
+          <Link to="/mandalart"><AppButton variant="soft">Mandalart</AppButton></Link>
+        </div>
       </PageHeader>
 
       <LifeTabs value={tab} onChange={setTab} />
