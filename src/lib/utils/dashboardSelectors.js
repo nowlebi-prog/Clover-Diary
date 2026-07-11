@@ -185,12 +185,17 @@ export function getBudgetSummary(data, today = toDateKey()) {
     byCategory[key] = (byCategory[key] || 0) + Number(item.amount || 0);
   });
   const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
+  const monthSalesInvoices = (data.taxRecords || []).filter((item) => item.type === "sales" && (item.date || "").startsWith(monthKey));
+  const taxInvoiceIncome = monthSalesInvoices.reduce((sum, item) => sum + Number(item.supplyAmount || item.totalAmount || 0), 0);
+  const taxReserve = Math.round((taxInvoiceIncome || income) * 0.1);
   return {
     income,
     expense,
     remaining: income - expense,
     usageRate: income > 0 ? Math.min(Math.round((expense / income) * 100), 999) : null,
-    topCategory: topCategory ? { name: topCategory[0], amount: topCategory[1] } : null
+    topCategory: topCategory ? { name: topCategory[0], amount: topCategory[1] } : null,
+    taxInvoiceIncome,
+    taxReserve
   };
 }
 

@@ -7,7 +7,7 @@ export const collections = [
   "reflections", "quotes", "ideas", "links", "inboxMemos", "contentPlans",
   "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
   "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
-  "moodEntries", "workSessions", "workCategories"
+  "moodEntries", "workSessions", "workCategories", "taxRecords"
 ];
 
 export const initialData = {
@@ -69,7 +69,8 @@ export const initialData = {
     { id: "wc-5", name: "공부", color: "#F4B6D2", createdAt: today, updatedAt: today }
   ],
   activeSession: null,
-  weeklyGoalHours: 40
+  weeklyGoalHours: 40,
+  hometaxSync: { lastSyncedAt: null, provider: "csv", counts: { sales: 0, purchase: 0, cashReceipt: 0 } }
 };
 
 collections.forEach((key) => {

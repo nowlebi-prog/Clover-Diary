@@ -12,6 +12,7 @@ const normalize = (data) => {
   });
   next.activeSession = data && Object.prototype.hasOwnProperty.call(data, "activeSession") ? data.activeSession : null;
   next.weeklyGoalHours = Number(data?.weeklyGoalHours ?? initialData.weeklyGoalHours ?? 40);
+  next.hometaxSync = { ...clone(initialData.hometaxSync), ...(data?.hometaxSync || {}) };
   next.todos = next.todos.map((todo, index) => ({
     isPriority: false,
     priorityOrder: index,
@@ -123,7 +124,7 @@ const names = {
   questionPrompts: "QuestionPrompt", questionAnswers: "QuestionAnswer",
   timeSessions: "TimeSession", recurringEvents: "RecurringEvent", beautyItems: "BeautyItem",
   digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry",
-  workSessions: "WorkSession", workCategories: "WorkCategory"
+  workSessions: "WorkSession", workCategories: "WorkCategory", taxRecords: "TaxRecord"
 };
 
 Object.entries(names).forEach(([collection, name]) => {
@@ -225,7 +226,83 @@ api.discardActiveSession = () => {
   saveAllData(data);
 };
 
-// ── 우선 업무(Priority Todo) 정렬 ──
+// ── 홈택스 CSV 가져오기 (세금계산서 매출/매입, 현금영수증) ──
+// kind: "sales" | "purchase" | "cashReceipt"
+// records: [{ invoiceId, date, partner, supplyAmount, taxAmount, totalAmount }]
+const dedupeKeyOf = (record) =>
+  record.invoiceId ? `id:${record.invoiceId}` : `k:${record.date}_${record.partner}_${record.totalAmount}`;
+
+api.importTaxRecords = (kind, records = []) => {
+  const data = getAllData();
+  const existingKeys = new Set(data.taxRecords.map(dedupeKeyOf));
+  const now = today();
+  let added = 0;
+  let skipped = 0;
+
+  records.forEach((record) => {
+    const key = dedupeKeyOf(record);
+    if (existingKeys.has(key)) {
+      skipped += 1;
+      return;
+    }
+    existingKeys.add(key);
+    added += 1;
+    const taxRecordId = makeId("taxRecord");
+    data.taxRecords = [
+      { id: taxRecordId, type: kind, source: "hometax_csv", ...record, createdAt: now, updatedAt: now },
+      ...data.taxRecords
+    ];
+
+    if (kind === "sales") {
+      data.payments = [
+        {
+          id: makeId("payment"),
+          client: record.partner,
+          project: record.partner,
+          category: "세금계산서",
+          amount: record.totalAmount,
+          status: "세금계산서 발행",
+          expectedDate: record.date,
+          paidDate: record.date,
+          taxRecordId,
+          source: "hometax_csv",
+          createdAt: now,
+          updatedAt: now
+        },
+        ...data.payments
+      ];
+    } else {
+      data.expenses = [
+        {
+          id: makeId("expense"),
+          title: record.partner,
+          category: kind === "cashReceipt" ? "현금영수증" : "매입 세금계산서",
+          amount: record.totalAmount,
+          date: record.date,
+          taxRecordId,
+          source: "hometax_csv",
+          createdAt: now,
+          updatedAt: now
+        },
+        ...data.expenses
+      ];
+    }
+  });
+
+  data.hometaxSync = {
+    ...data.hometaxSync,
+    lastSyncedAt: new Date().toISOString(),
+    counts: {
+      ...data.hometaxSync.counts,
+      [kind]: (data.hometaxSync.counts?.[kind] || 0) + added
+    }
+  };
+
+  saveAllData(data);
+  return { added, skipped };
+};
+
+
 api.setTodoPriority = (id, isPriority) => {
   const data = getAllData();
   const maxOrder = Math.max(-1, ...data.todos.filter((t) => t.isPriority).map((t) => t.priorityOrder ?? 0));
@@ -290,6 +367,7 @@ export const {
   getMoodEntrys, createMoodEntry, updateMoodEntry, deleteMoodEntry,
   getWorkSessions, createWorkSession, updateWorkSession, deleteWorkSession,
   getWorkCategorys, createWorkCategory, updateWorkCategory, deleteWorkCategory,
+  getTaxRecords, createTaxRecord, updateTaxRecord, deleteTaxRecord, importTaxRecords,
   getActiveSession, startActiveSession, pauseActiveSession, resumeActiveSession,
   updateActiveSession, addActiveSessionMemo, endActiveSession, discardActiveSession,
   setTodoPriority, reorderPriorityTodos

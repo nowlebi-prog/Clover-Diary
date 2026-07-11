@@ -9,7 +9,11 @@ import AppSelect from "../../components/common/AppSelect";
 import AppTextarea from "../../components/common/AppTextarea";
 import GlassCard from "../../components/common/GlassCard";
 import PageHeader from "../../components/layout/PageHeader";
+import HometaxImportCard from "../../components/money/HometaxImportCard";
+import HometaxStatusCard from "../../components/money/HometaxStatusCard";
+import RecentTaxRecordsList from "../../components/money/RecentTaxRecordsList";
 import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
+import { getBudgetSummary } from "../../lib/utils/dashboardSelectors";
 import { toDateKey } from "../../lib/utils/date";
 
 const sum = (items, field = "amount") => items.reduce((total, item) => total + Number(item[field] || 0), 0);
@@ -40,6 +44,7 @@ function downloadCsv(rows, filename) {
 export default function MoneyPage() {
   const [data, setData] = useState(getAllData());
   const [editor, setEditor] = useState(null);
+  const [mode, setMode] = useState("manual"); // manual | csv
   const today = toDateKey(new Date());
   const monthKey = today.slice(0, 7);
   const monthLabel = `${monthKey.slice(0, 4)}년 ${Number(monthKey.slice(5, 7))}월`;
@@ -47,6 +52,7 @@ export default function MoneyPage() {
   const payments = data.payments || [];
   const subscriptions = data.subscriptions || [];
   const shoppingItems = data.shoppingItems || [];
+  const taxRecords = data.taxRecords || [];
 
   const monthExpenses = useMemo(() => expenses.filter((item) => (item.date || "").startsWith(monthKey)), [expenses, monthKey]);
   const incomeItems = useMemo(() => payments.filter((item) => (item.expectedDate || item.paidDate || "").startsWith(monthKey)), [payments, monthKey]);
@@ -55,11 +61,14 @@ export default function MoneyPage() {
     [monthExpenses, today]
   );
 
+  const budgetSummary = getBudgetSummary(data, today);
   const income = sum(incomeItems);
   const spending = sum(monthExpenses);
-  const taxReserve = Math.round(income * 0.1);
+  const taxReserve = budgetSummary.taxReserve;
   const saving = income - spending - taxReserve;
   const maxFlow = Math.max(income, spending, Math.abs(saving), taxReserve, 1);
+
+  const refresh = () => setData(getAllData());
 
   const persist = (next) => {
     saveAllData(next);
@@ -99,14 +108,30 @@ export default function MoneyPage() {
           </AppButton>
         </div>
       </PageHeader>
-      <p className="-mt-3 mb-5 text-sm font-bold text-clover-sub">이번 달 요약</p>
+      <p className="-mt-3 mb-4 text-sm font-bold text-clover-sub">이번 달 요약</p>
+
+      <div className="mb-5 flex flex-wrap gap-2">
+        <button onClick={() => setMode("manual")} className={`rounded-full px-4 py-2 text-sm font-bold transition ${mode === "manual" ? "bg-clover-deep text-white" : "bg-white/60 text-clover-sub hover:bg-white"}`}>수동 입력</button>
+        <button onClick={() => setMode("csv")} className={`rounded-full px-4 py-2 text-sm font-bold transition ${mode === "csv" ? "bg-clover-deep text-white" : "bg-white/60 text-clover-sub hover:bg-white"}`}>CSV 업로드</button>
+        <button disabled className="cursor-not-allowed rounded-full bg-white/40 px-4 py-2 text-sm font-bold text-clover-sub/70">홈택스 연동 준비중</button>
+      </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-4">
         <StatCard icon={Wallet} tone="emerald" label="수입" value={income} note="이번 달 수입" />
         <StatCard icon={ArrowDownCircle} tone="rose" label="지출" value={spending} note="이번 달 지출" />
         <StatCard icon={PiggyBank} tone="sky" label="저축 가능" value={saving} note="수입 - 지출" />
-        <StatCard icon={Coins} tone="amber" label="세금 저축 10%" value={taxReserve} note="세금계산서 발행 수입 기준" />
+        <StatCard icon={Coins} tone="amber" label="세금 저축 10%" value={taxReserve} note={budgetSummary.taxInvoiceIncome > 0 ? "세금계산서 발행 수입 기준" : "수입 기준 추정치"} />
       </div>
+
+      {mode === "csv" && (
+        <div className="mb-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
+          <HometaxImportCard onImported={refresh} />
+          <div className="grid content-start gap-4">
+            <HometaxStatusCard syncStatus={data.hometaxSync} />
+            <RecentTaxRecordsList records={taxRecords} />
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 grid gap-4 xl:grid-cols-[1fr_420px]">
         <GlassCard className="p-5">
