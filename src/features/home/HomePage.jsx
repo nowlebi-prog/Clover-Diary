@@ -4,7 +4,6 @@ import AppButton from "../../components/common/AppButton";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import StatusBadge from "../../components/common/StatusBadge";
-import MonthCalendar from "../../components/dashboard/MonthCalendar";
 import TodayTimeline from "../../components/dashboard/TodayTimeline";
 import WeatherCard from "../../components/dashboard/WeatherCard";
 import WeeklyStripCalendar from "../../components/dashboard/WeeklyStripCalendar";
@@ -13,6 +12,7 @@ import { getAllData, saveAllData, syncAllDataFromCloud, updateTop3 } from "../..
 import { getTodayHabitStatus, getMonthlyHabitStats } from "../../lib/utils/habitSelectors";
 import { toDateKey } from "../../lib/utils/date";
 import { getIncompleteTodos, getMonthCalendarItems, getTodayItems, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
+import HomeMonthCalendar from "./components/HomeMonthCalendar";
 import TodayTopThree from "./components/TodayTopThree";
 
 const titleOf = (item) => item.title || item.name || item.project || item.body || item.text || item.displayTitle || "기록";
@@ -204,7 +204,7 @@ export default function HomePage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-        <MonthCalendar
+        <HomeMonthCalendar
           year={calendarMonth.year}
           month={calendarMonth.month}
           itemsByDate={monthItems}
