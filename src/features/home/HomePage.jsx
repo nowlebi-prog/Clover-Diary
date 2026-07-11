@@ -10,7 +10,7 @@ import PageHeader from "../../components/layout/PageHeader";
 import { getAllData, saveAllData, syncAllDataFromCloud, updateTop3 } from "../../lib/storage/localStorageAdapter";
 import { getTodayHabitStatus, getMonthlyHabitStats } from "../../lib/utils/habitSelectors";
 import { toDateKey } from "../../lib/utils/date";
-import { getIncompleteTodos, getMonthCalendarItems, getTodayItems, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
+import { getMonthCalendarItems, getTodayItems, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
 import HomeMonthCalendar from "./components/HomeMonthCalendar";
 import TodayTopThree from "./components/TodayTopThree";
 
@@ -18,21 +18,47 @@ const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16)
 const titleOf = (item) => item.title || item.name || item.project || item.body || item.text || item.displayTitle || "기록";
 const dateOf = (item) => item.updatedAt || item.createdAt || item.date || item.dueDate || item.expectedDate || "";
 
-function StatCard({ to, label, title, value, note, tone }) {
-  const tones = {
-    life: "border-emerald-100 bg-emerald-50/80 text-emerald-700",
-    work: "border-sky-100 bg-sky-50/80 text-sky-700",
-    money: "border-amber-100 bg-amber-50/80 text-amber-700"
-  };
+const money = (value) => `${Number(value || 0).toLocaleString("ko-KR")}원`;
+
+function TodaySummary({ deadlines, expenses, habitStatus }) {
+  const totalExpense = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const summary = [
+    {
+      to: "/tasks",
+      label: "오늘 마감인 일",
+      value: `${deadlines.length}건`,
+      note: deadlines.slice(0, 2).map((item) => item.displayTitle).join(", ") || "오늘 마감은 없어요.",
+      tone: "bg-sky-50/85 text-sky-700"
+    },
+    {
+      to: "/money",
+      label: "오늘 지출",
+      value: expenses.length ? money(totalExpense) : "0원",
+      note: expenses.length ? `${expenses.length}건 기록됨` : "오늘 지출 기록이 없어요.",
+      tone: "bg-rose-50/85 text-rose-700"
+    },
+    {
+      to: "/life",
+      label: "루틴 달성률",
+      value: `${habitStatus.rate || 0}%`,
+      note: `${habitStatus.doneCount}/${habitStatus.total}개 완료`,
+      tone: "bg-emerald-50/85 text-emerald-700"
+    }
+  ];
+
   return (
-    <Link to={to} className={`glass rounded-[22px] border p-4 transition hover:-translate-y-0.5 ${tones[tone]}`}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-black uppercase tracking-[0.16em]">{label}</p>
-        <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-black">{value}</span>
+    <GlassCard className="mb-4">
+      <SectionTitle>오늘의 요약!</SectionTitle>
+      <div className="grid gap-3 md:grid-cols-3">
+        {summary.map((item) => (
+          <Link key={item.label} to={item.to} className={`rounded-[22px] p-4 transition hover:-translate-y-0.5 ${item.tone}`}>
+            <p className="text-xs font-black">{item.label}</p>
+            <p className="mt-2 text-2xl font-black text-clover-text">{item.value}</p>
+            <p className="mt-1 line-clamp-2 text-xs font-bold opacity-75">{item.note}</p>
+          </Link>
+        ))}
       </div>
-      <p className="mt-2 text-sm font-black text-clover-text">{title}</p>
-      <p className="mt-1 text-xs font-bold opacity-75">{note}</p>
-    </Link>
+    </GlassCard>
   );
 }
 
@@ -193,9 +219,9 @@ function RecentActivity({ data }) {
       <SectionTitle>최근 활동</SectionTitle>
       <div className="grid gap-2">
         {items.map((item, index) => (
-          <div key={`${item.kind}-${item.id || index}`} className="flex items-center justify-between gap-3 rounded-2xl bg-white/55 px-4 py-3 text-sm">
+          <div key={`${item.kind}-${item.id || index}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-white/55 px-4 py-3 text-sm">
             <div className="min-w-0">
-              <p className="truncate font-bold">{titleOf(item)}</p>
+              <p className="line-clamp-2 break-words font-bold leading-5">{titleOf(item)}</p>
               <p className="mt-1 text-xs font-bold text-clover-sub">{item.kind} · {dateOf(item)}</p>
             </div>
             <span className="shrink-0 rounded-full bg-clover-mint px-2.5 py-1 text-[11px] font-black text-clover-deep">{index + 1}</span>
@@ -226,12 +252,12 @@ export default function HomePage() {
   };
 
   const todayItems = getTodayItems(data, today);
-  const incomplete = getIncompleteTodos(data);
   const deadlines = getUpcomingDeadlines(data, today);
   const habitStatus = getTodayHabitStatus(data.habits, data.habitLogs, today);
   const monthItems = useMemo(() => getMonthCalendarItems(data, calendarMonth.year, calendarMonth.month), [data, calendarMonth]);
   const closeDeadlines = deadlines.filter((item) => item.dday <= 7).slice(0, 5);
-  const todayPayments = (data.payments || []).filter((item) => item.expectedDate === today && item.status !== "입금 완료");
+  const todayDeadlines = deadlines.filter((item) => item.dday === 0);
+  const todayExpenses = (data.expenses || []).filter((item) => item.date === today);
 
   return (
     <>
@@ -244,11 +270,7 @@ export default function HomePage() {
         </div>
       </PageHeader>
 
-      <div className="mb-4 grid gap-3 md:grid-cols-3">
-        <StatCard to="/life" label="Life" title="오늘 루틴 체크" value={`${habitStatus.doneCount}/${habitStatus.total}`} note="습관과 컨디션 기록" tone="life" />
-        <StatCard to="/work" label="Work" title="오늘 일정과 마감" value={todayItems.length} note={`남은 업무 ${incomplete.length}건`} tone="work" />
-        <StatCard to="/money" label="Money" title="돈관리 잠금" value={todayPayments.length} note={`오늘 확인할 결제 ${todayPayments.length}건`} tone="money" />
-      </div>
+      <TodaySummary deadlines={todayDeadlines} expenses={todayExpenses} habitStatus={habitStatus} />
 
       <HomeMonthCalendar
         year={calendarMonth.year}
@@ -294,7 +316,7 @@ export default function HomePage() {
         <RoutineCircle data={data} today={today} />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_360px]">
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <BudgetPreview data={data} today={today} />
         <RecentActivity data={data} />
       </div>
