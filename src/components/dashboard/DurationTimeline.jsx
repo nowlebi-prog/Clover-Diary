@@ -36,7 +36,7 @@ export default function DurationTimeline({ items = [], date, onSaveEntries }) {
 
   return (
     <section className="glass relative rounded-[28px] bg-[#FFFDF5]/75 p-5">
-      <SectionTitle>Duration timeline</SectionTitle>
+      <SectionTitle>시간대별 기록</SectionTitle>
 
       {dirtyEntries.length > 0 && (
         <div className="fixed right-4 top-1/2 z-40 -translate-y-1/2 md:right-8">
@@ -48,8 +48,8 @@ export default function DurationTimeline({ items = [], date, onSaveEntries }) {
 
       <div className="mt-2 grid gap-0">
         {byHour.map(({ hour, items: hourItems }) => (
-          <div key={hour} className="grid min-h-14 grid-cols-[38px_1fr] gap-3 border-b border-clover-line/70">
-            <div className="pt-2 text-right text-xs font-bold text-clover-sub">{String(hour).padStart(2, "0")}</div>
+          <div key={hour} className="grid min-h-14 grid-cols-[44px_1fr] gap-3 border-b border-clover-line/70">
+            <div className="whitespace-nowrap pt-2 text-right text-xs font-bold tabular-nums text-clover-sub">{String(hour).padStart(2, "0")}</div>
             <div className="relative py-1">
               <span className="absolute left-0 top-0 h-full w-px bg-clover-line" />
               <div className="ml-4 grid gap-1">

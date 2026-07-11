@@ -39,7 +39,7 @@ export default function TaskSection({ title, items, today, onToggle, onToggleSub
                     {todo.project && <StatusBadge tone="lavender">{todo.project}</StatusBadge>}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <AppButton variant="ghost" onClick={() => onEdit(todo)}>Edit</AppButton>
+                    <AppButton variant="ghost" onClick={() => onEdit(todo)}>수정</AppButton>
                     {!todo.completed && <AppButton variant="ghost" onClick={() => onDelay(todo)}>Delay</AppButton>}
                   </div>
                 </div>

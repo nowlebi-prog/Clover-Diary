@@ -81,7 +81,7 @@ export default function TasksPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Tasks" title="To do list">
+      <PageHeader eyebrow="TASKS" title="할 일 보드">
         <AppButton onClick={() => setEditing(emptyTodo)}>+ 할 일</AppButton>
       </PageHeader>
       <div className="mb-4 grid gap-3 rounded-[28px] border border-white/70 bg-white/45 p-4 backdrop-blur-xl md:grid-cols-[1fr_160px_160px]">

@@ -13,6 +13,7 @@ const labelOf = (item) => {
   return "Event";
 };
 
+// 3컬럼 그리드(시간|점|내용) — 시간 잘림/점-선 어긋남 원천 차단
 export default function TodayTimeline({ items = [] }) {
   const currentHour = new Date().getHours();
   const sorted = [...items].sort((a, b) => String(a.time || "99:99").localeCompare(String(b.time || "99:99")));
@@ -20,17 +21,19 @@ export default function TodayTimeline({ items = [] }) {
   const visible = upcoming.length ? upcoming : sorted;
 
   return (
-    <div className="relative grid gap-3 pl-1">
-      <span className="absolute left-[74px] top-2 h-[calc(100%-16px)] w-px bg-clover-line" />
+    <div className="relative grid gap-3">
+      <span className="pointer-events-none absolute bottom-2 left-[63px] top-2 w-px bg-clover-line" />
       {visible.map((item, index) => {
         const isNow = item.time && itemHour(item) === currentHour;
         return (
-          <article key={`${item.type}-${item.id || index}`} className="grid grid-cols-[64px_1fr] gap-4">
-            <div className="shrink-0 whitespace-nowrap pt-2 text-right text-xs font-black leading-tight text-clover-sub">
+          <article key={`${item.type}-${item.id || index}`} className="grid grid-cols-[48px_16px_minmax(0,1fr)] items-start gap-x-2">
+            <div className="whitespace-nowrap pt-2.5 text-right text-xs font-black tabular-nums text-clover-sub">
               {item.time || "종일"}
             </div>
-            <div className={`relative min-w-0 rounded-[18px] px-4 py-3 ${isNow ? "bg-white ring-2 ring-clover-primary/60" : "bg-white/55"}`}>
-              <span className={`absolute -left-[23px] top-4 h-3 w-3 rounded-full ring-4 ring-[#F8FAF7] ${isNow ? "bg-clover-coralDeep" : "bg-clover-deep"}`} />
+            <div className="flex justify-center pt-3">
+              <span className={`h-3 w-3 rounded-full ring-4 ring-[#F8FAF7] ${isNow ? "bg-clover-coralDeep" : "bg-clover-deep"}`} />
+            </div>
+            <div className={`min-w-0 rounded-[18px] px-4 py-3 ${isNow ? "bg-white ring-2 ring-clover-primary/60" : "bg-white/55"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <h3 className="break-words text-sm font-bold leading-snug">{item.displayTitle}</h3>

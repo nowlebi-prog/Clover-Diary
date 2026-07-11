@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  Wallet, ArrowDownCircle, PiggyBank, Coins, Home as HomeIcon, Smartphone,
+  ShieldCheck, Building2, Receipt, Sparkles, CreditCard, Download, ChevronRight
+} from "lucide-react";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
 import AppTextarea from "../../components/common/AppTextarea";
 import GlassCard from "../../components/common/GlassCard";
-import SectionTitle from "../../components/common/SectionTitle";
 import PageHeader from "../../components/layout/PageHeader";
 import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
@@ -13,21 +16,50 @@ const sum = (items, field = "amount") => items.reduce((total, item) => total + N
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const money = (value) => `${Number(value || 0).toLocaleString()}원`;
 
+const BILL_ICONS = [
+  { match: /월세|집세/, icon: HomeIcon },
+  { match: /핸드폰|통신/, icon: Smartphone },
+  { match: /보험/, icon: ShieldCheck },
+  { match: /관리비/, icon: Building2 },
+  { match: /세금/, icon: Receipt },
+  { match: /집안일|생활/, icon: Sparkles }
+];
+const billIcon = (title = "") => (BILL_ICONS.find((b) => b.match.test(title))?.icon) || CreditCard;
+
+function downloadCsv(rows, filename) {
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function MoneyPage() {
   const [data, setData] = useState(getAllData());
   const [editor, setEditor] = useState(null);
   const today = toDateKey(new Date());
   const monthKey = today.slice(0, 7);
+  const monthLabel = `${monthKey.slice(0, 4)}년 ${Number(monthKey.slice(5, 7))}월`;
   const expenses = data.expenses || [];
   const payments = data.payments || [];
   const subscriptions = data.subscriptions || [];
   const shoppingItems = data.shoppingItems || [];
-  const monthExpenses = expenses.filter((item) => (item.date || "").startsWith(monthKey));
-  const incomeItems = payments.filter((item) => (item.expectedDate || item.paidDate || "").startsWith(monthKey));
+
+  const monthExpenses = useMemo(() => expenses.filter((item) => (item.date || "").startsWith(monthKey)), [expenses, monthKey]);
+  const incomeItems = useMemo(() => payments.filter((item) => (item.expectedDate || item.paidDate || "").startsWith(monthKey)), [payments, monthKey]);
+  const upcomingExpenses = useMemo(
+    () => monthExpenses.filter((item) => item.date >= today).sort((a, b) => a.date.localeCompare(b.date)),
+    [monthExpenses, today]
+  );
+
   const income = sum(incomeItems);
   const spending = sum(monthExpenses);
   const taxReserve = Math.round(income * 0.1);
-  const saving = Math.max(0, income - spending - taxReserve);
+  const saving = income - spending - taxReserve;
+  const maxFlow = Math.max(income, spending, Math.abs(saving), taxReserve, 1);
 
   const persist = (next) => {
     saveAllData(next);
@@ -38,7 +70,7 @@ export default function MoneyPage() {
     const next = getAllData();
     const current = next[collection] || [];
     const normalized = { ...item, id: item.id || makeId(collection), updatedAt: today, createdAt: item.createdAt || today };
-    next[collection] = item.id ? current.map((entry) => entry.id === item.id ? normalized : entry) : [normalized, ...current];
+    next[collection] = item.id ? current.map((entry) => (entry.id === item.id ? normalized : entry)) : [normalized, ...current];
     persist(next);
     setEditor(null);
   };
@@ -50,73 +82,131 @@ export default function MoneyPage() {
     setEditor(null);
   };
 
+  const downloadReport = () => {
+    const rows = [["구분", "항목", "금액", "날짜", "분류"]];
+    incomeItems.forEach((p) => rows.push(["수입", p.project || p.client || "수입", p.amount, p.expectedDate || p.paidDate, p.category || ""]));
+    monthExpenses.forEach((e) => rows.push(["지출", e.title, e.amount, e.date, e.category || ""]));
+    downloadCsv(rows, `clover-desk-money-${monthKey}.csv`);
+  };
+
   return (
     <>
-      <PageHeader eyebrow="MONEY" title="돈 관리 현황판" />
+      <PageHeader eyebrow="MONEY" title="돈 관리 한눈에 🍀">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-white/70 px-4 py-2 text-sm font-bold text-clover-text">{monthLabel}</span>
+          <AppButton variant="soft" onClick={downloadReport}>
+            <span className="inline-flex items-center gap-1.5"><Download size={15} /> 리포트 다운로드</span>
+          </AppButton>
+        </div>
+      </PageHeader>
+      <p className="-mt-3 mb-5 text-sm font-bold text-clover-sub">이번 달 요약</p>
 
       <div className="mb-4 grid gap-3 md:grid-cols-4">
-        <MoneyStat label="수입" value={income} tone="emerald" />
-        <MoneyStat label="지출" value={spending} tone="rose" />
-        <MoneyStat label="저축 가능" value={saving} tone="sky" />
-        <MoneyStat label="세금 저축 10%" value={taxReserve} tone="amber" note="세금계산서 발행 수입 기준" />
+        <StatCard icon={Wallet} tone="emerald" label="수입" value={income} note="이번 달 수입" />
+        <StatCard icon={ArrowDownCircle} tone="rose" label="지출" value={spending} note="이번 달 지출" />
+        <StatCard icon={PiggyBank} tone="sky" label="저축 가능" value={saving} note="수입 - 지출" />
+        <StatCard icon={Coins} tone="amber" label="세금 저축 10%" value={taxReserve} note="세금계산서 발행 수입 기준" />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
-        <div className="grid gap-4">
-          <MoneySection title="수입 관리" action="+ 수입 추가" onAction={() => setEditor({ type: "payment", item: { category: "유별난", status: "입금 예정", expectedDate: today } })}>
-            {payments.slice(0, 6).map((item) => (
-              <button key={item.id} onClick={() => setEditor({ type: "payment", item })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
-                <div className="flex justify-between gap-3">
-                  <span className="truncate">{item.project || item.client || "외주 수입"}</span>
-                  <span className="text-emerald-700">{money(item.amount)}</span>
-                </div>
-                <p className="mt-1 text-xs text-clover-sub">{item.client || "클라이언트"} · {item.category || "유별난"} · {item.status || "상태 미정"}</p>
-              </button>
-            ))}
-          </MoneySection>
+      <div className="mb-4 grid gap-4 xl:grid-cols-[1fr_420px]">
+        <GlassCard className="p-5">
+          <h2 className="mb-4 text-base font-black">이번 달 자금 흐름</h2>
+          <div className="grid gap-4">
+            <FlowBar label="수입" value={income} max={maxFlow} color="#3E8F63" />
+            <FlowBar label="지출" value={spending} max={maxFlow} color="#F87171" />
+            <FlowBar label="저축 가능" value={saving} max={maxFlow} color="#60A5FA" />
+            <FlowBar label="세금 저축 (10%)" value={taxReserve} max={maxFlow} color="#F6A83D" />
+          </div>
+          <div className="mt-5 flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3">
+            <p className="text-sm font-bold text-clover-deep">
+              {saving >= 0 ? "✅ 계획적으로 관리하고 있어요!" : "⚠️ 이번 달은 지출이 수입보다 많아요"}
+            </p>
+            <a href="#expense-detail" className="inline-flex items-center gap-1 text-xs font-bold text-clover-sub hover:text-clover-deep">
+              상세 분석 보기 <ChevronRight size={14} />
+            </a>
+          </div>
+        </GlassCard>
 
-          <MoneySection title="지출 관리" action="+ 지출 추가" onAction={() => setEditor({ type: "expense", item: { date: today, category: "식비" } })}>
-            {expenses.slice(0, 6).map((item) => (
-              <button key={item.id} onClick={() => setEditor({ type: "expense", item })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
-                <div className="flex justify-between gap-3">
-                  <span className="truncate">{item.title}</span>
-                  <span className="text-rose-700">{money(item.amount)}</span>
-                </div>
-                <p className="mt-1 text-xs text-clover-sub">{item.date} · {item.category || "기타"}</p>
-              </button>
-            ))}
-          </MoneySection>
-        </div>
+        <GlassCard className="p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-base font-black">결제 예정</h2>
+            <span className="rounded-full bg-white/70 px-3 py-1 text-[11px] font-bold text-clover-sub">예정 금액</span>
+          </div>
+          <div className="grid gap-1.5">
+            {upcomingExpenses.slice(0, 6).map((item) => {
+              const Icon = billIcon(item.title);
+              return (
+                <button key={item.id} onClick={() => setEditor({ type: "expense", item })} className="flex items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition hover:bg-white/50">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/70 text-clover-deep"><Icon size={16} /></span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-bold">{item.title}</span>
+                  <span className="shrink-0 text-sm font-black text-rose-500">{money(item.amount)}</span>
+                  <span className="w-24 shrink-0 text-right text-[11px] font-bold text-clover-sub">{item.date}</span>
+                </button>
+              );
+            })}
+            {!upcomingExpenses.length && <p className="rounded-2xl bg-white/45 p-3 text-sm text-clover-sub">이번 달 예정된 결제가 없어요.</p>}
+          </div>
+          {upcomingExpenses.length > 0 && (
+            <div className="mt-3 flex items-center justify-between border-t border-white/60 pt-3">
+              <span className="text-sm font-bold text-clover-sub">예정 결제 합계</span>
+              <span className="text-base font-black">{money(sum(upcomingExpenses))}</span>
+            </div>
+          )}
+        </GlassCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr_360px]">
+        <ListCard id="expense-detail" title="수입 내역" icon={Wallet} action="+ 수입 추가" onAction={() => setEditor({ type: "payment", item: { category: "유별난", status: "입금 예정", expectedDate: today } })}>
+          {incomeItems.slice(0, 5).map((item) => (
+            <button key={item.id} onClick={() => setEditor({ type: "payment", item })} className="w-full rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
+              <div className="flex justify-between gap-3">
+                <span className="truncate">{item.project || item.client || "외주 수입"}</span>
+                <span className="text-emerald-700">{money(item.amount)}</span>
+              </div>
+              <p className="mt-1 text-xs font-normal text-clover-sub">{item.client || "클라이언트"} · {item.status || "상태 미정"} · {item.expectedDate || item.paidDate}</p>
+            </button>
+          ))}
+          {!incomeItems.length && <EmptyRow text="이번 달 수입 내역이 없어요." />}
+          <MoreLink count={payments.length} label="전체 수입 내역 보기" />
+        </ListCard>
+
+        <ListCard title="지출 내역" icon={ArrowDownCircle} action="+ 지출 추가" onAction={() => setEditor({ type: "expense", item: { date: today, category: "식비" } })}>
+          {monthExpenses.slice(0, 5).map((item) => (
+            <button key={item.id} onClick={() => setEditor({ type: "expense", item })} className="w-full rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
+              <div className="flex justify-between gap-3">
+                <span className="truncate">{item.title}</span>
+                <span className="text-rose-600">{money(item.amount)}</span>
+              </div>
+              <p className="mt-1 text-xs font-normal text-clover-sub">{item.date} · {item.category || "기타"}</p>
+            </button>
+          ))}
+          {!monthExpenses.length && <EmptyRow text="이번 달 지출 내역이 없어요." />}
+          <MoreLink count={expenses.length} label="전체 지출 내역 보기" />
+        </ListCard>
 
         <div className="grid content-start gap-4">
-          <MoneySection title="구독 관리" action="+ 구독" onAction={() => setEditor({ type: "subscription", item: { active: true, billingDay: "1", status: "유지" } })}>
-            {subscriptions.slice(0, 6).map((item) => (
-              <button key={item.id} onClick={() => setEditor({ type: "subscription", item })} className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
-                <span>{item.title}</span>
-                <span className="text-clover-deep">{money(item.amount)} · {item.billingDay}일</span>
+          <ListCard title="구독 관리" action="관리하기" onAction={() => setEditor({ type: "subscription", item: { active: true, billingDay: "1", status: "유지" } })}>
+            {subscriptions.slice(0, 4).map((item) => (
+              <button key={item.id} onClick={() => setEditor({ type: "subscription", item })} className="flex w-full items-center justify-between rounded-2xl bg-white/55 px-4 py-2.5 text-left text-sm font-bold">
+                <span className="truncate">{item.title}</span>
+                <span className="shrink-0 text-clover-deep">{money(item.amount)} · {item.billingDay}일</span>
               </button>
             ))}
-          </MoneySection>
+            {!subscriptions.length && <EmptyRow text="등록된 구독이 없어요." />}
+          </ListCard>
 
-          <MoneySection title="결제 예정" action="+ 예정" onAction={() => setEditor({ type: "expense", item: { date: today, category: "반복 지출", title: "월세" } })}>
-            {["월세", "핸드폰비", "보험료", "관리비", "세금", "집안일"].map((name) => (
-              <button key={name} onClick={() => setEditor({ type: "expense", item: { date: today, category: ["월세", "핸드폰비", "보험료", "관리비"].includes(name) ? "반복 지출" : "특별 지출", title: name } })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
-                {name}
-              </button>
-            ))}
-          </MoneySection>
-
-          <MoneySection title="구매 필요 항목" action="+ 구매 항목" onAction={() => setEditor({ type: "shopping", item: { importance: 3, category: "생필품" } })}>
-            {shoppingItems.filter((item) => !item.completed).slice(0, 6).map((item) => (
-              <button key={item.id} onClick={() => setEditor({ type: "shopping", item })} className="rounded-2xl bg-white/55 px-4 py-3 text-left text-sm font-bold">
+          <ListCard title="구매 필요 항목" action="관리하기" onAction={() => setEditor({ type: "shopping", item: { importance: 3, category: "생필품" } })}>
+            {shoppingItems.filter((item) => !item.completed).slice(0, 4).map((item) => (
+              <button key={item.id} onClick={() => setEditor({ type: "shopping", item })} className="w-full rounded-2xl bg-white/55 px-4 py-2.5 text-left text-sm font-bold">
                 <div className="flex justify-between gap-3">
-                  <span>{item.title}</span>
-                  <span className="text-amber-600">★ {item.importance || 3}</span>
+                  <span className="truncate">{item.title}</span>
+                  <span className="shrink-0 text-amber-600">★ {item.importance || 3}</span>
                 </div>
-                <p className="mt-1 text-xs text-clover-sub">{item.category || "기타"} · {money(item.amount)}</p>
+                <p className="mt-0.5 text-xs font-normal text-clover-sub">{item.category || "기타"}{item.amount ? ` · ${money(item.amount)}` : ""}</p>
               </button>
             ))}
-          </MoneySection>
+            {!shoppingItems.filter((item) => !item.completed).length && <EmptyRow text="구매할 항목이 없어요." />}
+          </ListCard>
         </div>
       </div>
 
@@ -125,28 +215,68 @@ export default function MoneyPage() {
   );
 }
 
-function MoneyStat({ label, value, tone, note }) {
-  const colors = {
-    emerald: "bg-emerald-50 border-emerald-100 text-emerald-700",
-    rose: "bg-rose-50 border-rose-100 text-rose-700",
-    sky: "bg-sky-50 border-sky-100 text-sky-700",
-    amber: "bg-amber-50 border-amber-100 text-amber-700"
-  };
+function StatCard({ icon: Icon, label, value, note, tone }) {
+  const tones = {
+    emerald: { bg: "bg-emerald-50/80 border-emerald-100", ring: "bg-emerald-100 text-emerald-700", value: "text-emerald-700" },
+    rose: { bg: "bg-rose-50/80 border-rose-100", ring: "bg-rose-100 text-rose-600", value: "text-rose-600" },
+    sky: { bg: "bg-sky-50/80 border-sky-100", ring: "bg-sky-100 text-sky-700", value: "text-sky-700" },
+    amber: { bg: "bg-amber-50/80 border-amber-100", ring: "bg-amber-100 text-amber-700", value: "text-amber-700" }
+  }[tone];
   return (
-    <section className={`glass rounded-[22px] border p-4 ${colors[tone]}`}>
-      <p className="text-xs font-black uppercase tracking-[0.14em]">{label}</p>
-      <p className="mt-2 text-2xl font-black">{money(value)}</p>
-      {note && <p className="mt-1 text-[11px] font-bold opacity-75">{note}</p>}
+    <section className={`glass rounded-[24px] border p-4 ${tones.bg}`}>
+      <div className="flex items-center gap-3">
+        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${tones.ring}`}>
+          <Icon size={20} />
+        </span>
+        <p className="text-sm font-black text-clover-text">{label}</p>
+      </div>
+      <p className={`mt-3 text-2xl font-black ${tones.value}`}>{money(value)}</p>
+      {note && <p className="mt-1 text-[11px] font-bold text-clover-sub">{note}</p>}
     </section>
   );
 }
 
-function MoneySection({ title, action, onAction, children }) {
+function FlowBar({ label, value, max, color }) {
+  const width = Math.max(Math.min((Math.abs(value) / max) * 100, 100), value !== 0 ? 3 : 0);
   return (
-    <GlassCard>
-      <SectionTitle action={<button className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep" onClick={onAction}>{action}</button>}>{title}</SectionTitle>
+    <div>
+      <div className="mb-1.5 flex items-center justify-between text-sm">
+        <span className="font-bold text-clover-sub">{label}</span>
+        <span className="font-black" style={{ color }}>{money(value)}</span>
+      </div>
+      <div className="h-2 rounded-full bg-white/60">
+        <div className="h-2 rounded-full transition-all" style={{ width: `${width}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
+
+function ListCard({ id, title, action, onAction, children }) {
+  return (
+    <GlassCard id={id} className="p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-black">{title}</h2>
+        {action && (
+          <button className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-bold text-clover-deep hover:bg-white" onClick={onAction}>
+            {action}
+          </button>
+        )}
+      </div>
       <div className="grid gap-2">{children}</div>
     </GlassCard>
+  );
+}
+
+function EmptyRow({ text }) {
+  return <p className="rounded-2xl bg-white/45 p-3 text-sm text-clover-sub">{text}</p>;
+}
+
+function MoreLink({ count, label }) {
+  if (!count) return null;
+  return (
+    <button className="mt-1 flex w-full items-center justify-center gap-1 rounded-2xl bg-white/40 py-2 text-xs font-bold text-clover-sub hover:bg-white/60">
+      {label} <ChevronRight size={13} />
+    </button>
   );
 }
 

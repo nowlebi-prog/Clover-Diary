@@ -27,11 +27,11 @@ import {
 } from "../../lib/utils/habitSelectors";
 
 const tabs = [
-  ["today", "Today"],
-  ["week", "This week"],
-  ["month", "This month"],
-  ["year", "Year"],
-  ["paused", "Paused"]
+  ["today", "오늘"],
+  ["week", "이번 주"],
+  ["month", "이번 달"],
+  ["year", "연간"],
+  ["paused", "쉬는 중"]
 ];
 
 const newHabit = { name: "", icon: "CL", color: "#8DDFA8", frequencyType: "daily", targetCount: 7, customDays: [], memo: "", status: "active" };
@@ -81,15 +81,15 @@ export default function HabitsPage() {
 
   return (
     <>
-      <PageHeader eyebrow={today} title="Habit Tracker">
-        <AppButton onClick={() => setEditing(newHabit)}>+ Add habit</AppButton>
+      <PageHeader eyebrow={today} title="습관 트래커">
+        <AppButton onClick={() => setEditing(newHabit)}>+ 습관 추가</AppButton>
       </PageHeader>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
-        <GlassCard className="p-4"><p className="text-xs text-clover-sub">Today complete</p><p className="mt-1 text-2xl font-bold">{todayStatus.doneCount}/{todayStatus.total}</p></GlassCard>
-        <GlassCard className="p-4"><p className="text-xs text-clover-sub">This week</p><p className="mt-1 text-2xl font-bold">{weekRate}%</p></GlassCard>
-        <GlassCard className="p-4"><p className="text-xs text-clover-sub">This month</p><p className="mt-1 text-2xl font-bold">{monthRate}%</p></GlassCard>
-        <GlassCard className="p-4"><p className="text-xs text-clover-sub">Best streak</p><p className="mt-1 text-2xl font-bold">{maxStreak} days</p></GlassCard>
+        <GlassCard className="p-4"><p className="text-xs text-clover-sub">오늘 완료</p><p className="mt-1 text-2xl font-bold">{todayStatus.doneCount}/{todayStatus.total}</p></GlassCard>
+        <GlassCard className="p-4"><p className="text-xs text-clover-sub">이번 주</p><p className="mt-1 text-2xl font-bold">{weekRate}%</p></GlassCard>
+        <GlassCard className="p-4"><p className="text-xs text-clover-sub">이번 달</p><p className="mt-1 text-2xl font-bold">{monthRate}%</p></GlassCard>
+        <GlassCard className="p-4"><p className="text-xs text-clover-sub">최고 연속</p><p className="mt-1 text-2xl font-bold">{maxStreak}일 연속</p></GlassCard>
       </div>
 
       <GlassCard className="mb-4 p-3">
@@ -104,7 +104,7 @@ export default function HabitsPage() {
 
       {tab === "today" && (
         <GlassCard>
-          <SectionTitle action={<StatusBadge tone={todayStatus.rate === 100 ? "done" : "warning"}>{todayStatus.rate}%</StatusBadge>}>Check habits</SectionTitle>
+          <SectionTitle action={<StatusBadge tone={todayStatus.rate === 100 ? "done" : "warning"}>{todayStatus.rate}%</StatusBadge>}>오늘 습관 체크</SectionTitle>
           <div className="mb-4 h-3 overflow-hidden rounded-full bg-white/60">
             <div className="h-full rounded-full bg-clover-deep transition-all" style={{ width: `${todayStatus.rate}%` }} />
           </div>
@@ -119,29 +119,29 @@ export default function HabitsPage() {
                 onEdit={() => setEditing(habit)}
               />
             ))}
-            <button onClick={() => setEditing(newHabit)} className="min-w-[210px] rounded-[24px] border border-dashed border-clover-primary bg-white/35 p-4 text-left font-bold text-clover-deep">+ New habit</button>
+            <button onClick={() => setEditing(newHabit)} className="min-w-[210px] rounded-[24px] border border-dashed border-clover-primary bg-white/35 p-4 text-left font-bold text-clover-deep">+ 새 습관</button>
           </div>
         </GlassCard>
       )}
 
-      {tab === "week" && <GlassCard><SectionTitle>This week</SectionTitle><HabitWeekView habits={activeHabits} logs={data.habitLogs} days={weekDays} today={now} /></GlassCard>}
-      {tab === "month" && <GlassCard><SectionTitle>This month</SectionTitle><HabitMonthView habits={activeHabits} logs={data.habitLogs} days={monthDays} today={now} /></GlassCard>}
-      {tab === "year" && <GlassCard><SectionTitle>Year heatmap</SectionTitle><HabitYearHeatmap habits={activeHabits} logs={data.habitLogs} today={now} /></GlassCard>}
+      {tab === "week" && <GlassCard><SectionTitle>이번 주</SectionTitle><HabitWeekView habits={activeHabits} logs={data.habitLogs} days={weekDays} today={now} /></GlassCard>}
+      {tab === "month" && <GlassCard><SectionTitle>이번 달</SectionTitle><HabitMonthView habits={activeHabits} logs={data.habitLogs} days={monthDays} today={now} /></GlassCard>}
+      {tab === "year" && <GlassCard><SectionTitle>연간 히트맵</SectionTitle><HabitYearHeatmap habits={activeHabits} logs={data.habitLogs} today={now} /></GlassCard>}
       {tab === "paused" && (
         <GlassCard>
-          <SectionTitle>Paused or archived</SectionTitle>
+          <SectionTitle>잠시 쉬는 습관</SectionTitle>
           <div className="grid gap-3 md:grid-cols-2">
             {pausedHabits.map((habit) => (
               <article key={habit.id} className="rounded-[22px] bg-white/55 p-4">
                 <div className="flex items-center justify-between">
                   <p className="font-bold">{habit.name}</p>
-                  <StatusBadge tone="cream">Paused</StatusBadge>
+                  <StatusBadge tone="cream">쉬는 중</StatusBadge>
                 </div>
-                <p className="mt-2 text-sm text-clover-sub">{habit.memo || "Ready when you are."}</p>
-                <AppButton className="mt-4" variant="soft" onClick={() => updateHabit(habit.id, { status: "active" })}>Activate</AppButton>
+                <p className="mt-2 text-sm text-clover-sub">{habit.memo || "준비되면 다시 시작해요."}</p>
+                <AppButton className="mt-4" variant="soft" onClick={() => updateHabit(habit.id, { status: "active" })}>다시 시작</AppButton>
               </article>
             ))}
-            {!pausedHabits.length && <p className="text-sm text-clover-sub">No paused habits right now.</p>}
+            {!pausedHabits.length && <p className="text-sm text-clover-sub">쉬고 있는 습관이 없어요.</p>}
           </div>
         </GlassCard>
       )}

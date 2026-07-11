@@ -42,7 +42,7 @@ export default function SettingsPage({ onLogout }) {
           </div>
         </GlassCard>
         <GlassCard>
-          <SectionTitle>App info</SectionTitle>
+          <SectionTitle>앱 정보</SectionTitle>
           <div className="grid gap-3 text-sm text-clover-sub">
             <p><b className="text-clover-text">Clover Desk</b> is a browser-installable PWA.</p>
             <p>Data is stored in this browser through localStorage.</p>
@@ -55,17 +55,17 @@ export default function SettingsPage({ onLogout }) {
           </div>
         </GlassCard>
         <GlassCard>
-          <SectionTitle>Supabase migration note</SectionTitle>
+          <SectionTitle>데이터 저장 안내</SectionTitle>
           <p className="text-sm leading-relaxed text-clover-sub">
             UI code talks to adapters under `src/lib/storage` and `src/lib/auth`. For habits, keep the same method names
             and map `habits` plus `habit_logs` to Supabase tables with `user_id`, `habit_id`, `date`, and `completed`.
           </p>
         </GlassCard>
         <GlassCard>
-          <SectionTitle>Manage</SectionTitle>
+          <SectionTitle>관리</SectionTitle>
           <div className="flex flex-wrap gap-2">
-            <AppButton variant="soft" onClick={reset}>Reset data</AppButton>
-            <AppButton variant="danger" onClick={signOut}>Log out</AppButton>
+            <AppButton variant="soft" onClick={reset}>데이터 초기화</AppButton>
+            <AppButton variant="danger" onClick={signOut}>로그아웃</AppButton>
           </div>
         </GlassCard>
       </div>

@@ -24,7 +24,7 @@ export default function TodayRoutineCard({ routines, onToggle }) {
       <div className="grid gap-2 sm:grid-cols-2">
         {items.map((item) => (
           <article key={item.id} className="flex items-center justify-between gap-2 rounded-2xl bg-white/65 px-3 py-2.5">
-            <CustomCheckbox checked={item.completed} label={item.name} onChange={(checked) => onToggle(item.id, checked)} />
+            <CustomCheckbox checked={item.completed} label={item.name} onChange={() => onToggle(item.id)} />
             {item.streak > 0 && (
               <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-black text-amber-700">
                 🔥{item.streak}

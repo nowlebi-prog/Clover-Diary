@@ -126,7 +126,7 @@ export default function DailyPage() {
 
   return (
     <>
-      <PageHeader eyebrow={today} title="Daily">
+      <PageHeader eyebrow={today} title="데일리 기록">
         <AppButton onClick={active ? stopTracker : undefined} variant={active ? "danger" : "soft"}>{active ? "타이머 종료" : "오늘 기록"}</AppButton>
       </PageHeader>
 
@@ -135,7 +135,7 @@ export default function DailyPage() {
           <DurationTimeline items={durationItems} date={today} onSaveEntries={saveTimelineDrafts} />
 
           <GlassCard className="bg-[#F2F0FF]/70">
-            <SectionTitle>Goals</SectionTitle>
+            <SectionTitle>일주일 목표</SectionTitle>
             <div className="mb-4 flex gap-2">
               <AppInput value={goalTitle} onChange={(event) => setGoalTitle(event.target.value)} placeholder="목표 항목 추가" />
               <AppButton onClick={addGoal}>추가</AppButton>
@@ -148,7 +148,7 @@ export default function DailyPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-bold">{goal.title}</h3>
-                        <p className="text-sm text-clover-sub">{goal.completedDays || 0} / {goal.targetDays || 7} days</p>
+                        <p className="text-sm text-clover-sub">{goal.completedDays || 0} / {goal.targetDays || 7}일</p>
                       </div>
                       <b className="text-emerald-500">{rate}%</b>
                     </div>

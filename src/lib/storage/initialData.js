@@ -27,10 +27,10 @@ export const initialData = {
     { id: "delay-3", title: "입금 관련 확인", count: 2, reason: "복잡함", createdAt: today, updatedAt: today }
   ],
   habits: [
-    { id: "habit-1", name: "AI study 1 hour", icon: "AI", color: "#F6A6A6", frequencyType: "daily", targetCount: 7, customDays: [], memo: "Keep the learning loop warm.", status: "active", createdAt: today, updatedAt: today },
-    { id: "habit-2", name: "Eat probiotic yogurt", icon: "YG", color: "#A9C9FF", frequencyType: "daily", targetCount: 7, customDays: [], memo: "Small health check.", status: "active", createdAt: today, updatedAt: today },
-    { id: "habit-3", name: "Personal movement", icon: "MV", color: "#F4B6D2", frequencyType: "weekdays", targetCount: 5, customDays: [], memo: "Stretch, walk, or short workout.", status: "active", createdAt: today, updatedAt: today },
-    { id: "habit-4", name: "Vitamins", icon: "VT", color: "#F6C68D", frequencyType: "daily", targetCount: 7, customDays: [], memo: "Vitamin C and B.", status: "active", createdAt: today, updatedAt: today }
+    { id: "habit-1", name: "AI 공부 1시간", icon: "AI", color: "#F6A6A6", frequencyType: "daily", targetCount: 7, customDays: [], memo: "매일 조금씩 공부 감각 유지하기.", status: "active", createdAt: today, updatedAt: today },
+    { id: "habit-2", name: "유산균 요거트 먹기", icon: "YG", color: "#A9C9FF", frequencyType: "daily", targetCount: 7, customDays: [], memo: "작은 건강 챙기기.", status: "active", createdAt: today, updatedAt: today },
+    { id: "habit-3", name: "가볍게 몸 움직이기", icon: "MV", color: "#F4B6D2", frequencyType: "weekdays", targetCount: 5, customDays: [], memo: "스트레칭, 산책, 짧은 운동 뭐든.", status: "active", createdAt: today, updatedAt: today },
+    { id: "habit-4", name: "비타민 챙겨먹기", icon: "VT", color: "#F6C68D", frequencyType: "daily", targetCount: 7, customDays: [], memo: "비타민 C와 B.", status: "active", createdAt: today, updatedAt: today }
   ],
   habitLogs: [
     { id: "habit-log-1", habitId: "habit-1", date: today, completed: true, createdAt: today, updatedAt: today },

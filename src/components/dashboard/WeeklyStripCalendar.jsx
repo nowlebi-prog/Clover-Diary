@@ -48,9 +48,12 @@ export default function WeeklyStripCalendar({ data, today }) {
       </div>
 
       <div className="mt-4 rounded-[22px] bg-white/48 p-4">
-        <div className="mb-3 flex items-center gap-2">
-          {selected === today && <StatusBadge tone="blue">Today</StatusBadge>}
-          <b>{new Date(`${selected}T00:00:00`).getDate()}일 세부 항목</b>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {selected === today && <StatusBadge tone="blue">Today</StatusBadge>}
+            <b>{new Date(`${selected}T00:00:00`).getDate()}일 세부 항목</b>
+          </div>
+          <SectionLink to="/calendar" label="이 날 자세히" />
         </div>
         <div className="grid gap-2">
           {selectedItems.slice(0, 5).map((item, index) => (

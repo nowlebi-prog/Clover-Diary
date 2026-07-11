@@ -18,8 +18,8 @@ export default function DayDetailPanel({ date, items, onAddEvent, onEditEvent, o
               <StatusBadge tone={item.type === "todo" || item.type === "payment" ? "danger" : item.type === "content" ? "blue" : "mint"}>{item.label || item.badge || item.type}</StatusBadge>
               {item.type === "event" && (
                 <div className="flex gap-1">
-                  <button className="text-xs font-bold text-clover-sub" onClick={() => onEditEvent(item)}>Edit</button>
-                  <button className="text-xs font-bold text-red-500" onClick={() => onDeleteEvent(item.id)}>Delete</button>
+                  <button className="text-xs font-bold text-clover-sub" onClick={() => onEditEvent(item)}>수정</button>
+                  <button className="text-xs font-bold text-red-500" onClick={() => onDeleteEvent(item.id)}>삭제</button>
                 </div>
               )}
             </div>

@@ -18,6 +18,24 @@ const normalize = (data) => {
     ...todo
   }));
   next.workCategories = next.workCategories.length ? next.workCategories : clone(initialData.workCategories);
+  // 초기 영어 샘플 습관 자동 한글화 (기존 localStorage 데이터 마이그레이션)
+  const habitNameMap = {
+    "AI study 1 hour": "AI 공부 1시간",
+    "Eat probiotic yogurt": "유산균 요거트 먹기",
+    "Personal movement": "가볍게 몸 움직이기",
+    "Vitamins": "비타민 챙겨먹기"
+  };
+  const habitMemoMap = {
+    "Keep the learning loop warm.": "매일 조금씩 공부 감각 유지하기.",
+    "Small health check.": "작은 건강 챙기기.",
+    "Stretch, walk, or short workout.": "스트레칭, 산책, 짧은 운동 뭐든.",
+    "Vitamin C and B.": "비타민 C와 B."
+  };
+  next.habits = next.habits.map((habit) => ({
+    ...habit,
+    name: habitNameMap[habit.name] || habit.name,
+    memo: habitMemoMap[habit.memo] || habit.memo
+  }));
   next.habits = next.habits.map((habit) => ({
     id: habit.id,
     name: habit.name || habit.title || "New habit",
