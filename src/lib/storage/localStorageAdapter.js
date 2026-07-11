@@ -51,12 +51,11 @@ export function getAllData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.appData);
     if (!raw) {
-      saveAllData(initialData);
-      return clone(initialData);
+      return normalize(initialData);
     }
     return normalize(JSON.parse(raw));
   } catch {
-    return clone(initialData);
+    return normalize(initialData);
   }
 }
 
@@ -127,6 +126,7 @@ export async function syncAllDataFromCloud() {
     const meta = getSyncMeta();
     const remoteUpdatedAt = remote.updated_at || "";
     if (remoteUpdatedAt && remoteUpdatedAt !== meta.lastRemoteUpdatedAt) {
+      window.clearTimeout(pushTimer);
       syncingFromCloud = true;
       saveAllData(remote.data, { skipRemote: true });
       syncingFromCloud = false;
