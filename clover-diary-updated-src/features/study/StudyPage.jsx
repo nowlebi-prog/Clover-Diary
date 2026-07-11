@@ -6,6 +6,7 @@ import AppTextarea from "../../components/common/AppTextarea";
 import GlassCard from "../../components/common/GlassCard";
 import Modal from "../../components/common/Modal";
 import PageHeader from "../../components/layout/PageHeader";
+import HubNav from "../../components/common/HubNav";
 import SectionTitle from "../../components/common/SectionTitle";
 import StatusBadge from "../../components/common/StatusBadge";
 import {
@@ -13,23 +14,30 @@ import {
   createExperimentFromCapture,
   createNoteFromCapture,
   createStudyCardFromCapture,
+  createStudyExperiment,
   createStudyNote,
+  createStudyWorkflow,
   createWorkflowFromNote,
   createWorkflowFromExperiment,
   deleteCapture,
+  deleteStudyExperiment,
   deleteStudyNote,
+  deleteStudyWorkflow,
+  experimentOutcomes,
+  experimentStatuses,
   getStudyData,
   markCaptureReason,
   noteFunctionTags,
   noteStatuses,
   noteTopics,
   saveNoteAsTemplate,
-  saveStudyPatch,
   studyReasons,
   studyStatuses,
   studyTypes,
   updateCapture,
-  updateStudyNote
+  updateStudyExperiment,
+  updateStudyNote,
+  updateStudyWorkflow
 } from "../../lib/study/studyRepository";
 import { toDateKey } from "../../lib/utils/date";
 
@@ -206,6 +214,32 @@ function CaptureDetailModal({ capture, data, onClose, onRefresh }) {
   );
 }
 
+function FlowExplainer() {
+  const steps = [
+    { key: "capture", label: "캡처", desc: "스크린샷·링크·메모로 재료를 모아요", color: "bg-slate-100 text-slate-700" },
+    { key: "branch", label: "노트 / 학습카드 / 실험", desc: "캡처 하나를 세 갈래 중 필요한 걸로 확장해요", color: "bg-violet-100 text-violet-700" },
+    { key: "workflow", label: "워크플로우", desc: "노트나 실험이 검증되면 반복 절차로 굳혀요", color: "bg-emerald-100 text-emerald-700" }
+  ];
+  return (
+    <GlassCard className="bg-[#FAFAFF]/80">
+      <SectionTitle>Study 흐름 한눈에 보기</SectionTitle>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {steps.map((step, index) => (
+          <div key={step.key} className="relative">
+            <div className={`rounded-2xl p-3 ${step.color}`}>
+              <p className="text-sm font-black">{index + 1}. {step.label}</p>
+              <p className="mt-1 text-xs font-bold opacity-80">{step.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-xs font-bold text-clover-sub">
+        ⓘ 학습카드는 복습용 요약 카드로 끝나는 별도 갈래예요. 워크플로우로 이어지는 건 <b>노트</b>(노트 상세의 "워크플로우로 만들기")나 <b>완료된 실험</b>(실험 카드의 "워크플로우로 전환")뿐이에요.
+      </p>
+    </GlassCard>
+  );
+}
+
 function HomeTab({ data, setTab, onOpen, onUpload }) {
   const today = toDateKey(new Date());
   const due = data.captures
@@ -223,29 +257,43 @@ function HomeTab({ data, setTab, onOpen, onUpload }) {
     .slice(0, 3);
   const unclassified = data.captures.filter((item) => item.status === "unclassified");
 
+  const stats = [
+    { key: "inbox", label: "미분류 캡처", value: unclassified.length, tab: "inbox" },
+    { key: "archive", label: "공부 대기", value: data.captures.filter((item) => item.status === "waiting").length, tab: "archive" },
+    { key: "notes", label: "정리한 노트", value: data.notes.length, tab: "notes" },
+    { key: "experiments", label: "진행 중 실험", value: data.experiments.filter((item) => item.status !== "completed").length, tab: "experiments" },
+    { key: "workflows", label: "워크플로우", value: data.workflows.length, tab: "workflows" }
+  ];
+
   return (
     <div className="grid gap-4">
+      <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-5">
+        {stats.map((stat) => (
+          <button key={stat.key} className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass transition hover:bg-white" onClick={() => setTab(stat.tab)}>
+            <p className="text-xs font-bold text-clover-sub">{stat.label}</p>
+            <b className="mt-1 block text-2xl font-black text-clover-deep">{stat.value}</b>
+          </button>
+        ))}
+      </div>
+
+      <FlowExplainer />
+
       <GlassCard>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <SectionTitle>오늘 다시 볼 캡처</SectionTitle>
             <p className="text-sm font-bold text-clover-sub">잊기 전에 한 번만 훑어볼 자료를 골라왔어요.</p>
           </div>
-          <AppButton onClick={() => setTab("inbox")}>시작하기</AppButton>
+          <div className="flex gap-2">
+            <AppButton variant="soft" onClick={onUpload}>+ 캡처 추가</AppButton>
+            <AppButton onClick={() => setTab("inbox")}>시작하기</AppButton>
+          </div>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {due.map((capture) => <CaptureCard key={capture.id} capture={capture} categories={data.categories} onOpen={onOpen} onAction={() => setTab("inbox")} />)}
           {!due.length && <p className="rounded-[24px] bg-white/50 p-6 text-sm font-bold text-clover-sub md:col-span-3">오늘 확인할 자료를 모두 해냈어요.</p>}
         </div>
       </GlassCard>
-
-      <div className="grid gap-3 md:grid-cols-5">
-        <button className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass" onClick={() => setTab("inbox")}><p className="text-sm font-black">미분류 캡처</p><b className="text-2xl text-clover-deep">{unclassified.length}</b></button>
-        <button className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass" onClick={() => setTab("archive")}><p className="text-sm font-black">공부 대기</p><b className="text-2xl text-clover-deep">{data.captures.filter((item) => item.status === "waiting").length}</b></button>
-        <button className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass" onClick={() => setTab("notes")}><p className="text-sm font-black">정리한 노트</p><b className="text-2xl text-clover-deep">{data.notes.length}</b></button>
-        <button className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass" onClick={() => setTab("experiments")}><p className="text-sm font-black">실험 대기</p><b className="text-2xl text-clover-deep">{data.experiments.filter((item) => item.status !== "completed").length}</b></button>
-        <button className="rounded-[24px] bg-white/70 p-4 text-left shadow-glass" onClick={() => setTab("workflows")}><p className="text-sm font-black">워크플로우</p><b className="text-2xl text-clover-deep">{data.workflows.length}</b></button>
-      </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
         <GlassCard>
@@ -265,15 +313,14 @@ function HomeTab({ data, setTab, onOpen, onUpload }) {
         </GlassCard>
         <GlassCard>
           <SectionTitle>이번 주 기록</SectionTitle>
-          <div className="grid gap-2 text-sm font-bold text-clover-sub">
-            <p>확인한 캡처 {data.captures.filter((item) => item.isReviewed).length}개</p>
-            <p>정리한 노트 {data.notes.length}개</p>
-            <p>학습카드 {data.cards.length}개</p>
-            <p>프로젝트 연결 {data.captures.filter((item) => item.projectIds?.length).length}개</p>
-            <p>완료한 실험 {data.experiments.filter((item) => item.status === "completed").length}개</p>
-            <p>만든 워크플로우 {data.workflows.length}개</p>
+          <div className="grid grid-cols-2 gap-2 text-sm font-bold text-clover-sub">
+            <p className="rounded-xl bg-white/50 px-3 py-2">확인한 캡처 <b className="text-clover-deep">{data.captures.filter((item) => item.isReviewed).length}</b></p>
+            <p className="rounded-xl bg-white/50 px-3 py-2">정리한 노트 <b className="text-clover-deep">{data.notes.length}</b></p>
+            <p className="rounded-xl bg-white/50 px-3 py-2">학습카드 <b className="text-clover-deep">{data.cards.length}</b></p>
+            <p className="rounded-xl bg-white/50 px-3 py-2">프로젝트 연결 <b className="text-clover-deep">{data.captures.filter((item) => item.projectIds?.length).length}</b></p>
+            <p className="rounded-xl bg-white/50 px-3 py-2">완료한 실험 <b className="text-clover-deep">{data.experiments.filter((item) => item.status === "completed").length}</b></p>
+            <p className="rounded-xl bg-white/50 px-3 py-2">워크플로우 <b className="text-clover-deep">{data.workflows.length}</b></p>
           </div>
-          <AppButton className="mt-4 w-full" onClick={onUpload}>+ 캡처 추가</AppButton>
         </GlassCard>
       </div>
     </div>
@@ -329,7 +376,7 @@ function InboxTab({ data, onOpen, onRefresh }) {
   );
 }
 
-function ArchiveTab({ data, onOpen, onAction }) {
+function ArchiveTab({ data, onOpen, onAction, onUpload }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [categoryId, setCategoryId] = useState("all");
@@ -343,7 +390,10 @@ function ArchiveTab({ data, onOpen, onAction }) {
   return (
     <div className="grid gap-4">
       <GlassCard>
-        <SectionTitle>아카이브</SectionTitle>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionTitle>아카이브</SectionTitle>
+          <AppButton onClick={onUpload}>+ 캡처 추가</AppButton>
+        </div>
         <div className="grid gap-3 md:grid-cols-[1fr_180px_180px]">
           <AppInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder="제목, 요약, 태그 검색" />
           <AppSelect value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">전체 상태</option>{studyStatuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</AppSelect>
@@ -559,53 +609,226 @@ function NotesTab({ data, onRefresh }) {
   );
 }
 
-function ExperimentsTab({ data, onRefresh }) {
-  const complete = (experiment) => {
-    const next = getStudyData();
-    saveStudyPatch({
-      studyExperiments: next.experiments.map((item) => item.id === experiment.id ? { ...item, status: "completed", conclusion: item.conclusion || "다음에 워크플로우로 정리해볼 만해요.", updatedAt: toDateKey(new Date()) } : item)
-    });
-    onRefresh();
+const emptyExperiment = () => ({
+  title: "",
+  purpose: "",
+  question: "",
+  toolNames: ["ChatGPT", "Claude"],
+  commonPrompt: "",
+  evaluationCriteria: ["정확도", "소요 시간"],
+  conclusion: "",
+  status: "planned",
+  outcome: ""
+});
+
+function ExperimentEditorModal({ experiment, onClose, onSaved }) {
+  const [draft, setDraft] = useState(experiment || emptyExperiment());
+  const set = (name, value) => setDraft((current) => ({ ...current, [name]: value }));
+
+  const save = () => {
+    const payload = { ...draft, title: draft.title.trim() || "새 실험" };
+    if (payload.id) updateStudyExperiment(payload.id, payload);
+    else createStudyExperiment(payload);
+    onSaved();
   };
 
   return (
+    <Modal title={draft.id ? "실험 수정" : "실험 추가"} onClose={onClose}>
+      <div className="grid gap-4">
+        <label className="grid gap-1 text-sm font-bold">실험 제목<AppInput value={draft.title || ""} onChange={(event) => set("title", event.target.value)} placeholder="예: 카드뉴스 문구 AI 비교" autoFocus /></label>
+        <label className="grid gap-1 text-sm font-bold">목적<AppInput value={draft.purpose || ""} onChange={(event) => set("purpose", event.target.value)} placeholder="이 실험으로 알고 싶은 것" /></label>
+        <label className="grid gap-1 text-sm font-bold">질문<AppInput value={draft.question || ""} onChange={(event) => set("question", event.target.value)} placeholder="어떤 방식이 더 나을까?" /></label>
+        <label className="grid gap-1 text-sm font-bold">비교할 도구 (쉼표로 구분)<AppInput value={(draft.toolNames || []).join(", ")} onChange={(event) => set("toolNames", event.target.value.split(",").map((item) => item.trim()).filter(Boolean))} placeholder="ChatGPT, Claude, Gemini" /></label>
+        <label className="grid gap-1 text-sm font-bold">공통 프롬프트<AppTextarea value={draft.commonPrompt || ""} onChange={(event) => set("commonPrompt", event.target.value)} placeholder="모든 도구에 똑같이 넣을 프롬프트" /></label>
+        <label className="grid gap-1 text-sm font-bold">평가 기준 (쉼표로 구분)<AppInput value={(draft.evaluationCriteria || []).join(", ")} onChange={(event) => set("evaluationCriteria", event.target.value.split(",").map((item) => item.trim()).filter(Boolean))} placeholder="정확도, 소요 시간, 수정 용이성" /></label>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="grid gap-1 text-sm font-bold">진행 상태<AppSelect value={draft.status || "planned"} onChange={(event) => set("status", event.target.value)}>{experimentStatuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</AppSelect></label>
+          {draft.status === "completed" && (
+            <label className="grid gap-1 text-sm font-bold">결과<AppSelect value={draft.outcome || ""} onChange={(event) => set("outcome", event.target.value)}><option value="">선택</option>{experimentOutcomes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</AppSelect></label>
+          )}
+        </div>
+        <label className="grid gap-1 text-sm font-bold">결론 / 배운 것<AppTextarea value={draft.conclusion || ""} onChange={(event) => set("conclusion", event.target.value)} placeholder="어떤 방식이 왜 더 나았는지" /></label>
+        <div className="flex flex-wrap justify-between gap-2">
+          {draft.id && <button className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-600" onClick={() => { deleteStudyExperiment(draft.id); onSaved(); }}>삭제</button>}
+          <AppButton onClick={save}>저장</AppButton>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+const outcomeToneMap = { success: "done", fail: "danger", hold: "warning" };
+const outcomeLabelMap = Object.fromEntries(experimentOutcomes);
+const experimentStatusLabelMap = Object.fromEntries(experimentStatuses);
+
+function ExperimentsTab({ data, onRefresh }) {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [editing, setEditing] = useState(null);
+  const [outcomePromptId, setOutcomePromptId] = useState(null);
+
+  const advance = (experiment) => {
+    if (experiment.status === "planned") {
+      updateStudyExperiment(experiment.id, { status: "in_progress" });
+      onRefresh();
+    } else if (experiment.status === "in_progress") {
+      setOutcomePromptId(experiment.id);
+    }
+  };
+
+  const finishWithOutcome = (experiment, outcome) => {
+    updateStudyExperiment(experiment.id, { status: "completed", outcome });
+    setOutcomePromptId(null);
+    onRefresh();
+  };
+
+  const groups = [
+    ["all", "전체", data.experiments.length],
+    ...experimentStatuses.map(([value, label]) => [value, label, data.experiments.filter((item) => item.status === value).length])
+  ];
+
+  const filtered = statusFilter === "all" ? data.experiments : data.experiments.filter((item) => item.status === statusFilter);
+
+  return (
     <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
-      <GlassCard>
-        <SectionTitle>실험</SectionTitle>
+      <div className="grid gap-4">
+        <GlassCard>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <SectionTitle>실험</SectionTitle>
+              <p className="text-sm font-bold text-clover-sub">같은 일을 여러 방법으로 시도해보고 결과를 비교해요.</p>
+            </div>
+            <AppButton onClick={() => setEditing(emptyExperiment())}>+ 실험 추가</AppButton>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {groups.map(([value, label, count]) => (
+              <button
+                key={value}
+                onClick={() => setStatusFilter(value)}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold ${statusFilter === value ? "bg-clover-deep text-white" : "bg-white/70 text-clover-sub"}`}
+              >
+                {label} {count}
+              </button>
+            ))}
+          </div>
+        </GlassCard>
+
         <div className="grid gap-3">
-          {data.experiments.map((experiment) => (
+          {filtered.map((experiment) => (
             <article key={experiment.id} className="rounded-[24px] bg-white/55 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <h3 className="font-black">{experiment.title}</h3>
                   <p className="mt-1 text-sm font-bold text-clover-sub">{experiment.question || experiment.purpose}</p>
                 </div>
-                <StatusBadge tone={experiment.status === "completed" ? "done" : "blue"}>{experiment.status}</StatusBadge>
+                <div className="flex shrink-0 flex-wrap gap-1.5">
+                  <StatusBadge tone={experiment.status === "completed" ? "done" : experiment.status === "in_progress" ? "warning" : "blue"}>{experimentStatusLabelMap[experiment.status] || experiment.status}</StatusBadge>
+                  {experiment.status === "completed" && experiment.outcome && <StatusBadge tone={outcomeToneMap[experiment.outcome]}>{outcomeLabelMap[experiment.outcome]}</StatusBadge>}
+                </div>
               </div>
               <p className="mt-3 text-xs font-black text-clover-sub">도구: {(experiment.toolNames || []).join(", ")}</p>
+              {experiment.conclusion && <p className="mt-2 text-sm font-bold text-clover-text">{experiment.conclusion}</p>}
+
+              {outcomePromptId === experiment.id && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-amber-50 p-3">
+                  <span className="text-xs font-black text-amber-700">결과가 어땠나요?</span>
+                  {experimentOutcomes.map(([value, label]) => (
+                    <button key={value} onClick={() => finishWithOutcome(experiment, value)} className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-clover-deep">{label}</button>
+                  ))}
+                </div>
+              )}
+
               <div className="mt-3 flex flex-wrap gap-2">
-                <AppButton variant="soft" onClick={() => complete(experiment)}>완료 처리</AppButton>
-                <AppButton onClick={() => { createWorkflowFromExperiment(experiment); onRefresh(); }}>워크플로우로 전환</AppButton>
+                <AppButton variant="ghost" onClick={() => setEditing(experiment)}>수정</AppButton>
+                {experiment.status !== "completed" && (
+                  <AppButton variant="soft" onClick={() => advance(experiment)}>
+                    {experiment.status === "planned" ? "실험 시작" : "완료 처리"}
+                  </AppButton>
+                )}
+                {experiment.status === "completed" && <AppButton onClick={() => { createWorkflowFromExperiment(experiment); onRefresh(); }}>워크플로우로 전환</AppButton>}
               </div>
             </article>
           ))}
-          {!data.experiments.length && <p className="rounded-2xl bg-white/45 p-5 text-sm font-bold text-clover-sub">AI에게 같은 일을 시켜보고 비교할 실험을 만들어보세요.</p>}
+          {!filtered.length && <p className="rounded-2xl bg-white/45 p-5 text-sm font-bold text-clover-sub">이 상태의 실험이 아직 없어요.</p>}
         </div>
-      </GlassCard>
+      </div>
       <CardsList data={data} />
+
+      {editing && <ExperimentEditorModal experiment={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onRefresh(); }} />}
     </div>
   );
 }
 
-function WorkflowsTab({ data }) {
+const emptyWorkflow = () => ({ title: "", description: "", category: "개인 학습", steps: [{ title: "" }] });
+
+function WorkflowEditorModal({ workflow, onClose, onSaved }) {
+  const [draft, setDraft] = useState(
+    workflow || emptyWorkflow()
+  );
+  const set = (name, value) => setDraft((current) => ({ ...current, [name]: value }));
+
+  const setStep = (index, patch) => {
+    const steps = [...(draft.steps || [])];
+    steps[index] = { ...steps[index], ...patch };
+    set("steps", steps);
+  };
+  const addStep = () => set("steps", [...(draft.steps || []), { title: "" }]);
+  const removeStep = (index) => set("steps", (draft.steps || []).filter((_, i) => i !== index));
+
+  const save = () => {
+    const payload = { ...draft, title: draft.title.trim() || "새 워크플로우", steps: (draft.steps || []).filter((step) => (step.title || "").trim()) };
+    if (payload.id) updateStudyWorkflow(payload.id, payload);
+    else createStudyWorkflow(payload);
+    onSaved();
+  };
+
+  return (
+    <Modal title={draft.id ? "워크플로우 수정" : "워크플로우 추가"} onClose={onClose}>
+      <div className="grid gap-4">
+        <label className="grid gap-1 text-sm font-bold">이름<AppInput value={draft.title || ""} onChange={(event) => set("title", event.target.value)} placeholder="예: 인스타 카드뉴스 만들기" autoFocus /></label>
+        <label className="grid gap-1 text-sm font-bold">설명<AppTextarea value={draft.description || ""} onChange={(event) => set("description", event.target.value)} placeholder="이 절차가 어떤 상황에 쓸모 있는지" /></label>
+        <label className="grid gap-1 text-sm font-bold">분류<AppInput value={draft.category || ""} onChange={(event) => set("category", event.target.value)} placeholder="예: 콘텐츠 제작" /></label>
+        <div className="grid gap-2">
+          <p className="text-sm font-bold">단계</p>
+          {(draft.steps || []).map((step, index) => (
+            <div key={index} className="grid gap-2 rounded-2xl bg-white/55 p-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-clover-sub">{index + 1}.</span>
+                <AppInput value={step.title || ""} onChange={(event) => setStep(index, { title: event.target.value })} placeholder="단계 제목" />
+                <button className="shrink-0 text-xs font-black text-clover-danger" onClick={() => removeStep(index)}>삭제</button>
+              </div>
+              <AppInput value={step.description || ""} onChange={(event) => setStep(index, { description: event.target.value })} placeholder="설명 (선택)" />
+            </div>
+          ))}
+          <AppButton variant="soft" onClick={addStep}>+ 단계 추가</AppButton>
+        </div>
+        <div className="flex flex-wrap justify-between gap-2">
+          {draft.id && <button className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-600" onClick={() => { deleteStudyWorkflow(draft.id); onSaved(); }}>삭제</button>}
+          <AppButton onClick={save}>저장</AppButton>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function WorkflowsTab({ data, onRefresh }) {
+  const [editing, setEditing] = useState(null);
   return (
     <div className="grid gap-4">
       <GlassCard>
-        <SectionTitle>워크플로우</SectionTitle>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <SectionTitle>워크플로우</SectionTitle>
+            <p className="text-sm font-bold text-clover-sub">검증된 방법을 나만의 업무 절차로 만들어요.</p>
+          </div>
+          <AppButton onClick={() => setEditing(emptyWorkflow())}>+ 워크플로우 추가</AppButton>
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
           {data.workflows.map((workflow) => (
             <article key={workflow.id} className="rounded-[24px] bg-white/55 p-4">
-              <h3 className="font-black">{workflow.title}</h3>
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-black">{workflow.title}</h3>
+                <button className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-black text-clover-deep" onClick={() => setEditing(workflow)}>수정</button>
+              </div>
               <p className="mt-1 text-sm font-bold text-clover-sub">{workflow.description}</p>
               <div className="mt-4 grid gap-2">
                 {(workflow.steps || []).sort((a, b) => a.order - b.order).map((step) => (
@@ -620,6 +843,7 @@ function WorkflowsTab({ data }) {
           {!data.workflows.length && <p className="rounded-2xl bg-white/45 p-5 text-sm font-bold text-clover-sub md:col-span-2">실험을 통해 검증된 방법을 나만의 업무 절차로 만들어보세요.</p>}
         </div>
       </GlassCard>
+      {editing && <WorkflowEditorModal workflow={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onRefresh(); }} />}
     </div>
   );
 }
@@ -655,15 +879,18 @@ export default function StudyPage() {
     if (tab === "home") return <HomeTab data={data} setTab={setTab} onOpen={setDetail} onUpload={() => setUploadOpen(true)} />;
     if (tab === "inbox") return <InboxTab data={data} onOpen={setDetail} onRefresh={refresh} />;
     if (tab === "notes") return <NotesTab data={data} onRefresh={refresh} />;
-    if (tab === "archive") return <ArchiveTab data={data} onOpen={setDetail} onAction={quickAction} />;
+    if (tab === "archive") return <ArchiveTab data={data} onOpen={setDetail} onAction={quickAction} onUpload={() => setUploadOpen(true)} />;
     if (tab === "experiments") return <ExperimentsTab data={data} onRefresh={refresh} />;
-    return <WorkflowsTab data={data} />;
+    return <WorkflowsTab data={data} onRefresh={refresh} />;
   }, [tab, data]);
 
   return (
     <>
       <PageHeader eyebrow="Study" title="AI Study">
-        <AppButton onClick={() => setUploadOpen(true)}>+ 캡처 추가</AppButton>
+        <div className="flex flex-wrap items-center gap-2">
+          <HubNav links={[["/", "Home"], ["/life", "Life"], ["/work", "Work"]]} />
+          <AppButton onClick={() => setUploadOpen(true)}>+ 캡처 추가</AppButton>
+        </div>
       </PageHeader>
 
       <p className="mb-4 max-w-2xl text-sm font-bold text-clover-sub">저장한 자료를 다시 보고, 실험하고, 내 일에 쓰는 방식으로 바꾸는 공간이에요.</p>

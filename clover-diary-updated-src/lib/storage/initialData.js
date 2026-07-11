@@ -7,8 +7,11 @@ export const collections = [
   "reflections", "quotes", "ideas", "links", "inboxMemos", "contentPlans",
   "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
   "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
-  "moodEntries", "monthlyArchives", "studyCaptures", "studyCategories", "studyNotes", "studyCards", "studyExperiments", "studyWorkflows"
+  "moodEntries", "monthlyArchives", "studyCaptures", "studyCategories", "studyNotes", "studyCards", "studyExperiments", "studyWorkflows",
+  "workSessions", "savings"
 ];
+
+export const DEFAULT_WORK_CATEGORIES = ["업무", "회의", "기획", "잡무"];
 
 export const initialData = {
   todos: [
@@ -175,6 +178,10 @@ initialData.studyWorkflows = [
     updatedAt: today
   }
 ];
+
+initialData.taskCategories = [...DEFAULT_WORK_CATEGORIES];
+initialData.workLogNotes = {};
+initialData.activeWorkTimer = null;
 
 collections.forEach((key) => {
   if (!initialData[key]) initialData[key] = [];

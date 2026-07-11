@@ -30,7 +30,7 @@ const timeLabel = (todo) => {
   return start;
 };
 
-export default function TaskSection({ title, items, today, onToggle, onToggleSubTask, onEdit, onDelay }) {
+export default function TaskSection({ title, items, today, onToggle, onToggleSubTask, onEdit, onDelay, onStartTimer }) {
   return (
     <section className="glass rounded-[28px] p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -72,6 +72,7 @@ export default function TaskSection({ title, items, today, onToggle, onToggleSub
                   <div className="mt-3 flex flex-wrap gap-2">
                     <AppButton variant="ghost" onClick={() => onEdit(todo)}>수정</AppButton>
                     {!todo.completed && <AppButton variant="ghost" onClick={() => onDelay(todo)}>미루기</AppButton>}
+                    {!todo.completed && onStartTimer && <AppButton variant="soft" onClick={() => onStartTimer(todo)}>⏱ 타이머</AppButton>}
                   </div>
                 </div>
               </div>

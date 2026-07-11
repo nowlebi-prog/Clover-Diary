@@ -60,6 +60,18 @@ export const noteFunctionTags = [
 
 export const noteStatuses = ["캡처", "정리중", "써먹음", "보관"];
 
+export const experimentStatuses = [
+  ["planned", "실험 예정"],
+  ["in_progress", "실험 중"],
+  ["completed", "실험 완료"]
+];
+
+export const experimentOutcomes = [
+  ["success", "성공"],
+  ["fail", "실패"],
+  ["hold", "보류"]
+];
+
 const today = () => toDateKey(new Date());
 const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const splitWords = (text = "") =>
@@ -310,6 +322,46 @@ export function createStudyCardFromCapture(capture) {
   return card;
 }
 
+export function createStudyExperiment(payload = {}) {
+  const current = getStudyData();
+  const now = today();
+  const experiment = {
+    id: makeId("study-experiment"),
+    title: payload.title || "새 실험",
+    purpose: payload.purpose || "",
+    question: payload.question || "",
+    toolNames: payload.toolNames?.length ? payload.toolNames : ["ChatGPT", "Claude"],
+    commonPrompt: payload.commonPrompt || "",
+    evaluationCriteria: payload.evaluationCriteria?.length ? payload.evaluationCriteria : ["정확도", "소요 시간"],
+    results: payload.results || [],
+    conclusion: payload.conclusion || "",
+    nextExperiment: payload.nextExperiment || "",
+    status: payload.status || "planned",
+    outcome: payload.outcome || "",
+    captureIds: payload.captureIds || [],
+    studyCardIds: payload.studyCardIds || [],
+    projectIds: payload.projectIds || [],
+    createdAt: now,
+    updatedAt: now
+  };
+  saveStudyPatch({ studyExperiments: [experiment, ...current.experiments] });
+  return experiment;
+}
+
+export function updateStudyExperiment(id, updates) {
+  const current = getStudyData();
+  saveStudyPatch({
+    studyExperiments: current.experiments.map((item) =>
+      item.id === id ? { ...item, ...updates, updatedAt: today() } : item
+    )
+  });
+}
+
+export function deleteStudyExperiment(id) {
+  const current = getStudyData();
+  saveStudyPatch({ studyExperiments: current.experiments.filter((item) => item.id !== id) });
+}
+
 export function createExperimentFromCapture(capture) {
   const current = getStudyData();
   const now = today();
@@ -360,4 +412,47 @@ export function createWorkflowFromExperiment(experiment) {
   };
   saveStudyPatch({ studyWorkflows: [workflow, ...current.workflows] });
   return workflow;
+}
+
+export function createStudyWorkflow(payload = {}) {
+  const current = getStudyData();
+  const now = today();
+  const workflow = {
+    id: makeId("study-workflow"),
+    title: payload.title || "새 워크플로우",
+    description: payload.description || "",
+    category: payload.category || "개인 학습",
+    projectIds: payload.projectIds || [],
+    steps: (payload.steps?.length ? payload.steps : [{ title: "첫 단계" }]).map((step, index) => ({
+      id: makeId("step"),
+      order: index + 1,
+      title: step.title || `${index + 1}단계`,
+      description: step.description || ""
+    })),
+    estimatedTime: payload.estimatedTime || 30,
+    previousEstimatedTime: payload.previousEstimatedTime || 0,
+    resultExample: payload.resultExample || "",
+    captureIds: payload.captureIds || [],
+    experimentIds: payload.experimentIds || [],
+    noteIds: payload.noteIds || [],
+    isPublic: false,
+    createdAt: now,
+    updatedAt: now
+  };
+  saveStudyPatch({ studyWorkflows: [workflow, ...current.workflows] });
+  return workflow;
+}
+
+export function updateStudyWorkflow(id, updates) {
+  const current = getStudyData();
+  saveStudyPatch({
+    studyWorkflows: current.workflows.map((item) =>
+      item.id === id ? { ...item, ...updates, updatedAt: today() } : item
+    )
+  });
+}
+
+export function deleteStudyWorkflow(id) {
+  const current = getStudyData();
+  saveStudyPatch({ studyWorkflows: current.workflows.filter((item) => item.id !== id) });
 }

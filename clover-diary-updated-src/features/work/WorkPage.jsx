@@ -5,6 +5,7 @@ import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import DurationTimeline from "../../components/dashboard/DurationTimeline";
 import PageHeader from "../../components/layout/PageHeader";
+import HubNav from "../../components/common/HubNav";
 import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
 import { getIncompleteTodos, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
 import { toDateKey } from "../../lib/utils/date";
@@ -94,7 +95,10 @@ export default function WorkPage() {
   return (
     <>
       <PageHeader eyebrow="WORK" title="업무 실행실">
-        <AppButton onClick={() => window.dispatchEvent(new CustomEvent("clover-open-quick-add", { detail: "todo" }))}>+ 할 일 추가</AppButton>
+        <div className="flex flex-wrap items-center gap-2">
+          <HubNav links={[["/tasks", "Tasks"], ["/daily", "Daily"], ["/campaigns", "Campaigns"], ["/content", "Content"], ["/files", "Files"]]} />
+          <AppButton onClick={() => window.dispatchEvent(new CustomEvent("clover-open-quick-add", { detail: "todo" }))}>+ 할 일 추가</AppButton>
+        </div>
       </PageHeader>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_380px]">

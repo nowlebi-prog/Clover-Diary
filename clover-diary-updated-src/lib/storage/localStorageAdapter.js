@@ -1,4 +1,4 @@
-import { initialData, collections } from "./initialData";
+import { initialData, collections, DEFAULT_WORK_CATEGORIES } from "./initialData";
 import { STORAGE_KEYS } from "./storageKeys";
 import { isCloudSyncEnabled, pullRemoteSnapshot, pushRemoteSnapshot } from "./supabaseSnapshotAdapter";
 
@@ -199,7 +199,8 @@ const names = {
   timeSessions: "TimeSession", recurringEvents: "RecurringEvent", beautyItems: "BeautyItem",
   digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry", monthlyArchives: "MonthlyArchive",
   studyCaptures: "StudyCapture", studyCategories: "StudyCategory", studyNotes: "StudyNote", studyCards: "StudyCard",
-  studyExperiments: "StudyExperiment", studyWorkflows: "StudyWorkflow"
+  studyExperiments: "StudyExperiment", studyWorkflows: "StudyWorkflow",
+  workSessions: "WorkSession"
 };
 
 Object.entries(names).forEach(([collection, name]) => {
@@ -260,5 +261,43 @@ export const {
   getStudyNotes, createStudyNote, updateStudyNote, deleteStudyNote,
   getStudyCards, createStudyCard, updateStudyCard, deleteStudyCard,
   getStudyExperiments, createStudyExperiment, updateStudyExperiment, deleteStudyExperiment,
-  getStudyWorkflows, createStudyWorkflow, updateStudyWorkflow, deleteStudyWorkflow
+  getStudyWorkflows, createStudyWorkflow, updateStudyWorkflow, deleteStudyWorkflow,
+  getWorkSessions, createWorkSession, updateWorkSession, deleteWorkSession
 } = api;
+
+// ── Work timer / worklog helpers ──
+// These live alongside the generic collection CRUD above but store
+// non-array state (current running timer, category list, per-day notes),
+// so they get small dedicated helpers instead of the generic list() pattern.
+
+export function getTaskCategories() {
+  const data = getAllData();
+  return Array.isArray(data.taskCategories) && data.taskCategories.length ? data.taskCategories : [...DEFAULT_WORK_CATEGORIES];
+}
+
+export function saveTaskCategories(categories) {
+  const data = getAllData();
+  data.taskCategories = categories;
+  saveAllData(data, { silent: true });
+}
+
+export function getActiveWorkTimer() {
+  return getAllData().activeWorkTimer || null;
+}
+
+export function setActiveWorkTimer(timerState, options = {}) {
+  const data = getAllData();
+  data.activeWorkTimer = timerState;
+  saveAllData(data, { silent: !!options.silent });
+}
+
+export function getWorkLogNote(date) {
+  const notes = getAllData().workLogNotes || {};
+  return notes[date] || { nextTodo: "" };
+}
+
+export function saveWorkLogNote(date, patch) {
+  const data = getAllData();
+  data.workLogNotes = { ...(data.workLogNotes || {}), [date]: { ...(data.workLogNotes?.[date] || { nextTodo: "" }), ...patch } };
+  saveAllData(data, { silent: true });
+}

@@ -8,6 +8,8 @@ import SectionTitle from "../../components/common/SectionTitle";
 import PageHeader from "../../components/layout/PageHeader";
 import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
+import WorkTimer from "./WorkTimer";
+import WorkLogPanel from "./WorkLogPanel";
 
 const today = toDateKey(new Date());
 const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -18,7 +20,6 @@ export default function DailyPage() {
   const [prompt, setPrompt] = useState("");
   const [gratitude, setGratitude] = useState(["", "", ""]);
   const [answers, setAnswers] = useState({});
-  const [active, setActive] = useState(null);
   const load = () => setData(getAllData());
 
   useEffect(() => {
@@ -27,10 +28,6 @@ export default function DailyPage() {
   }, []);
 
   const todayGratitude = useMemo(() => (data.gratitudeEntries || []).find((item) => item.date === today), [data.gratitudeEntries]);
-  const trackables = [
-    ...(data.todos || []).filter((item) => !item.completed).map((item) => ({ id: item.id, type: "todo", title: item.title })),
-    ...(data.events || []).filter((item) => item.date === today).map((item) => ({ id: item.id, type: "event", title: item.title }))
-  ];
   const durationItems = [
     ...(data.timelineEntries || []).filter((item) => item.date === today).map((item) => ({ ...item, title: item.title || "기록" })),
     ...(data.events || []).filter((item) => item.date === today).map((item) => ({ ...item, title: item.title || "일정" })),
@@ -95,19 +92,6 @@ export default function DailyPage() {
     setAnswers((current) => ({ ...current, [questionId]: "" }));
   };
 
-  const startTracker = (target) => setActive({ ...target, startedAt: Date.now() });
-  const stopTracker = () => {
-    if (!active) return;
-    const endedAt = Date.now();
-    commit((next) => {
-      next.timeSessions = [
-        { id: makeId("time"), date: today, targetId: active.id, targetType: active.type, title: active.title, startedAt: active.startedAt, endedAt, minutes: Math.max(1, Math.round((endedAt - active.startedAt) / 60000)), createdAt: today, updatedAt: today },
-        ...(next.timeSessions || [])
-      ];
-    });
-    setActive(null);
-  };
-
   const saveTimelineDrafts = (entries) => {
     commit((next) => {
       const savedAt = toDateKey(new Date());
@@ -126,9 +110,7 @@ export default function DailyPage() {
 
   return (
     <>
-      <PageHeader eyebrow={today} title="Daily">
-        <AppButton onClick={active ? stopTracker : undefined} variant={active ? "danger" : "soft"}>{active ? "타이머 종료" : "오늘 기록"}</AppButton>
-      </PageHeader>
+      <PageHeader eyebrow={today} title="Daily" />
 
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
         <div className="grid gap-4">
@@ -197,33 +179,8 @@ export default function DailyPage() {
         </div>
 
         <div className="grid content-start gap-4">
-          <GlassCard className="xl:sticky xl:top-5">
-            <SectionTitle>타임트래커</SectionTitle>
-            {active ? (
-              <div className="rounded-[22px] bg-emerald-50 p-4">
-                <p className="font-bold">{active.title}</p>
-                <p className="mt-1 text-sm text-clover-sub">진행 중</p>
-                <AppButton className="mt-3 w-full" variant="danger" onClick={stopTracker}>종료하고 저장</AppButton>
-              </div>
-            ) : (
-              <div className="grid gap-2">
-                {trackables.slice(0, 8).map((item) => (
-                  <button key={`${item.type}-${item.id}`} onClick={() => startTracker(item)} className="rounded-2xl bg-white/55 p-3 text-left text-sm font-bold">{item.title}</button>
-                ))}
-                {!trackables.length && <p className="text-sm text-clover-sub">오늘 선택할 할 일이나 일정이 없어요.</p>}
-              </div>
-            )}
-          </GlassCard>
-
-          <GlassCard>
-            <SectionTitle>오늘 사용 시간</SectionTitle>
-            <div className="grid gap-2">
-              {(data.timeSessions || []).filter((item) => item.date === today).slice(0, 8).map((item) => (
-                <p key={item.id} className="rounded-2xl bg-white/55 p-3 text-sm"><b>{item.title}</b> · {item.minutes}분</p>
-              ))}
-              {!data.timeSessions?.some((item) => item.date === today) && <p className="text-sm text-clover-sub">아직 기록된 시간이 없어요.</p>}
-            </div>
-          </GlassCard>
+          <WorkTimer />
+          <WorkLogPanel />
         </div>
       </div>
     </>

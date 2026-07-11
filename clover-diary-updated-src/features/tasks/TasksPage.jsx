@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
@@ -50,6 +51,7 @@ export default function TasksPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [view, setView] = useState("board");
+  const navigate = useNavigate();
   const today = toDateKey(new Date());
 
   const load = () => setData(getAllData());
@@ -172,6 +174,7 @@ export default function TasksPage() {
         onToggleSubTask={toggleSubTask}
         onEdit={(todo) => setEditing(normalizeTodo(todo))}
         onDelay={delay}
+        onStartTimer={(todo) => navigate(`/daily?startTimer=${todo.id}`)}
       />
 
       <Modal title={editing ? (editing.id ? "할 일 수정" : "할 일 추가") : ""} onClose={() => setEditing(null)}>

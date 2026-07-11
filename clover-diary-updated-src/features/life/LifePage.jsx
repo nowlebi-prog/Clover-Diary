@@ -5,9 +5,12 @@ import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
+import StarRating from "../../components/common/StarRating";
+import HubNav from "../../components/common/HubNav";
 import PageHeader from "../../components/layout/PageHeader";
 import LifeHabitTracker from "../../components/habits/LifeHabitTracker";
 import { addDays, getHabitCompletionRate, toDateKey } from "../../lib/utils/habitSelectors";
+import { shoppingCategories } from "../../lib/utils/shoppingConstants";
 import {
   createChore,
   createShoppingItem,
@@ -23,7 +26,7 @@ import {
 const choreIcons = ["🧺", "🗑️", "🍳", "🧽", "🧹", "⭐"];
 const weekDays = ["월", "화", "수", "목", "금", "토", "일"];
 const emptyChore = (today) => ({ title: "", icon: "🧺", cycle: "매주", nextDueDate: today, days: [], completed: false });
-const emptyShopping = () => ({ title: "", category: "생활용품", completed: false, memo: "" });
+const emptyShopping = () => ({ title: "", category: "생활용품", completed: false, memo: "", importance: 0 });
 
 const nextDueDate = (chore, today) => {
   if (chore.cycle === "매일") return addDays(today, 1);
@@ -90,10 +93,7 @@ function ShoppingQuickAdd({ items, draft, setDraft, onAdd, onToggle }) {
       <div className="grid gap-2 sm:grid-cols-[1fr_130px_auto]">
         <AppInput value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="예: 세탁세제" />
         <AppSelect value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>
-          <option value="생활용품">생활용품</option>
-          <option value="식재료">식재료</option>
-          <option value="업무용">업무용</option>
-          <option value="기타">기타</option>
+          {shoppingCategories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
         </AppSelect>
         <AppButton onClick={onAdd}>추가</AppButton>
       </div>
@@ -109,11 +109,18 @@ function ShoppingQuickAdd({ items, draft, setDraft, onAdd, onToggle }) {
   );
 }
 
-function ChoreSettings({ chores, shoppingItems, choreDraft, setChoreDraft, shoppingDraft, setShoppingDraft, today, onAddChore, onDeleteChore, onAddShopping, onToggleShopping, onDeleteShopping }) {
+function ChoreSettings({ chores, shoppingItems, choreDraft, setChoreDraft, shoppingDraft, setShoppingDraft, today, onAddChore, onDeleteChore, onAddShopping, onToggleShopping, onUpdateShopping, onDeleteShopping }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
       <GlassCard>
-        <SectionTitle action={<AppButton onClick={onAddChore}>집안일 추가</AppButton>}>집안일 설정</SectionTitle>
+        <SectionTitle action={
+          <div className="flex gap-2">
+            {choreDraft.id && <AppButton variant="ghost" onClick={() => setChoreDraft(emptyChore(today))}>취소</AppButton>}
+            <AppButton onClick={onAddChore}>{choreDraft.id ? "수정 저장" : "집안일 추가"}</AppButton>
+          </div>
+        }>
+          {choreDraft.id ? "집안일 수정 중" : "집안일 설정"}
+        </SectionTitle>
         <div className="grid gap-4 rounded-[26px] bg-white/45 p-4">
           <div>
             <p className="mb-2 text-sm font-black text-clover-text">종류</p>
@@ -181,25 +188,36 @@ function ChoreSettings({ chores, shoppingItems, choreDraft, setChoreDraft, shopp
       </GlassCard>
 
       <GlassCard>
-        <SectionTitle action={<AppButton onClick={onAddShopping}>추가</AppButton>}>구매 항목도 여기서</SectionTitle>
+        <SectionTitle action={
+          <div className="flex gap-2">
+            {shoppingDraft.id && <AppButton variant="ghost" onClick={() => setShoppingDraft(emptyShopping())}>취소</AppButton>}
+            <AppButton onClick={onAddShopping}>{shoppingDraft.id ? "수정 저장" : "추가"}</AppButton>
+          </div>
+        }>
+          {shoppingDraft.id ? "구매 항목 수정 중" : "구매 항목도 여기서"}
+        </SectionTitle>
         <div className="grid gap-2">
           <AppInput value={shoppingDraft.title} onChange={(event) => setShoppingDraft({ ...shoppingDraft, title: event.target.value })} placeholder="예: 쓰레기봉투" />
           <AppSelect value={shoppingDraft.category} onChange={(event) => setShoppingDraft({ ...shoppingDraft, category: event.target.value })}>
-            <option value="생활용품">생활용품</option>
-            <option value="식재료">식재료</option>
-            <option value="업무용">업무용</option>
-            <option value="기타">기타</option>
+            {shoppingCategories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
           </AppSelect>
+          <div className="flex items-center gap-2 rounded-2xl bg-white/55 px-3 py-2">
+            <span className="text-xs font-bold text-clover-sub">중요도</span>
+            <StarRating value={shoppingDraft.importance || 0} onChange={(value) => setShoppingDraft({ ...shoppingDraft, importance: value })} />
+          </div>
         </div>
         <div className="mt-4 grid gap-2">
           {shoppingItems.map((item) => (
-            <article key={item.id} className={`flex items-center gap-3 rounded-[20px] bg-white/55 p-3 ${item.completed ? "opacity-55" : ""}`}>
-              <input type="checkbox" checked={Boolean(item.completed)} onChange={() => onToggleShopping(item)} className="h-4 w-4 accent-clover-deep" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-bold">{item.title}</p>
-                <p className="text-xs font-bold text-clover-sub">{item.category}</p>
+            <article key={item.id} className={`grid gap-2 rounded-[20px] bg-white/55 p-3 ${item.completed ? "opacity-55" : ""}`}>
+              <div className="flex items-center gap-3">
+                <input type="checkbox" checked={Boolean(item.completed)} onChange={() => onToggleShopping(item)} className="h-4 w-4 accent-clover-deep" />
+                <button type="button" onClick={() => setShoppingDraft({ ...emptyShopping(), ...item })} className="min-w-0 flex-1 text-left">
+                  <p className="truncate font-bold">{item.title}</p>
+                  <p className="text-xs font-bold text-clover-sub">{item.category}</p>
+                </button>
+                <button type="button" onClick={() => onDeleteShopping(item.id)} className="shrink-0 rounded-full px-3 py-2 text-xs font-black text-clover-sub hover:bg-white/70">삭제</button>
               </div>
-              <button type="button" onClick={() => onDeleteShopping(item.id)} className="rounded-full px-3 py-2 text-xs font-black text-clover-sub hover:bg-white/70">삭제</button>
+              <StarRating value={item.importance || 0} onChange={(value) => onUpdateShopping(item.id, { importance: value })} size="text-sm" />
             </article>
           ))}
         </div>
@@ -248,8 +266,14 @@ export default function LifePage() {
   const addShopping = () => {
     const title = shoppingDraft.title.trim();
     if (!title) return;
-    createShoppingItem({ ...shoppingDraft, title, completed: false });
+    if (shoppingDraft.id) updateShoppingItem(shoppingDraft.id, { ...shoppingDraft, title });
+    else createShoppingItem({ ...shoppingDraft, title, completed: false });
     setShoppingDraft(emptyShopping());
+    load();
+  };
+
+  const updateShoppingField = (id, patch) => {
+    updateShoppingItem(id, patch);
     load();
   };
 
@@ -280,11 +304,7 @@ export default function LifePage() {
   return (
     <>
       <PageHeader eyebrow="LIFE" title="생활 허브">
-        <div className="flex flex-wrap gap-2">
-          <Link to="/habits"><AppButton variant="soft">Habits</AppButton></Link>
-          <Link to="/journal"><AppButton variant="soft">Journal</AppButton></Link>
-          <Link to="/mandalart"><AppButton variant="soft">Mandalart</AppButton></Link>
-        </div>
+        <HubNav links={[["/habits", "Habits"], ["/journal", "Journal"], ["/mandalart", "Mandalart"], ["/money", "Money"]]} />
       </PageHeader>
 
       <LifeTabs value={tab} onChange={setTab} />
@@ -337,6 +357,7 @@ export default function LifePage() {
             onDeleteChore={(id) => { deleteChore(id); load(); }}
             onAddShopping={addShopping}
             onToggleShopping={toggleShopping}
+            onUpdateShopping={updateShoppingField}
             onDeleteShopping={(id) => { deleteShoppingItem(id); load(); }}
           />
         )}
