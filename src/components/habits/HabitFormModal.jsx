@@ -12,35 +12,35 @@ export default function HabitFormModal({ habit, onClose, onSave, onDelete }) {
   if (!habit) return null;
   const set = (name, value) => setForm((current) => ({ ...current, [name]: value }));
   return (
-    <Modal title={form.id ? "습관 수정" : "습관 추가"} onClose={onClose}>
+    <Modal title={form.id ? "Edit habit" : "Add habit"} onClose={onClose}>
       <div className="grid gap-3">
-        <label className="grid gap-1 text-sm font-bold">습관 이름<AppInput value={form.name} onChange={(event) => set("name", event.target.value)} /></label>
+        <label className="grid gap-1 text-sm font-bold">Habit name<AppInput value={form.name} onChange={(event) => set("name", event.target.value)} /></label>
         <div className="grid grid-cols-2 gap-3">
-          <label className="grid gap-1 text-sm font-bold">아이콘 (약자)<AppInput value={form.icon} maxLength={3} onChange={(event) => set("icon", event.target.value.toUpperCase())} /></label>
-          <label className="grid gap-1 text-sm font-bold">색상<AppInput type="color" value={form.color} onChange={(event) => set("color", event.target.value)} /></label>
+          <label className="grid gap-1 text-sm font-bold">Icon<AppInput value={form.icon} maxLength={3} onChange={(event) => set("icon", event.target.value.toUpperCase())} /></label>
+          <label className="grid gap-1 text-sm font-bold">Color<AppInput type="color" value={form.color} onChange={(event) => set("color", event.target.value)} /></label>
         </div>
-        <label className="grid gap-1 text-sm font-bold">주기
+        <label className="grid gap-1 text-sm font-bold">Frequency
           <AppSelect value={form.frequencyType} onChange={(event) => set("frequencyType", event.target.value)}>
-            <option value="daily">매일</option>
-            <option value="weekdays">평일만</option>
-            <option value="weekends">주말만</option>
-            <option value="weekly_count">주 N회</option>
-            <option value="custom_days">요일 지정</option>
+            <option value="daily">Daily</option>
+            <option value="weekdays">Weekdays</option>
+            <option value="weekends">Weekends</option>
+            <option value="weekly_count">Weekly count</option>
+            <option value="custom_days">Custom days</option>
           </AppSelect>
         </label>
-        <label className="grid gap-1 text-sm font-bold">주간 목표 횟수<AppInput type="number" min="1" max="7" value={form.targetCount} onChange={(event) => set("targetCount", Number(event.target.value))} /></label>
-        <label className="grid gap-1 text-sm font-bold">상태
+        <label className="grid gap-1 text-sm font-bold">Weekly target<AppInput type="number" min="1" max="7" value={form.targetCount} onChange={(event) => set("targetCount", Number(event.target.value))} /></label>
+        <label className="grid gap-1 text-sm font-bold">Status
           <AppSelect value={form.status} onChange={(event) => set("status", event.target.value)}>
-            <option value="active">진행 중</option>
-            <option value="paused">잠시 쉬기</option>
-            <option value="archived">보관</option>
+            <option value="active">Active</option>
+            <option value="paused">Paused</option>
+            <option value="archived">Archived</option>
           </AppSelect>
         </label>
-        <label className="grid gap-1 text-sm font-bold">메모<AppTextarea value={form.memo} onChange={(event) => set("memo", event.target.value)} /></label>
+        <label className="grid gap-1 text-sm font-bold">Memo<AppTextarea value={form.memo} onChange={(event) => set("memo", event.target.value)} /></label>
         <div className="flex flex-wrap gap-2">
-          <AppButton onClick={() => onSave(form)}>저장</AppButton>
-          {form.id && <AppButton variant="soft" onClick={() => onSave({ ...form, status: form.status === "paused" ? "active" : "paused" })}>{form.status === "paused" ? "다시 시작" : "잠시 쉬기"}</AppButton>}
-          {form.id && <AppButton variant="danger" onClick={() => onDelete(form.id)}>삭제</AppButton>}
+          <AppButton onClick={() => onSave(form)}>Save</AppButton>
+          {form.id && <AppButton variant="soft" onClick={() => onSave({ ...form, status: form.status === "paused" ? "active" : "paused" })}>{form.status === "paused" ? "Activate" : "Pause"}</AppButton>}
+          {form.id && <AppButton variant="danger" onClick={() => onDelete(form.id)}>Delete</AppButton>}
         </div>
       </div>
     </Modal>

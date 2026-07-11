@@ -1,8 +1,29 @@
 import StatusBadge from "../common/StatusBadge";
 
+const formatTime = (value) => {
+  if (!value) return "";
+  const [hour = "", minute = "00"] = String(value).split(":");
+  if (!hour) return "";
+  return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
+};
+
 const itemHour = (item) => {
-  const match = String(item.time || "").match(/(\d{1,2}):/);
+  if (item.allDay) return 24;
+  const match = String(item.time || item.startTime || item.dueTime || "").match(/^(\d{1,2})/);
   return match ? Number(match[1]) : 24;
+};
+
+const timeLabel = (item) => {
+  if (item.allDay) return "하루종일";
+  const start = formatTime(item.time || item.startTime || item.dueTime);
+  const end = formatTime(item.endTime);
+  if (start && end) return `${start}-${end}`;
+  return start || "시간 미정";
+};
+
+const sortTime = (item) => {
+  if (item.allDay) return "99:99";
+  return formatTime(item.time || item.startTime || item.dueTime) || "99:99";
 };
 
 const labelOf = (item) => {
@@ -13,38 +34,30 @@ const labelOf = (item) => {
   return "Event";
 };
 
-// 3컬럼 그리드(시간|점|내용) — 시간 잘림/점-선 어긋남 원천 차단
 export default function TodayTimeline({ items = [] }) {
   const currentHour = new Date().getHours();
-  const sorted = [...items].sort((a, b) => String(a.time || "99:99").localeCompare(String(b.time || "99:99")));
+  const sorted = [...items].sort((a, b) => sortTime(a).localeCompare(sortTime(b)));
   const upcoming = sorted.filter((item) => itemHour(item) >= currentHour);
   const visible = upcoming.length ? upcoming : sorted;
 
   return (
-    <div className="relative grid gap-3">
-      <span className="pointer-events-none absolute bottom-2 left-[63px] top-2 w-px bg-clover-line" />
-      {visible.map((item, index) => {
-        const isNow = item.time && itemHour(item) === currentHour;
-        return (
-          <article key={`${item.type}-${item.id || index}`} className="grid grid-cols-[48px_16px_minmax(0,1fr)] items-start gap-x-2">
-            <div className="whitespace-nowrap pt-2.5 text-right text-xs font-black tabular-nums text-clover-sub">
-              {item.time || "종일"}
-            </div>
-            <div className="flex justify-center pt-3">
-              <span className={`h-3 w-3 rounded-full ring-4 ring-[#F8FAF7] ${isNow ? "bg-clover-coralDeep" : "bg-clover-deep"}`} />
-            </div>
-            <div className={`min-w-0 rounded-[18px] px-4 py-3 ${isNow ? "bg-white ring-2 ring-clover-primary/60" : "bg-white/55"}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <h3 className="break-words text-sm font-bold leading-snug">{item.displayTitle}</h3>
-                  {item.memo && <p className="mt-1 line-clamp-2 break-words text-xs text-clover-sub">{item.memo}</p>}
-                </div>
-                <StatusBadge tone={item.type === "payment" || item.type === "todo" ? "danger" : item.type === "content" ? "blue" : "mint"}>{labelOf(item)}</StatusBadge>
+    <div className="relative grid gap-3 pl-2">
+      <span className="absolute left-[67px] top-2 h-[calc(100%-16px)] w-px bg-clover-line" />
+      {visible.map((item, index) => (
+        <article key={`${item.type}-${item.id || index}`} className="grid grid-cols-[54px_1fr] gap-5">
+          <div className="pt-2 text-right text-xs font-black text-clover-sub">{timeLabel(item)}</div>
+          <div className="relative rounded-[18px] bg-white/55 px-4 py-3">
+            <span className="absolute -left-[27px] top-4 h-3 w-3 rounded-full bg-clover-deep ring-4 ring-[#F8FAF7]" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="truncate text-sm font-bold">{item.displayTitle}</h3>
+                {item.memo && <p className="mt-1 line-clamp-2 text-xs text-clover-sub">{item.memo}</p>}
               </div>
+              <StatusBadge tone={item.type === "payment" || item.type === "todo" ? "danger" : item.type === "content" ? "blue" : "mint"}>{labelOf(item)}</StatusBadge>
             </div>
-          </article>
-        );
-      })}
+          </div>
+        </article>
+      ))}
       {!visible.length && <p className="rounded-[18px] bg-white/45 p-4 text-sm text-clover-sub">지금 이후 일정은 아직 비어 있어요.</p>}
     </div>
   );

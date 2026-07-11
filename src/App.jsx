@@ -1,8 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AppShell from "./components/layout/AppShell";
-import { getSessionAsync, onAuthChange, usingCloud } from "./lib/auth/authAdapter";
-import { startCloudSync, stopCloudSync } from "./lib/storage/cloudSync";
+import { getSession } from "./lib/auth/localAuthAdapter";
 import { useEffect, useState } from "react";
+import { startCloudSync } from "./lib/storage/localStorageAdapter";
 import LoginPage from "./features/auth/LoginPage";
 import HomePage from "./features/home/HomePage";
 import MandalartPage from "./features/mandalart/MandalartPage";
@@ -26,29 +26,11 @@ function Protected({ session }) {
 }
 
 export default function App() {
-  const [session, setSession] = useState(null);
-  const [checking, setChecking] = useState(true);
+  const [session, setSession] = useState(getSession());
 
   useEffect(() => {
-    let unsub = () => {};
-    getSessionAsync().then((initial) => {
-      setSession(initial);
-      setChecking(false);
-      if (initial && usingCloud) startCloudSync(initial.user.id);
-    });
-    if (usingCloud) {
-      unsub = onAuthChange((next) => {
-        setSession(next);
-        if (next) startCloudSync(next.user.id);
-        else stopCloudSync();
-      });
-    }
-    return unsub;
+    startCloudSync();
   }, []);
-
-  if (checking) {
-    return <div className="grid min-h-screen place-items-center text-sm font-bold text-clover-sub">불러오는 중…</div>;
-  }
 
   return (
     <Routes>

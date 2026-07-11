@@ -76,7 +76,7 @@ export default function CalendarPage() {
       </div>
 
       <div className="hidden md:block">
-        <PageHeader eyebrow="CALENDAR" title="월간 캘린더">
+        <PageHeader eyebrow="Calendar" title="Monthly calendar">
           <AppButton onClick={() => setEditing(emptyEvent(selectedDate))}>+ Event</AppButton>
         </PageHeader>
         <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
@@ -113,7 +113,7 @@ export default function CalendarPage() {
               </AppSelect>
             </label>
             <label className="grid gap-1 text-sm font-bold">Memo<AppTextarea value={editing.memo || ""} onChange={(event) => setEditing({ ...editing, memo: event.target.value })} /></label>
-            <AppButton onClick={save}>저장</AppButton>
+            <AppButton onClick={save}>Save</AppButton>
           </div>
         )}
       </Modal>

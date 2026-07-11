@@ -1,42 +1,19 @@
 import { initialData, collections } from "./initialData";
 import { STORAGE_KEYS } from "./storageKeys";
+import { isCloudSyncEnabled, pullRemoteSnapshot, pushRemoteSnapshot } from "./supabaseSnapshotAdapter";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const today = () => new Date().toISOString().slice(0, 10);
 const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+let pushTimer = null;
+let syncTimer = null;
+let syncingFromCloud = false;
 
 const normalize = (data) => {
   const next = { ...clone(initialData), ...(data || {}) };
   collections.forEach((key) => {
     if (!Array.isArray(next[key])) next[key] = [];
   });
-  next.activeSession = data && Object.prototype.hasOwnProperty.call(data, "activeSession") ? data.activeSession : null;
-  next.weeklyGoalHours = Number(data?.weeklyGoalHours ?? initialData.weeklyGoalHours ?? 40);
-  next.hometaxSync = { ...clone(initialData.hometaxSync), ...(data?.hometaxSync || {}) };
-  next.todos = next.todos.map((todo, index) => ({
-    isPriority: false,
-    priorityOrder: index,
-    ...todo
-  }));
-  next.workCategories = next.workCategories.length ? next.workCategories : clone(initialData.workCategories);
-  // 초기 영어 샘플 습관 자동 한글화 (기존 localStorage 데이터 마이그레이션)
-  const habitNameMap = {
-    "AI study 1 hour": "AI 공부 1시간",
-    "Eat probiotic yogurt": "유산균 요거트 먹기",
-    "Personal movement": "가볍게 몸 움직이기",
-    "Vitamins": "비타민 챙겨먹기"
-  };
-  const habitMemoMap = {
-    "Keep the learning loop warm.": "매일 조금씩 공부 감각 유지하기.",
-    "Small health check.": "작은 건강 챙기기.",
-    "Stretch, walk, or short workout.": "스트레칭, 산책, 짧은 운동 뭐든.",
-    "Vitamin C and B.": "비타민 C와 B."
-  };
-  next.habits = next.habits.map((habit) => ({
-    ...habit,
-    name: habitNameMap[habit.name] || habit.name,
-    memo: habitMemoMap[habit.memo] || habit.memo
-  }));
   next.habits = next.habits.map((habit) => ({
     id: habit.id,
     name: habit.name || habit.title || "New habit",
@@ -77,13 +54,111 @@ export function getAllData() {
   }
 }
 
-export function saveAllData(data) {
-  localStorage.setItem(STORAGE_KEYS.appData, JSON.stringify(normalize(data)));
+function getSyncMeta() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.syncMeta) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function setSyncMeta(updates) {
+  localStorage.setItem(STORAGE_KEYS.syncMeta, JSON.stringify({ ...getSyncMeta(), ...updates }));
+}
+
+function dispatchDataChange() {
   window.dispatchEvent(new Event("clover-data-change"));
+}
+
+function scheduleCloudPush(data) {
+  if (!isCloudSyncEnabled() || syncingFromCloud) return;
+  window.clearTimeout(pushTimer);
+  const payload = clone(data);
+  pushTimer = window.setTimeout(async () => {
+    try {
+      const remote = await pushRemoteSnapshot(payload);
+      setSyncMeta({
+        lastLocalWriteAt: new Date().toISOString(),
+        lastRemoteUpdatedAt: remote?.updated_at || new Date().toISOString(),
+        lastSyncStatus: "connected",
+        lastSyncError: ""
+      });
+      dispatchDataChange();
+    } catch (error) {
+      setSyncMeta({
+        lastSyncStatus: "error",
+        lastSyncError: error?.message || "Supabase sync failed"
+      });
+    }
+  }, 500);
+}
+
+export function saveAllData(data, options = {}) {
+  const normalized = normalize(data);
+  localStorage.setItem(STORAGE_KEYS.appData, JSON.stringify(normalized));
+  if (!options.silent) dispatchDataChange();
+  if (!options.skipRemote) scheduleCloudPush(normalized);
 }
 
 export function resetAllData() {
   saveAllData(initialData);
+}
+
+export async function syncAllDataFromCloud() {
+  if (!isCloudSyncEnabled()) return { enabled: false };
+  try {
+    const remote = await pullRemoteSnapshot();
+    if (!remote?.data) {
+      const pushed = await pushRemoteSnapshot(getAllData());
+      setSyncMeta({
+        lastRemoteUpdatedAt: pushed?.updated_at || new Date().toISOString(),
+        lastSyncStatus: "connected",
+        lastSyncError: ""
+      });
+      return { enabled: true, changed: false };
+    }
+
+    const meta = getSyncMeta();
+    const remoteUpdatedAt = remote.updated_at || "";
+    if (remoteUpdatedAt && remoteUpdatedAt !== meta.lastRemoteUpdatedAt) {
+      syncingFromCloud = true;
+      saveAllData(remote.data, { skipRemote: true });
+      syncingFromCloud = false;
+      setSyncMeta({
+        lastRemoteUpdatedAt: remoteUpdatedAt,
+        lastSyncStatus: "connected",
+        lastSyncError: ""
+      });
+      return { enabled: true, changed: true };
+    }
+
+    setSyncMeta({
+      lastSyncStatus: "connected",
+      lastSyncError: ""
+    });
+    return { enabled: true, changed: false };
+  } catch (error) {
+    syncingFromCloud = false;
+    setSyncMeta({
+      lastSyncStatus: "error",
+      lastSyncError: error?.message || "Supabase sync failed"
+    });
+    return { enabled: true, changed: false, error };
+  }
+}
+
+export function startCloudSync() {
+  if (!isCloudSyncEnabled() || syncTimer) return;
+  syncAllDataFromCloud();
+  syncTimer = window.setInterval(syncAllDataFromCloud, 4000);
+  window.addEventListener("focus", syncAllDataFromCloud);
+}
+
+export function getCloudSyncStatus() {
+  return {
+    enabled: isCloudSyncEnabled(),
+    ...getSyncMeta()
+  };
 }
 
 function list(collection) {
@@ -114,7 +189,6 @@ function remove(collection, id) {
 }
 
 const api = { getAllData, saveAllData, resetAllData };
-
 const names = {
   todos: "Todo", top3: "Top3", delayedTasks: "DelayedTask", habits: "Habit",
   events: "Event", timelineEntries: "TimelineEntry", chores: "Chore",
@@ -123,8 +197,7 @@ const names = {
   importantFiles: "ImportantFile", goals: "Goal", gratitudeEntries: "GratitudeEntry",
   questionPrompts: "QuestionPrompt", questionAnswers: "QuestionAnswer",
   timeSessions: "TimeSession", recurringEvents: "RecurringEvent", beautyItems: "BeautyItem",
-  digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry",
-  workSessions: "WorkSession", workCategories: "WorkCategory", taxRecords: "TaxRecord"
+  digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry"
 };
 
 Object.entries(names).forEach(([collection, name]) => {
@@ -134,192 +207,6 @@ Object.entries(names).forEach(([collection, name]) => {
   api[`update${name}`] = (id, updates) => update(collection, id, updates);
   api[`delete${name}`] = (id) => remove(collection, id);
 });
-
-// ── Active timer session (진행 중인 업무) ──
-// activeSession: { id, taskId, title, category, startTime, pauseSec, pauses: [{start, end?}], memos: [{id, text, at, phase}] }
-api.getActiveSession = () => getAllData().activeSession;
-
-api.startActiveSession = ({ title, category, taskId = null }) => {
-  const data = getAllData();
-  data.activeSession = {
-    id: makeId("session"),
-    taskId,
-    title: title || "제목 없는 업무",
-    category: category || (data.workCategories[0]?.name ?? "개인작업"),
-    startTime: Date.now(),
-    pauseSec: 0,
-    pauses: [],
-    memos: []
-  };
-  saveAllData(data);
-  return data.activeSession;
-};
-
-api.pauseActiveSession = () => {
-  const data = getAllData();
-  if (!data.activeSession || data.activeSession.pauses.some((p) => !p.end)) return;
-  data.activeSession.pauses.push({ start: Date.now() });
-  saveAllData(data);
-};
-
-api.resumeActiveSession = () => {
-  const data = getAllData();
-  if (!data.activeSession) return;
-  const openPause = data.activeSession.pauses.find((p) => !p.end);
-  if (!openPause) return;
-  openPause.end = Date.now();
-  data.activeSession.pauseSec += Math.round((openPause.end - openPause.start) / 1000);
-  saveAllData(data);
-};
-
-api.updateActiveSession = (updates) => {
-  const data = getAllData();
-  if (!data.activeSession) return;
-  data.activeSession = { ...data.activeSession, ...updates };
-  saveAllData(data);
-};
-
-api.addActiveSessionMemo = (text, phase = "working") => {
-  const data = getAllData();
-  if (!data.activeSession || !text?.trim()) return;
-  data.activeSession.memos.push({ id: makeId("memo"), text: text.trim(), at: Date.now(), phase });
-  saveAllData(data);
-};
-
-api.endActiveSession = () => {
-  const data = getAllData();
-  const active = data.activeSession;
-  if (!active) return null;
-  const endTime = Date.now();
-  const openPause = active.pauses.find((p) => !p.end);
-  let pauseSec = active.pauseSec;
-  if (openPause) {
-    openPause.end = endTime;
-    pauseSec += Math.round((openPause.end - openPause.start) / 1000);
-  }
-  const totalSec = Math.round((endTime - active.startTime) / 1000);
-  const duration = Math.max(totalSec - pauseSec, 0);
-  const session = {
-    id: active.id,
-    taskId: active.taskId,
-    title: active.title,
-    category: active.category,
-    startTime: active.startTime,
-    endTime,
-    duration,
-    pauseSec,
-    pauses: active.pauses,
-    memos: active.memos,
-    date: today(),
-    createdAt: today(),
-    updatedAt: today()
-  };
-  data.workSessions = [session, ...data.workSessions];
-  data.activeSession = null;
-  saveAllData(data);
-  return session;
-};
-
-api.discardActiveSession = () => {
-  const data = getAllData();
-  data.activeSession = null;
-  saveAllData(data);
-};
-
-// ── 홈택스 CSV 가져오기 (세금계산서 매출/매입, 현금영수증) ──
-// kind: "sales" | "purchase" | "cashReceipt"
-// records: [{ invoiceId, date, partner, supplyAmount, taxAmount, totalAmount }]
-const dedupeKeyOf = (record) =>
-  record.invoiceId ? `id:${record.invoiceId}` : `k:${record.date}_${record.partner}_${record.totalAmount}`;
-
-api.importTaxRecords = (kind, records = []) => {
-  const data = getAllData();
-  const existingKeys = new Set(data.taxRecords.map(dedupeKeyOf));
-  const now = today();
-  let added = 0;
-  let skipped = 0;
-
-  records.forEach((record) => {
-    const key = dedupeKeyOf(record);
-    if (existingKeys.has(key)) {
-      skipped += 1;
-      return;
-    }
-    existingKeys.add(key);
-    added += 1;
-    const taxRecordId = makeId("taxRecord");
-    data.taxRecords = [
-      { id: taxRecordId, type: kind, source: "hometax_csv", ...record, createdAt: now, updatedAt: now },
-      ...data.taxRecords
-    ];
-
-    if (kind === "sales") {
-      data.payments = [
-        {
-          id: makeId("payment"),
-          client: record.partner,
-          project: record.partner,
-          category: "세금계산서",
-          amount: record.totalAmount,
-          status: "세금계산서 발행",
-          expectedDate: record.date,
-          paidDate: record.date,
-          taxRecordId,
-          source: "hometax_csv",
-          createdAt: now,
-          updatedAt: now
-        },
-        ...data.payments
-      ];
-    } else {
-      data.expenses = [
-        {
-          id: makeId("expense"),
-          title: record.partner,
-          category: kind === "cashReceipt" ? "현금영수증" : "매입 세금계산서",
-          amount: record.totalAmount,
-          date: record.date,
-          taxRecordId,
-          source: "hometax_csv",
-          createdAt: now,
-          updatedAt: now
-        },
-        ...data.expenses
-      ];
-    }
-  });
-
-  data.hometaxSync = {
-    ...data.hometaxSync,
-    lastSyncedAt: new Date().toISOString(),
-    counts: {
-      ...data.hometaxSync.counts,
-      [kind]: (data.hometaxSync.counts?.[kind] || 0) + added
-    }
-  };
-
-  saveAllData(data);
-  return { added, skipped };
-};
-
-
-api.setTodoPriority = (id, isPriority) => {
-  const data = getAllData();
-  const maxOrder = Math.max(-1, ...data.todos.filter((t) => t.isPriority).map((t) => t.priorityOrder ?? 0));
-  data.todos = data.todos.map((todo) =>
-    todo.id === id ? { ...todo, isPriority, priorityOrder: isPriority ? maxOrder + 1 : todo.priorityOrder, updatedAt: today() } : todo
-  );
-  saveAllData(data);
-};
-
-api.reorderPriorityTodos = (orderedIds) => {
-  const data = getAllData();
-  const orderMap = new Map(orderedIds.map((id, index) => [id, index]));
-  data.todos = data.todos.map((todo) =>
-    orderMap.has(todo.id) ? { ...todo, priorityOrder: orderMap.get(todo.id), updatedAt: today() } : todo
-  );
-  saveAllData(data);
-};
 
 api.getHabitLogs = () => list("habitLogs");
 api.createHabitLog = (payload) => create("habitLogs", payload);
@@ -364,11 +251,5 @@ export const {
   getRecurringEvents, createRecurringEvent, updateRecurringEvent, deleteRecurringEvent,
   getBeautyItems, createBeautyItem, updateBeautyItem, deleteBeautyItem,
   getDigitalCareLogs, createDigitalCareLog, updateDigitalCareLog, deleteDigitalCareLog,
-  getMoodEntrys, createMoodEntry, updateMoodEntry, deleteMoodEntry,
-  getWorkSessions, createWorkSession, updateWorkSession, deleteWorkSession,
-  getWorkCategorys, createWorkCategory, updateWorkCategory, deleteWorkCategory,
-  getTaxRecords, createTaxRecord, updateTaxRecord, deleteTaxRecord, importTaxRecords,
-  getActiveSession, startActiveSession, pauseActiveSession, resumeActiveSession,
-  updateActiveSession, addActiveSessionMemo, endActiveSession, discardActiveSession,
-  setTodoPriority, reorderPriorityTodos
+  getMoodEntrys, createMoodEntry, updateMoodEntry, deleteMoodEntry
 } = api;

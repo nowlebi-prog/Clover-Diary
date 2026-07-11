@@ -1,6 +1,6 @@
 import { isHabitDoneOn, toDateKey } from "../../lib/utils/habitSelectors";
 
-const label = ["월", "화", "수", "목", "금", "토", "일"];
+const label = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function HabitWeekView({ habits, logs, days, today }) {
   return (

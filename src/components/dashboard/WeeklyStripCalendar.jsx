@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { addDays, toDateKey } from "../../lib/utils/date";
 import { getTodayItems } from "../../lib/utils/dashboardSelectors";
 import StatusBadge from "../common/StatusBadge";
-import SectionLink from "./SectionLink";
 
 const weekDays = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -18,7 +17,7 @@ export default function WeeklyStripCalendar({ data, today }) {
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-clover-deep">Week plan</p>
           <h2 className="text-lg font-bold">이번 주 캘린더</h2>
         </div>
-        <SectionLink to="/calendar" />
+        <span className="text-xs font-bold text-clover-sub">{selected}</span>
       </div>
 
       <div className="grid grid-cols-7 gap-2">
@@ -48,12 +47,9 @@ export default function WeeklyStripCalendar({ data, today }) {
       </div>
 
       <div className="mt-4 rounded-[22px] bg-white/48 p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            {selected === today && <StatusBadge tone="blue">Today</StatusBadge>}
-            <b>{new Date(`${selected}T00:00:00`).getDate()}일 세부 항목</b>
-          </div>
-          <SectionLink to="/calendar" label="이 날 자세히" />
+        <div className="mb-3 flex items-center gap-2">
+          {selected === today && <StatusBadge tone="blue">Today</StatusBadge>}
+          <b>{new Date(`${selected}T00:00:00`).getDate()}일 세부 항목</b>
         </div>
         <div className="grid gap-2">
           {selectedItems.slice(0, 5).map((item, index) => (

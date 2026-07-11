@@ -7,7 +7,7 @@ export const collections = [
   "reflections", "quotes", "ideas", "links", "inboxMemos", "contentPlans",
   "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
   "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
-  "moodEntries", "workSessions", "workCategories", "taxRecords"
+  "moodEntries"
 ];
 
 export const initialData = {
@@ -27,10 +27,10 @@ export const initialData = {
     { id: "delay-3", title: "입금 관련 확인", count: 2, reason: "복잡함", createdAt: today, updatedAt: today }
   ],
   habits: [
-    { id: "habit-1", name: "AI 공부 1시간", icon: "AI", color: "#F6A6A6", frequencyType: "daily", targetCount: 7, customDays: [], memo: "매일 조금씩 공부 감각 유지하기.", status: "active", createdAt: today, updatedAt: today },
-    { id: "habit-2", name: "유산균 요거트 먹기", icon: "YG", color: "#A9C9FF", frequencyType: "daily", targetCount: 7, customDays: [], memo: "작은 건강 챙기기.", status: "active", createdAt: today, updatedAt: today },
-    { id: "habit-3", name: "가볍게 몸 움직이기", icon: "MV", color: "#F4B6D2", frequencyType: "weekdays", targetCount: 5, customDays: [], memo: "스트레칭, 산책, 짧은 운동 뭐든.", status: "active", createdAt: today, updatedAt: today },
-    { id: "habit-4", name: "비타민 챙겨먹기", icon: "VT", color: "#F6C68D", frequencyType: "daily", targetCount: 7, customDays: [], memo: "비타민 C와 B.", status: "active", createdAt: today, updatedAt: today }
+    { id: "habit-1", name: "AI study 1 hour", icon: "AI", color: "#F6A6A6", frequencyType: "daily", targetCount: 7, customDays: [], memo: "Keep the learning loop warm.", status: "active", createdAt: today, updatedAt: today },
+    { id: "habit-2", name: "Eat probiotic yogurt", icon: "YG", color: "#A9C9FF", frequencyType: "daily", targetCount: 7, customDays: [], memo: "Small health check.", status: "active", createdAt: today, updatedAt: today },
+    { id: "habit-3", name: "Personal movement", icon: "MV", color: "#F4B6D2", frequencyType: "weekdays", targetCount: 5, customDays: [], memo: "Stretch, walk, or short workout.", status: "active", createdAt: today, updatedAt: today },
+    { id: "habit-4", name: "Vitamins", icon: "VT", color: "#F6C68D", frequencyType: "daily", targetCount: 7, customDays: [], memo: "Vitamin C and B.", status: "active", createdAt: today, updatedAt: today }
   ],
   habitLogs: [
     { id: "habit-log-1", habitId: "habit-1", date: today, completed: true, createdAt: today, updatedAt: today },
@@ -60,17 +60,7 @@ export const initialData = {
   ],
   campaigns: [{ id: "camp-1", name: "여름 체험단", brand: "브랜드 A", product: "샘플 키트", recruits: 20, benefit: "제품 제공", applyDueDate: today, uploadDueDate: tomorrow, status: "모집중", memo: "", createdAt: today, updatedAt: today }],
   campaignParticipants: [{ id: "part-1", campaignId: "camp-1", name: "eunbibi", instagram: "@eunbibi", blogUrl: "", contact: "", appliedDate: today, selectedStatus: "미확정", shippingStatus: "미발송", uploadStatus: "미업로드", contentUrl: "", memo: "", createdAt: today, updatedAt: today }],
-  importantFiles: [{ id: "file-1", name: "A안 계약서", category: "계약서", url: "https://example.com", project: "A안 제안서", important: true, memo: "원본 링크", createdAt: today, updatedAt: today }],
-  workCategories: [
-    { id: "wc-1", name: "위스티아", color: "#60A5FA", createdAt: today, updatedAt: today },
-    { id: "wc-2", name: "개인작업", color: "#8DDFA8", createdAt: today, updatedAt: today },
-    { id: "wc-3", name: "PPT 작업", color: "#F6C68D", createdAt: today, updatedAt: today },
-    { id: "wc-4", name: "회의", color: "#C9A9FA", createdAt: today, updatedAt: today },
-    { id: "wc-5", name: "공부", color: "#F4B6D2", createdAt: today, updatedAt: today }
-  ],
-  activeSession: null,
-  weeklyGoalHours: 40,
-  hometaxSync: { lastSyncedAt: null, provider: "csv", counts: { sales: 0, purchase: 0, cashReceipt: 0 } }
+  importantFiles: [{ id: "file-1", name: "A안 계약서", category: "계약서", url: "https://example.com", project: "A안 제안서", important: true, memo: "원본 링크", createdAt: today, updatedAt: today }]
 };
 
 collections.forEach((key) => {

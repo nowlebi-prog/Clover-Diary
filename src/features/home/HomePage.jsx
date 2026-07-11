@@ -2,32 +2,52 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import AppButton from "../../components/common/AppButton";
 import GlassCard from "../../components/common/GlassCard";
-import SectionLink from "../../components/dashboard/SectionLink";
+import SectionTitle from "../../components/common/SectionTitle";
 import TodayTimeline from "../../components/dashboard/TodayTimeline";
 import WeatherCard from "../../components/dashboard/WeatherCard";
 import WeeklyStripCalendar from "../../components/dashboard/WeeklyStripCalendar";
-import DeadlineProjectsCard from "../../components/dashboard/DeadlineProjectsCard";
-import BudgetSummaryCard from "../../components/dashboard/BudgetSummaryCard";
-import ProjectsProgressCard from "../../components/dashboard/ProjectsProgressCard";
-import TodayRoutineCard from "../../components/dashboard/TodayRoutineCard";
 import PageHeader from "../../components/layout/PageHeader";
-import TodayFocusPanel from "./components/TodayFocusPanel";
-import TodayTopThree from "./components/TodayTopThree";
-import { getAllData, updateTodo, toggleHabitLog } from "../../lib/storage/localStorageAdapter";
+import { getAllData, updateTodo, updateTop3 } from "../../lib/storage/localStorageAdapter";
 import { getTodayHabitStatus } from "../../lib/utils/habitSelectors";
 import { toDateKey } from "../../lib/utils/date";
-import { fmtHM } from "../../lib/utils/workUtils";
-import {
-  getTodayItems,
-  getIncompleteTodos,
-  getUpcomingDeadlines,
-  getHomeTop3,
-  getDeadlineProjects,
-  getProjectsProgress,
-  getBudgetSummary,
-  getTodayRoutines,
-  getWorkSummary
-} from "../../lib/utils/dashboardSelectors";
+import { getIncompleteTodos, getTodayItems, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
+import TodayFocusPanel from "./components/TodayFocusPanel";
+import TodayTopThree from "./components/TodayTopThree";
+
+const recentDate = (item) => item.updatedAt || item.createdAt || item.date || item.dueDate || item.expectedDate || "";
+const recentTitle = (item) => item.title || item.name || item.project || item.body || item.text || item.displayTitle || "기록";
+
+function RecentActivity({ data }) {
+  const items = [
+    ...(data.todos || []).map((item) => ({ ...item, kind: "Work" })),
+    ...(data.events || []).map((item) => ({ ...item, kind: "Plan" })),
+    ...(data.habitLogs || []).map((item) => ({ ...item, kind: "Life", title: "습관 체크" })),
+    ...(data.inboxMemos || []).map((item) => ({ ...item, kind: "Memo", title: item.body })),
+    ...(data.payments || []).map((item) => ({ ...item, kind: "Money" })),
+    ...(data.contentPlans || []).map((item) => ({ ...item, kind: "Content" }))
+  ]
+    .filter((item) => recentDate(item))
+    .sort((a, b) => recentDate(b).localeCompare(recentDate(a)))
+    .slice(0, 10);
+
+  return (
+    <GlassCard className="mt-4">
+      <SectionTitle>최근 활동</SectionTitle>
+      <div className="grid gap-2">
+        {items.map((item, index) => (
+          <div key={`${item.kind}-${item.id || index}`} className="flex items-center justify-between gap-3 rounded-2xl bg-white/55 px-4 py-3 text-sm">
+            <div className="min-w-0">
+              <p className="truncate font-bold">{recentTitle(item)}</p>
+              <p className="mt-1 text-xs font-bold text-clover-sub">{item.kind} · {recentDate(item)}</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-clover-mint px-2.5 py-1 text-[11px] font-black text-clover-deep">{index + 1}</span>
+          </div>
+        ))}
+        {!items.length && <p className="text-sm text-clover-sub">아직 쌓인 활동이 없어요.</p>}
+      </div>
+    </GlassCard>
+  );
+}
 
 export default function HomePage() {
   const [data, setData] = useState(getAllData());
@@ -49,16 +69,6 @@ export default function HomePage() {
     .filter((item) => (item.date || "").startsWith(monthKey))
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const todayPayments = (data.payments || []).filter((item) => item.expectedDate === today && item.status !== "입금 완료");
-  const workSummary = getWorkSummary(data, today);
-
-  const top3 = getHomeTop3(data).map((todo) => ({
-    ...todo,
-    onToggle: (completed) => updateTodo(todo.id, { completed, completedAt: completed ? today : "" })
-  }));
-  const deadlineProjects = getDeadlineProjects(data, today);
-  const projectsProgress = getProjectsProgress(data, today);
-  const budgetSummary = getBudgetSummary(data, today);
-  const routines = getTodayRoutines(data, today);
 
   return (
     <>
@@ -89,10 +99,8 @@ export default function HomePage() {
             <p className="text-xs font-black uppercase tracking-[0.16em] text-sky-700">Work</p>
             <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-black text-sky-700">{todayItems.length}</span>
           </div>
-          <p className="mt-2 text-sm font-bold text-clover-ink">
-            {workSummary.active ? `지금 "${workSummary.active.title}" 진행 중` : "오늘 할 일과 마감"}
-          </p>
-          <p className="mt-2 text-xs font-bold text-clover-sub">오늘 작업 {fmtHM(workSummary.todaySec)} · 남은 업무 {incomplete.length}개</p>
+          <p className="mt-2 text-sm font-bold text-clover-ink">오늘 할 일과 마감</p>
+          <p className="mt-2 text-xs font-bold text-clover-sub">남은 업무 {incomplete.length}개</p>
         </Link>
         <Link to="/money" className="glass rounded-[22px] border border-amber-100 bg-amber-50/75 p-4 transition hover:bg-amber-50">
           <div className="flex items-center justify-between gap-3">
@@ -105,26 +113,14 @@ export default function HomePage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="grid content-start gap-4">
-          <TodayTopThree items={top3} />
-
+        <div className="grid gap-4">
           <WeeklyStripCalendar data={data} today={today} />
+          <TodayTopThree items={data.top3} onToggle={(id, completed) => updateTop3(id, { completed })} />
 
           <GlassCard className="p-5">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="font-bold text-clover-text">오늘 일정 / 타임블록</h2>
-              <SectionLink to="/daily" />
-            </div>
+            <SectionTitle>오늘 일정 / 타임블록</SectionTitle>
             <TodayTimeline items={todayItems} />
           </GlassCard>
-
-          <DeadlineProjectsCard projects={deadlineProjects} />
-
-          <BudgetSummaryCard summary={budgetSummary} />
-
-          <ProjectsProgressCard projects={projectsProgress} />
-
-          <TodayRoutineCard routines={routines} onToggle={(habitId) => toggleHabitLog(habitId, today)} />
         </div>
 
         <TodayFocusPanel
@@ -136,6 +132,8 @@ export default function HomePage() {
           onUpdateTodo={(id, updates) => updateTodo(id, updates)}
         />
       </div>
+
+      <RecentActivity data={data} />
     </>
   );
 }

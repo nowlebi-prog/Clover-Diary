@@ -15,8 +15,6 @@ export default {
           blue: "#DCEEFF",
           lavender: "#E8E1FF",
           cream: "#FFF8EA",
-          coral: "#FFDCD1",
-          coralDeep: "#D97757",
           text: "#1F2A24",
           sub: "#7A887F",
           danger: "#F87171",

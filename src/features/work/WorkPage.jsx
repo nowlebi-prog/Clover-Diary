@@ -1,54 +1,74 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
-import PageHeader from "../../components/layout/PageHeader";
-import TimeTracker from "../../components/work/TimeTracker";
-import TodoPanel from "../../components/work/TodoPanel";
-import WorkLog from "../../components/work/WorkLog";
-import WorkStats from "../../components/work/WorkStats";
-import CategoryManager from "../../components/work/CategoryManager";
+import AppButton from "../../components/common/AppButton";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
+import PageHeader from "../../components/layout/PageHeader";
 import { getAllData } from "../../lib/storage/localStorageAdapter";
+import { getIncompleteTodos, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
 import { toDateKey } from "../../lib/utils/date";
 
 const spaceLink = "rounded-[20px] bg-white/55 px-4 py-3 text-sm font-bold text-clover-deep transition hover:bg-white/80";
 
 export default function WorkPage() {
-  const [data, setData] = useState(getAllData());
+  const data = getAllData();
   const today = toDateKey(new Date());
-
-  useEffect(() => {
-    const load = () => setData(getAllData());
-    window.addEventListener("clover-data-change", load);
-    return () => window.removeEventListener("clover-data-change", load);
-  }, []);
-
+  const todos = getIncompleteTodos(data);
+  const deadlines = getUpcomingDeadlines(data, today);
   const contents = data.contentPlans || [];
   const campaigns = data.campaigns || [];
 
   return (
     <>
-      <PageHeader eyebrow="WORK" title="업무 실행실" />
+      <PageHeader eyebrow="WORK" title="업무 허브">
+        <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
+      </PageHeader>
 
-      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="grid content-start gap-4">
-          <TimeTracker activeSession={data.activeSession} categories={data.workCategories} />
-          <TodoPanel todos={data.todos} today={today} />
-          <CategoryManager categories={data.workCategories} />
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid gap-4">
+          <GlassCard>
+            <SectionTitle>오늘 처리할 업무</SectionTitle>
+            <div className="grid gap-2">
+              {todos.slice(0, 6).map((todo) => (
+                <Link key={todo.id} to="/tasks" className="rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">
+                  <span className="mr-2 text-clover-deep">{todo.priority === "high" ? "중요" : "Todo"}</span>
+                  {todo.title}
+                </Link>
+              ))}
+              {!todos.length && <p className="text-sm text-clover-sub">남은 업무가 없어요.</p>}
+            </div>
+          </GlassCard>
+
+          <GlassCard>
+            <SectionTitle>가까운 마감</SectionTitle>
+            <div className="grid gap-2">
+              {deadlines.slice(0, 6).map((item, index) => (
+                <Link key={`${item.type}-${item.id || index}`} to={item.type === "payment" ? "/money" : item.type === "content" ? "/content" : "/tasks"} className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">
+                  <span className="truncate">{item.displayTitle}</span>
+                  <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-700">D{item.dday >= 0 ? `-${item.dday}` : `+${Math.abs(item.dday)}`}</span>
+                </Link>
+              ))}
+              {!deadlines.length && <p className="text-sm text-clover-sub">다가오는 마감이 없어요.</p>}
+            </div>
+          </GlassCard>
         </div>
 
         <div className="grid content-start gap-4">
-          <WorkStats sessions={data.workSessions} categories={data.workCategories} today={today} weeklyGoalHours={data.weeklyGoalHours} />
-          <WorkLog sessions={data.workSessions} categories={data.workCategories} today={today} />
           <GlassCard>
-            <SectionTitle>WORK 안의 다른 기능</SectionTitle>
+            <SectionTitle>WORK 안의 기능</SectionTitle>
             <div className="grid gap-2">
-              <Link to="/tasks" className={spaceLink}>Tasks · 전체 할 일 보드</Link>
-              <Link to="/daily" className={spaceLink}>Time Block · 오늘 일정 계획</Link>
+              <Link to="/tasks" className={spaceLink}>Tasks · 전체 할 일 {todos.length}개</Link>
+              <Link to="/daily" className={spaceLink}>Time Block · 오늘 작업 계획</Link>
               <Link to="/campaigns" className={spaceLink}>Projects · 프로젝트/캠페인 {campaigns.length}개</Link>
               <Link to="/content" className={spaceLink}>Content · 발행 계획 {contents.length}개</Link>
               <Link to="/files" className={spaceLink}>Files · 중요 파일</Link>
             </div>
+          </GlassCard>
+
+          <GlassCard>
+            <SectionTitle>운영 메모</SectionTitle>
+            <p className="text-sm leading-relaxed text-clover-sub">
+              업무, 프로젝트, 콘텐츠, 레퍼런스와 타임블록은 WORK에서 관리하고 HOME에는 오늘 필요한 요약만 보여줍니다.
+            </p>
           </GlassCard>
         </div>
       </div>
