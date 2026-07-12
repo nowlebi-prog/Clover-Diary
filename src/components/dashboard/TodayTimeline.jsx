@@ -26,11 +26,12 @@ const timeLabel = (item) => {
 };
 
 const labelOf = (item) => {
-  if (item.label) return item.label;
+  if (item.label && !/[�]/.test(item.label)) return item.label;
   if (item.type === "todo") return "할 일";
   if (item.type === "content") return "콘텐츠";
   if (item.type === "payment") return "결제";
   if (item.type === "expense") return "지출";
+  if (item.type === "campaign") return "신청";
   return "일정";
 };
 
@@ -43,24 +44,23 @@ const toneOf = (item) => {
 
 export default function TodayTimeline({ items = [] }) {
   const currentHour = new Date().getHours();
-  const visibleHours = Array.from({ length: 5 }, (_, index) => Math.min(23, Math.max(0, currentHour - 2) + index))
-    .filter((hour, index, list) => list.indexOf(hour) === index);
+  const startHour = Math.min(19, Math.max(0, currentHour - 2));
+  const visibleHours = Array.from({ length: 5 }, (_, index) => startHour + index);
   const hasTime = (item) => Boolean(formatTime(item.time || item.startTime || item.dueTime));
   const travelItems = items.filter((item) => item.travelNeeded);
   const allDayItems = items.filter((item) => !item.travelNeeded && (item.allDay || !hasTime(item)));
   const timedItems = items.filter((item) => !item.allDay && hasTime(item));
-  const hasTimed = timedItems.length > 0;
 
   return (
     <div className="grid gap-3">
-      <div className="rounded-[20px] bg-emerald-50/70 p-3">
+      <div className="rounded-[18px] bg-emerald-50/70 p-3">
         <div className="mb-2 flex items-center justify-between">
           <b className="text-sm">종일 일정</b>
           <StatusBadge tone="mint">{allDayItems.length}</StatusBadge>
         </div>
         <div className="grid gap-1.5">
-          {allDayItems.map((item, index) => (
-            <div key={`${item.type}-${item.id || index}`} className="flex items-center justify-between rounded-2xl bg-white/70 px-3 py-2 text-xs font-bold">
+          {allDayItems.slice(0, 8).map((item, index) => (
+            <div key={`${item.type}-${item.id || index}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 text-xs font-bold">
               <span className="truncate">{item.displayTitle}</span>
               <StatusBadge tone={toneOf(item)}>{labelOf(item)}</StatusBadge>
             </div>
@@ -72,14 +72,14 @@ export default function TodayTimeline({ items = [] }) {
       {!!travelItems.length && (
         <div className="grid gap-1.5">
           {travelItems.map((item, index) => (
-            <div key={`${item.type}-travel-${item.id || index}`} className="rounded-2xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-700">
+            <div key={`${item.type}-travel-${item.id || index}`} className="truncate rounded-2xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-700">
               이동 필요 일정 {timeLabel(item)} {item.displayTitle}
             </div>
           ))}
         </div>
       )}
 
-      <div className="rounded-[22px] bg-white/35 p-2">
+      <div className="overflow-hidden rounded-[22px] bg-white/35 p-2">
         <div className="grid gap-0">
           {visibleHours.map((hour) => {
             const hourItems = timedItems.filter((item) => {
@@ -89,14 +89,13 @@ export default function TodayTimeline({ items = [] }) {
               return end ? hour >= start && hour < end : hour === start;
             });
             return (
-              <div key={hour} className={`grid min-h-12 grid-cols-[48px_1fr] gap-2 border-b border-clover-line/70 ${hour === currentHour ? "rounded-2xl bg-clover-mint/30" : ""}`}>
+              <div key={hour} className={`grid min-h-12 grid-cols-[44px_minmax(0,1fr)] gap-2 border-b border-clover-line/70 ${hour === currentHour ? "rounded-2xl bg-clover-mint/25" : ""}`}>
                 <div className="pt-3 text-right text-[11px] font-black text-clover-sub">{String(hour).padStart(2, "0")}:00</div>
-                <div className="relative py-1.5">
-                  <span className="absolute left-0 top-0 h-full w-px bg-clover-line" />
-                  <div className="ml-3 grid gap-1.5">
+                <div className="min-w-0 py-1.5">
+                  <div className="grid gap-1.5 border-l border-clover-line pl-3">
                     {hourItems.map((item, index) => (
-                      <article key={`${item.type}-${item.id || index}`} className="rounded-2xl border border-white/70 bg-white/75 px-3 py-2 shadow-sm">
-                        <div className="flex items-start justify-between gap-2">
+                      <article key={`${item.type}-${item.id || index}`} className="min-w-0 rounded-2xl border border-white/70 bg-white/75 px-3 py-2 shadow-sm">
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
                           <div className="min-w-0">
                             <p className="text-[11px] font-black text-clover-deep">{timeLabel(item)}</p>
                             <h3 className="truncate text-xs font-bold">{item.displayTitle}</h3>
@@ -112,7 +111,7 @@ export default function TodayTimeline({ items = [] }) {
             );
           })}
         </div>
-        {!hasTimed && <p className="p-3 text-xs font-bold text-clover-sub">시간별 일정은 아직 비어 있어요.</p>}
+        {!timedItems.length && <p className="p-3 text-xs font-bold text-clover-sub">시간별 일정은 아직 비어 있어요.</p>}
       </div>
     </div>
   );

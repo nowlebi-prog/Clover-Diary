@@ -6,6 +6,9 @@ import StatusBadge from "../../components/common/StatusBadge";
 import SubPageTabs from "../../components/common/SubPageTabs";
 import TodayTimeline from "../../components/dashboard/TodayTimeline";
 import PageHeader from "../../components/layout/PageHeader";
+import LifeHabitTracker from "../../components/habits/LifeHabitTracker";
+import JournalPage from "../journal/JournalPage";
+import MandalartPage from "../mandalart/MandalartPage";
 import { deleteTodo, getAllData, updateTodo } from "../../lib/storage/localStorageAdapter";
 import { getMonthCalendarItems, getTodayItems } from "../../lib/utils/dashboardSelectors";
 import { monthMatrix, toDateKey } from "../../lib/utils/date";
@@ -32,16 +35,16 @@ const typeLabel = {
   campaign: "업무"
 };
 
-function LifeTaskTabs() {
+function LifeTabs({ active, onChange }) {
   return (
     <SubPageTabs
       items={[
         { key: "overview", label: "개요", to: "/life" },
-        { key: "tasks", label: "전체 할일", active: true },
+        { key: "tasks", label: "전체 할 일", active: active === "tasks", onClick: () => onChange("tasks") },
         { key: "chores", label: "집안일", to: "/life" },
-        { key: "habits", label: "습관", to: "/habits" },
-        { key: "journal", label: "일기", to: "/journal" },
-        { key: "mandalart", label: "만다라트", to: "/mandalart" }
+        { key: "habits", label: "습관", active: active === "habits", onClick: () => onChange("habits") },
+        { key: "journal", label: "일기", active: active === "journal", onClick: () => onChange("journal") },
+        { key: "mandalart", label: "만다라트", active: active === "mandalart", onClick: () => onChange("mandalart") }
       ]}
     />
   );
@@ -113,15 +116,15 @@ function DayTaskList({ items, data, selectedDate, onChange }) {
   return (
     <GlassCard className="p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <SectionTitle>{selectedDate.slice(5)} To do</SectionTitle>
-          <p className="text-xs font-bold text-clover-sub">이 날짜의 할 일과 일정을 한 번에 봐요.</p>
+        <div className="min-w-0">
+          <SectionTitle>{selectedDate.slice(5)} 전체 할 일</SectionTitle>
+          <p className="truncate text-xs font-bold text-clover-sub">선택한 날짜의 할 일과 일정을 한 번에 봐요.</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Link to={`/tasks?date=${selectedDate}`} className="whitespace-nowrap rounded-full bg-emerald-50 px-3 py-2 text-xs font-black text-clover-deep">
             + 할 일
           </Link>
-          <Link to={`/calendar?date=${selectedDate}`} className="whitespace-nowrap rounded-full bg-sky-50 px-3 py-2 text-xs font-black text-blue-700">
+          <Link to={`/calendar?date=${selectedDate}&new=event`} className="whitespace-nowrap rounded-full bg-sky-50 px-3 py-2 text-xs font-black text-blue-700">
             + 일정
           </Link>
         </div>
@@ -129,7 +132,7 @@ function DayTaskList({ items, data, selectedDate, onChange }) {
 
       <div className="grid gap-2">
         {allItems.map((item, index) => (
-          <article key={`${item.type}-${item.id || index}`} className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-white/65 px-3 py-2 text-sm">
+          <article key={`${item.type}-${item.id || index}`} className="grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-2 rounded-2xl bg-white/65 px-3 py-2 text-sm lg:grid-cols-[auto_auto_minmax(0,1fr)_auto]">
             {item.type === "todo" ? (
               <input type="checkbox" checked={Boolean(item.completed)} onChange={(event) => toggleTodo(item, event.target.checked)} className="h-4 w-4 accent-clover-deep" />
             ) : (
@@ -141,7 +144,7 @@ function DayTaskList({ items, data, selectedDate, onChange }) {
               {(item.time || item.startTime || item.dueTime) && <p className="text-[11px] font-bold text-clover-sub">{item.time || item.startTime || item.dueTime}</p>}
             </div>
             {item.type === "todo" && (
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="col-span-3 flex shrink-0 items-center justify-end gap-1 lg:col-span-1">
                 <Link to={`/tasks?edit=${item.id}`} className="whitespace-nowrap rounded-full bg-white px-2.5 py-2 text-xs font-black text-clover-deep">
                   수정
                 </Link>
@@ -158,10 +161,24 @@ function DayTaskList({ items, data, selectedDate, onChange }) {
   );
 }
 
+function TasksPanel({ data, selectedDate, dayItems, onDateChange, onChange }) {
+  return (
+    <div className="grid gap-4 2xl:grid-cols-[minmax(300px,0.9fr)_minmax(280px,0.7fr)_minmax(300px,0.8fr)]">
+      <MonthSummaryCalendar data={data} selectedDate={selectedDate} onSelect={onDateChange} />
+      <DayTaskList items={dayItems} data={data} selectedDate={selectedDate} onChange={onChange} />
+      <GlassCard className="min-w-0 p-4">
+        <SectionTitle>타임라인</SectionTitle>
+        <TodayTimeline items={dayItems} />
+      </GlassCard>
+    </div>
+  );
+}
+
 export default function LifeTasksPage() {
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState(getAllData());
   const selectedDate = params.get("date") || toDateKey(new Date());
+  const activeTab = params.get("tab") || "tasks";
 
   const load = () => setData(getAllData());
 
@@ -171,26 +188,21 @@ export default function LifeTasksPage() {
   }, []);
 
   const dayItems = useMemo(() => getTodayItems(data, selectedDate), [data, selectedDate]);
-  const selectDate = (date) => setParams({ date });
+  const selectDate = (date) => setParams({ date, tab: activeTab });
+  const selectTab = (tab) => setParams({ date: selectedDate, tab });
 
   return (
     <>
-      <PageHeader eyebrow="LIFE" title="전체 할일">
+      <PageHeader eyebrow="LIFE" title={activeTab === "tasks" ? "전체 할 일" : "생활 허브"}>
         <Link to="/" className="rounded-full bg-white/70 px-4 py-2 text-sm font-black text-clover-deep shadow-sm">Home</Link>
       </PageHeader>
 
-      <LifeTaskTabs />
+      <LifeTabs active={activeTab} onChange={selectTab} />
 
-      <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <MonthSummaryCalendar data={data} selectedDate={selectedDate} onSelect={selectDate} />
-        <div className="grid gap-4 xl:grid-cols-2">
-          <DayTaskList items={dayItems} data={data} selectedDate={selectedDate} onChange={load} />
-          <GlassCard className="p-4">
-            <SectionTitle>타임라인</SectionTitle>
-            <TodayTimeline items={dayItems} />
-          </GlassCard>
-        </div>
-      </div>
+      {activeTab === "tasks" && <TasksPanel data={data} selectedDate={selectedDate} dayItems={dayItems} onDateChange={selectDate} onChange={load} />}
+      {activeTab === "habits" && <LifeHabitTracker data={data} onChange={load} />}
+      {activeTab === "journal" && <JournalPage />}
+      {activeTab === "mandalart" && <MandalartPage />}
     </>
   );
 }
