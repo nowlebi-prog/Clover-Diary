@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
@@ -56,6 +56,7 @@ export default function TasksPage() {
   const [category, setCategory] = useState("all");
   const [view, setView] = useState("board");
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const today = toDateKey(new Date());
 
   const load = () => setData(getAllData());
@@ -74,6 +75,17 @@ export default function TasksPage() {
       window.removeEventListener("clover-open-quick-add", openQuick);
     };
   }, []);
+
+  useEffect(() => {
+    const editId = params.get("edit");
+    const date = params.get("date");
+    if (editId) {
+      const target = (data.todos || []).find((todo) => todo.id === editId);
+      if (target) setEditing(normalizeTodo(target));
+      return;
+    }
+    if (date) setEditing({ ...emptyTodo(), dueDate: date, endDate: date });
+  }, [params, data.todos]);
 
   const categories = useMemo(() => {
     const fromTodos = (data.todos || []).map((todo) => todo.category || todo.project).filter(Boolean);
@@ -114,6 +126,7 @@ export default function TasksPage() {
     if (editing.id) updateTodo(editing.id, payload);
     else createTodo(payload);
     setEditing(null);
+    if (params.get("edit") || params.get("date")) navigate("/tasks", { replace: true });
     load();
   };
 
@@ -202,7 +215,7 @@ export default function TasksPage() {
 
             <div className="flex flex-wrap gap-2">
               <AppButton onClick={save}>저장</AppButton>
-              {editing.id && <AppButton variant="danger" onClick={() => { deleteTodo(editing.id); setEditing(null); load(); }}>삭제</AppButton>}
+              {editing.id && <AppButton variant="danger" onClick={() => { deleteTodo(editing.id); setEditing(null); if (params.get("edit") || params.get("date")) navigate("/tasks", { replace: true }); load(); }}>삭제</AppButton>}
             </div>
           </div>
         )}

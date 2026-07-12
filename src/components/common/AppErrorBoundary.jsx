@@ -15,13 +15,17 @@ export default class AppErrorBoundary extends Component {
     console.error("Clover Desk render error", error, info);
   }
 
-  resetApp = () => {
+  reloadApp = () => {
+    this.setState({ error: null });
+    window.location.reload();
+  };
+
+  resetSessionOnly = () => {
     try {
       localStorage.removeItem(STORAGE_KEYS.auth);
-      localStorage.removeItem(STORAGE_KEYS.appData);
-      localStorage.removeItem("clover-desk:mandalart:v1");
+      sessionStorage.removeItem("clover-money-unlocked");
     } catch {
-      // Ignore storage cleanup errors and still reload.
+      // Keep user data intact even if storage cleanup fails.
     }
     window.location.href = "/login";
   };
@@ -31,23 +35,32 @@ export default class AppErrorBoundary extends Component {
 
     return (
       <main className="grid min-h-screen place-items-center px-5 py-10">
-        <section className="glass w-full max-w-lg rounded-[28px] bg-white/80 p-6 text-center">
-          <p className="text-4xl">🍀</p>
-          <h1 className="mt-4 text-2xl font-black text-clover-ink">앱을 다시 정리할게요</h1>
+        <section className="glass w-full max-w-lg rounded-[28px] bg-white/85 p-6 text-center">
+          <p className="text-4xl">!</p>
+          <h1 className="mt-4 text-2xl font-black text-clover-ink">화면을 다시 불러올게요</h1>
           <p className="mt-3 text-sm leading-relaxed text-clover-sub">
-            예전 저장 데이터나 로그인 캐시가 새 버전과 충돌해서 화면이 멈췄을 수 있어요.
-            아래 버튼을 누르면 저장 캐시를 비우고 로그인 화면으로 돌아갑니다.
+            화면 표시 중 충돌이 생겼어요. 저장된 일정, 기분, 일기, 할 일 데이터는 지우지 않습니다.
+            먼저 새로고침을 눌러보고, 로그인이 꼬였을 때만 세션 정리를 눌러주세요.
           </p>
           <pre className="mt-4 max-h-32 overflow-auto rounded-2xl bg-slate-100 p-3 text-left text-xs text-slate-500">
             {String(this.state.error?.message || this.state.error)}
           </pre>
-          <button
-            type="button"
-            onClick={this.resetApp}
-            className="mt-5 rounded-full bg-clover-deep px-5 py-3 text-sm font-black text-white shadow-glass"
-          >
-            복구하고 다시 열기
-          </button>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              onClick={this.reloadApp}
+              className="rounded-full bg-clover-deep px-5 py-3 text-sm font-black text-white shadow-glass"
+            >
+              새로고침
+            </button>
+            <button
+              type="button"
+              onClick={this.resetSessionOnly}
+              className="rounded-full bg-white px-5 py-3 text-sm font-black text-clover-deep shadow-sm"
+            >
+              세션만 정리
+            </button>
+          </div>
         </section>
       </main>
     );
