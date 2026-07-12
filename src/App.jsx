@@ -16,7 +16,6 @@ import LifePage from "./features/life/LifePage";
 import LifeTasksPage from "./features/life/LifeTasksPage";
 import MoneyPage from "./features/money/MoneyPage";
 import StudyPage from "./features/study/StudyPage";
-import GapYearPage from "./features/gapyear/GapYearPage";
 import ContentPage from "./features/content/ContentPage";
 import ArchivePage from "./features/archive/ArchivePage";
 import CampaignsPage from "./features/campaigns/CampaignsPage";
@@ -52,7 +51,7 @@ export default function App() {
         <Route path="/life/tasks" element={<LifeTasksPage />} />
         <Route path="/money" element={<MoneyPage />} />
         <Route path="/study" element={<StudyPage />} />
-        <Route path="/gapyear" element={<GapYearPage />} />
+        <Route path="/gapyear" element={<Navigate to="/money" replace />} />
         <Route path="/content" element={<ContentPage />} />
         <Route path="/archive" element={<ArchivePage />} />
         <Route path="/campaigns" element={<CampaignsPage />} />
