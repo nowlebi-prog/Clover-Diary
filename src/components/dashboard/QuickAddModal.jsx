@@ -23,10 +23,10 @@ const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).sli
 const defaults = (type) => {
   const today = toDateKey(new Date());
   const map = {
-    todo: { title: "", dueDate: today, allDay: false, startTime: "", endTime: "", dueTime: "", priority: "normal", category: "개인", completed: false, subTasks: [], memo: "" },
+    todo: { title: "", dueDate: today, endDate: today, allDay: false, startTime: "", endTime: "", dueTime: "", priority: "normal", category: "개인", completed: false, subTasks: [], memo: "", travelNeeded: false },
     event: { title: "", date: today, allDay: false, time: "09:00", endTime: "", category: "개인", memo: "" },
     payment: { project: "", client: "", amount: "", category: "자유소득", status: "입금 예정", expectedDate: today, memo: "" },
-    expense: { title: "", amount: "", date: today, category: "생활비", memo: "" },
+    expense: { title: "", amount: "", date: today, category: "생활비", memo: "", gapYearUploaded: false },
     memo: { body: "" },
     shoppingItems: { title: "", category: "생활", memo: "", completed: false, importance: 3 }
   };
@@ -94,9 +94,15 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
     const category = (form.category || "개인").trim();
     const payload =
       type === "memo" ? { ...form, body: form.body || quickText, done: false }
-      : type === "todo" ? { ...form, subTasks: cleanSubTasks(form.subTasks), category, project: category, projectName: category, dueTime: form.allDay ? "" : form.startTime || form.dueTime || "", startTime: form.allDay ? "" : form.startTime || form.dueTime || "", endTime: form.allDay ? "" : form.endTime || "" }
+      : type === "todo" ? { ...form, subTasks: cleanSubTasks(form.subTasks), category, project: category, projectName: category, dueTime: form.allDay ? "" : form.startTime || form.dueTime || "", startTime: form.allDay ? "" : form.startTime || form.dueTime || "", endTime: form.allDay ? "" : form.endTime || "", travelNeeded: Boolean(form.travelNeeded) }
       : form;
     allData[collection] = [{ id: makeId(collection), createdAt: date, updatedAt: date, ...payload }, ...(allData[collection] || [])];
+    if (type === "expense" && form.gapYearUploaded) {
+      allData.gapYearBudgets = [
+        { id: makeId("gapYearBudgets"), date: form.date || date, expenseTitle: form.title || quickText || "지출", amount: form.amount || "", uploaded: true, createdAt: date, updatedAt: date },
+        ...(allData.gapYearBudgets || []).filter((item) => item.date !== (form.date || date))
+      ];
+    }
     saveAllData(allData);
     onClose();
   };
@@ -132,17 +138,20 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
           <>
             <label className="grid gap-1 text-sm font-bold">할 일<AppInput value={form.title} onChange={(event) => set("title", event.target.value)} /></label>
             <SubTaskEditor value={form.subTasks || []} onChange={(subTasks) => set("subTasks", subTasks)} />
-            <div className="grid gap-3 md:grid-cols-[1fr_120px_120px]">
-              <label className="grid gap-1 text-sm font-bold">날짜<AppInput type="date" value={form.dueDate} onChange={(event) => set("dueDate", event.target.value)} /></label>
+            <div className="grid gap-3 md:grid-cols-[1fr_1fr_120px_120px]">
+              <label className="grid gap-1 text-sm font-bold">시작 날짜<AppInput type="date" value={form.dueDate} onChange={(event) => { set("dueDate", event.target.value); if (!form.endDate) set("endDate", event.target.value); }} /></label>
+              <label className="grid gap-1 text-sm font-bold">종료 날짜<AppInput type="date" value={form.endDate || form.dueDate} onChange={(event) => set("endDate", event.target.value)} /></label>
               <label className="grid gap-1 text-sm font-bold">시작<AppInput type="time" value={form.startTime || ""} disabled={form.allDay} onChange={(event) => { set("startTime", event.target.value); set("dueTime", event.target.value); }} /></label>
               <label className="grid gap-1 text-sm font-bold">종료<AppInput type="time" value={form.endTime || ""} disabled={form.allDay} onChange={(event) => set("endTime", event.target.value)} /></label>
             </div>
             <label className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">하루종일<input type="checkbox" checked={Boolean(form.allDay)} onChange={(event) => setForm((current) => ({ ...current, allDay: event.target.checked, startTime: "", endTime: "", dueTime: "" }))} /></label>
+            <label className="flex items-center justify-between rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">이동 필요<input type="checkbox" checked={Boolean(form.travelNeeded)} onChange={(event) => set("travelNeeded", event.target.checked)} /></label>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1 text-sm font-bold">중요도<AppSelect value={form.priority || "normal"} onChange={(event) => set("priority", event.target.value)}><option value="high">매우 중요</option><option value="normal">보통</option><option value="low">가벼움</option></AppSelect></label>
               <label className="grid gap-1 text-sm font-bold">분류<AppInput list="quick-todo-category-list" value={form.category || ""} onChange={(event) => set("category", event.target.value)} /><datalist id="quick-todo-category-list">{categories.map((item) => <option key={item} value={item} />)}</datalist></label>
             </div>
             <label className="grid gap-1 text-sm font-bold">메모<AppTextarea value={form.memo || ""} onChange={(event) => set("memo", event.target.value)} /></label>
+            <label className="flex items-center justify-between rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">갭이어 예산 등록 완료<input type="checkbox" checked={Boolean(form.gapYearUploaded)} onChange={(event) => set("gapYearUploaded", event.target.checked)} /></label>
           </>
         )}
 

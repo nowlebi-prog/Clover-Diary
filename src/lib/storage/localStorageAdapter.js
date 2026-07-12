@@ -44,6 +44,22 @@ const normalize = (data) => {
     const deletedAt = Date.parse(item.deletedAt || "");
     return Number.isFinite(deletedAt) && deletedAt >= deletedCutoff && item.collection && item.item;
   });
+  const todayKey = today();
+  const gapUploadedToday = (next.gapYearBudgets || []).some((item) => item.date === todayKey && item.uploaded);
+  const gapTodo = (next.todos || []).find((todo) => todo.id === "todo-gapyear-budget" || todo.title === "갭이어 예산 올리기");
+  if (gapTodo) {
+    gapTodo.id = gapTodo.id || "todo-gapyear-budget";
+    gapTodo.dueDate = todayKey;
+    gapTodo.category = "돈관리";
+    gapTodo.priority = "high";
+    gapTodo.recurring = "daily";
+    gapTodo.completed = gapUploadedToday;
+  } else {
+    next.todos = [
+      { id: "todo-gapyear-budget", title: "갭이어 예산 올리기", category: "돈관리", priority: "high", dueDate: todayKey, recurring: "daily", completed: gapUploadedToday, memo: "매일 지출 입력 후 예산 업로드 체크", createdAt: todayKey, updatedAt: todayKey },
+      ...(next.todos || [])
+    ];
+  }
   return next;
 };
 
@@ -238,7 +254,7 @@ const names = {
   digitalCareLogs: "DigitalCareLog", moodEntries: "MoodEntry", monthlyArchives: "MonthlyArchive",
   studyCaptures: "StudyCapture", studyCategories: "StudyCategory", studyNotes: "StudyNote", studyCards: "StudyCard",
   studyExperiments: "StudyExperiment", studyWorkflows: "StudyWorkflow",
-  workSessions: "WorkSession"
+  workSessions: "WorkSession", gapYearBudgets: "GapYearBudget"
 };
 
 Object.entries(names).forEach(([collection, name]) => {
@@ -300,7 +316,8 @@ export const {
   getStudyCards, createStudyCard, updateStudyCard, deleteStudyCard,
   getStudyExperiments, createStudyExperiment, updateStudyExperiment, deleteStudyExperiment,
   getStudyWorkflows, createStudyWorkflow, updateStudyWorkflow, deleteStudyWorkflow,
-  getWorkSessions, createWorkSession, updateWorkSession, deleteWorkSession
+  getWorkSessions, createWorkSession, updateWorkSession, deleteWorkSession,
+  getGapYearBudgets, createGapYearBudget, updateGapYearBudget, deleteGapYearBudget
 } = api;
 
 // ── Work timer / worklog helpers ──
@@ -338,4 +355,91 @@ export function saveWorkLogNote(date, patch) {
   const data = getAllData();
   data.workLogNotes = { ...(data.workLogNotes || {}), [date]: { ...(data.workLogNotes?.[date] || { nextTodo: "" }), ...patch } };
   saveAllData(data, { silent: true });
+}
+
+export function getWorkCategories() {
+  return getTaskCategories().map((category, index) =>
+    typeof category === "string"
+      ? { id: `cat-${index}`, name: category, color: ["#8DDFA8", "#A9C9FF", "#F6C68D", "#F4B6D2"][index % 4] }
+      : category
+  );
+}
+
+export function getActiveSession() {
+  return getAllData().activeSession || null;
+}
+
+export function startActiveSession({ title, category }) {
+  const data = getAllData();
+  const now = Date.now();
+  data.activeSession = {
+    id: makeId("activeWork"),
+    title,
+    category,
+    date: today(),
+    startTime: now,
+    pauses: [],
+    pauseSec: 0,
+    memos: [],
+    createdAt: today(),
+    updatedAt: today()
+  };
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function updateActiveSession(patch) {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  data.activeSession = { ...data.activeSession, ...patch, updatedAt: today() };
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function pauseActiveSession() {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  const open = (data.activeSession.pauses || []).some((pause) => !pause.end);
+  if (!open) data.activeSession.pauses = [...(data.activeSession.pauses || []), { start: Date.now() }];
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function resumeActiveSession() {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  const now = Date.now();
+  data.activeSession.pauses = (data.activeSession.pauses || []).map((pause) => (!pause.end ? { ...pause, end: now } : pause));
+  data.activeSession.pauseSec = (data.activeSession.pauses || []).reduce((sum, pause) => sum + Math.max(0, Math.round(((pause.end || now) - pause.start) / 1000)), 0);
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function addActiveSessionMemo(text, phase = "working") {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  data.activeSession.memos = [...(data.activeSession.memos || []), { id: makeId("memo"), text, phase, time: Date.now() }];
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function endActiveSession() {
+  const data = getAllData();
+  const session = data.activeSession;
+  if (!session) return null;
+  const now = Date.now();
+  const pauses = (session.pauses || []).map((pause) => (!pause.end ? { ...pause, end: now } : pause));
+  const pauseSec = pauses.reduce((sum, pause) => sum + Math.max(0, Math.round((pause.end - pause.start) / 1000)), 0);
+  const duration = Math.max(0, Math.round((now - session.startTime) / 1000) - pauseSec);
+  const saved = { ...session, id: makeId("workSessions"), endTime: now, pauses, pauseSec, duration, updatedAt: today() };
+  data.workSessions = [saved, ...(data.workSessions || [])];
+  data.activeSession = null;
+  saveAllData(data);
+  return saved;
+}
+
+export function discardActiveSession() {
+  const data = getAllData();
+  data.activeSession = null;
+  saveAllData(data);
 }

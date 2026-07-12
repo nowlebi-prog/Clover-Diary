@@ -1,4 +1,3 @@
-// 초 단위 → "1시간 20분" 형태
 export function fmtHM(totalSec = 0) {
   const sec = Math.max(0, Math.round(totalSec));
   const h = Math.floor(sec / 3600);
@@ -8,7 +7,6 @@ export function fmtHM(totalSec = 0) {
   return `${m}분`;
 }
 
-// 초 단위 → "00:12:34" (타이머 표시용)
 export function fmtHMS(totalSec = 0) {
   const sec = Math.max(0, Math.round(totalSec));
   const h = String(Math.floor(sec / 3600)).padStart(2, "0");
@@ -28,18 +26,20 @@ export function fmtDateLabel(dateKey) {
   return date.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
 }
 
-// 세션의 실 작업시간(휴식 제외) 계산
 export function computeElapsed(session, nowMs = Date.now()) {
   if (!session) return { totalSec: 0, pauseSec: 0, workSec: 0, isPaused: false };
-  const openPause = session.pauses.find((p) => !p.end);
+  const pauses = session.pauses || [];
+  const openPause = pauses.find((pause) => !pause.end);
   const isPaused = Boolean(openPause);
   const totalSec = Math.round((nowMs - session.startTime) / 1000);
+  const closedPauseSec = pauses
+    .filter((pause) => pause.end)
+    .reduce((sum, pause) => sum + Math.max(0, Math.round((pause.end - pause.start) / 1000)), 0);
   const livePauseSec = isPaused ? Math.round((nowMs - openPause.start) / 1000) : 0;
-  const pauseSec = session.pauseSec + livePauseSec;
+  const pauseSec = closedPauseSec + livePauseSec;
   return { totalSec, pauseSec, workSec: Math.max(totalSec - pauseSec, 0), isPaused };
 }
 
-// 특정 세션의 시간 범위가 같은 날 다른 세션과 겹치는지 검증. 겹치면 겹치는 세션을 반환.
 export function findOverlap(session, siblingSessions = []) {
   const start = session.startTime;
   const end = session.endTime ?? session.startTime + (session.duration || 0) * 1000;
@@ -52,5 +52,5 @@ export function findOverlap(session, siblingSessions = []) {
 }
 
 export function categoryColor(categories, name) {
-  return categories.find((c) => c.name === name)?.color || "#8DDFA8";
+  return categories.find((category) => category.name === name)?.color || "#8DDFA8";
 }

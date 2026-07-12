@@ -6,6 +6,7 @@ import AppSelect from "../../components/common/AppSelect";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import StarRating from "../../components/common/StarRating";
+import SubPageTabs from "../../components/common/SubPageTabs";
 import PageHeader from "../../components/layout/PageHeader";
 import LifeHabitTracker from "../../components/habits/LifeHabitTracker";
 import { addDays, getHabitCompletionRate, toDateKey } from "../../lib/utils/habitSelectors";
@@ -38,7 +39,7 @@ const nextDueDate = (chore, today) => {
   return chore.nextDueDate || today;
 };
 
-function LifeTabs({ value, onChange }) {
+function LegacyLifeTabs({ value, onChange }) {
   const tabs = [["overview", "개요"], ["chores", "집안일"]];
   return (
     <div className="mb-4 flex w-fit rounded-full bg-white/55 p-1 shadow-sm">
@@ -53,6 +54,21 @@ function LifeTabs({ value, onChange }) {
         </button>
       ))}
     </div>
+  );
+}
+
+function LifeTabs({ value, onChange }) {
+  return (
+    <SubPageTabs
+      items={[
+        { key: "overview", label: "개요", active: value === "overview", onClick: () => onChange("overview") },
+        { key: "tasks", label: "전체 할 일", to: "/life/tasks" },
+        { key: "chores", label: "집안일", active: value === "chores", onClick: () => onChange("chores") },
+        { key: "habits", label: "습관", to: "/habits" },
+        { key: "journal", label: "일기", to: "/journal" },
+        { key: "mandalart", label: "만다라트", to: "/mandalart" }
+      ]}
+    />
   );
 }
 
@@ -303,7 +319,7 @@ export default function LifePage() {
   return (
     <>
       <PageHeader eyebrow="LIFE" title="생활 허브">
-        <div className="flex flex-wrap gap-2">
+        <div className="hidden">
           <Link to="/habits"><AppButton variant="soft">Habits</AppButton></Link>
           <Link to="/journal"><AppButton variant="soft">Journal</AppButton></Link>
           <Link to="/mandalart"><AppButton variant="soft">Mandalart</AppButton></Link>

@@ -289,6 +289,12 @@ export default function MoneyPage() {
     const current = next[collection] || [];
     const normalized = { ...item, id: item.id || makeId(collection), updatedAt: today, createdAt: item.createdAt || today };
     next[collection] = item.id ? current.map((entry) => entry.id === item.id ? normalized : entry) : [normalized, ...current];
+    if (collection === "expenses" && item.gapYearUploaded) {
+      next.gapYearBudgets = [
+        { id: makeId("gapYearBudgets"), date: item.date || today, expenseTitle: item.title || "지출", amount: item.amount || "", uploaded: true, createdAt: today, updatedAt: today },
+        ...(next.gapYearBudgets || []).filter((entry) => entry.date !== (item.date || today))
+      ];
+    }
     persist(next);
     setEditor(null);
   };
@@ -442,6 +448,10 @@ function MoneyEditor({ editor, onClose, onSave, onDelete }) {
               <AppSelect value={form.category || "생활비"} onChange={(e) => set("category", e.target.value)}><option>생활비</option><option>교통비</option><option>업무비</option><option>식비</option><option>반복 지출</option><option>월별 지출</option><option>개별 지출</option><option>기타</option></AppSelect>
               <AppInput type="number" value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} placeholder="금액" />
               <AppInput type="date" value={form.date || ""} onChange={(e) => set("date", e.target.value)} />
+              <label className="flex items-center justify-between rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                갭이어 예산 등록 완료
+                <input type="checkbox" checked={Boolean(form.gapYearUploaded)} onChange={(e) => set("gapYearUploaded", e.target.checked)} />
+              </label>
             </>
           )}
           {type === "subscription" && (

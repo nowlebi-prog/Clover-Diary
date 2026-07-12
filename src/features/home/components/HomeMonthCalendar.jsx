@@ -1,89 +1,60 @@
-import { toDateKey } from "../../../lib/utils/date";
+import { addDays, toDateKey } from "../../../lib/utils/date";
 
-const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+const dayNames = ["월", "화", "수", "목", "금", "토", "일"];
 
 const itemTone = {
-  event: "bg-[#DFF5C9] text-[#577616] border-[#CDE9A8]",
-  todo: "bg-[#D9F0F7] text-[#257085] border-[#BDE3EE]",
-  content: "bg-[#FFE7A8] text-[#92721A] border-[#F7D985]",
-  payment: "bg-[#FFD6C2] text-[#A3502B] border-[#F8BE9F]",
-  expense: "bg-[#FFD6C2] text-[#A3502B] border-[#F8BE9F]",
-  subscription: "bg-[#EFE3FF] text-[#6D4D9C] border-[#DDC8FF]",
-  campaign: "bg-[#CDEED7] text-[#2F7E4F] border-[#AEE0BF]",
-  recurring: "bg-[#E8ECF7] text-[#52607C] border-[#D8DEEE]",
-  default: "bg-[#EAF0F0] text-[#5C6A6A] border-[#DDE7E7]"
+  event: "bg-[#DFF5C9] text-[#577616]",
+  todo: "bg-[#D9F0F7] text-[#257085]",
+  content: "bg-[#FFE7A8] text-[#92721A]",
+  payment: "bg-[#FFD6C2] text-[#A3502B]",
+  expense: "bg-[#FFD6C2] text-[#A3502B]",
+  subscription: "bg-[#EFE3FF] text-[#6D4D9C]",
+  campaign: "bg-[#CDEED7] text-[#2F7E4F]",
+  recurring: "bg-[#E8ECF7] text-[#52607C]",
+  default: "bg-[#EAF0F0] text-[#5C6A6A]"
 };
 
-const monthMatrixSunday = (year, month) => {
-  const first = new Date(year, month, 1);
-  const start = new Date(year, month, 1 - first.getDay());
-  return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    const dateKey = toDateKey(date);
-    return {
-      date: dateKey,
-      day: date.getDate(),
-      inMonth: date.getMonth() === month,
-      isToday: dateKey === toDateKey(new Date()),
-      dayOfWeek: date.getDay()
-    };
-  });
+const startOfWeek = (dateKey) => {
+  const date = new Date(`${dateKey}T00:00:00`);
+  const day = date.getDay();
+  date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+  return toDateKey(date);
 };
 
 function CalendarItem({ item }) {
   const tone = itemTone[item.type] || itemTone.default;
   return (
-    <span title={item.displayTitle} className={`block truncate rounded-[4px] border px-1.5 py-0.5 text-[10px] font-bold leading-tight ${tone}`}>
+    <span title={item.displayTitle} className={`block truncate rounded-md px-1.5 py-0.5 text-[10px] font-bold ${tone}`}>
       {item.displayTitle}
     </span>
   );
 }
 
-export default function HomeMonthCalendar({ year, month, itemsByDate, selectedDate, onSelectDate, onMoveMonth, onToday, children }) {
-  const cells = monthMatrixSunday(year, month);
+export default function HomeMonthCalendar({ itemsByDate, selectedDate, onSelectDate, onToday }) {
+  const today = toDateKey(new Date());
+  const todayDay = new Date(`${today}T00:00:00`).getDay();
+  const showNextWeek = todayDay === 0 || todayDay >= 5;
+  const firstDay = startOfWeek(today);
+  const days = Array.from({ length: showNextWeek ? 14 : 7 }, (_, index) => {
+    const date = addDays(firstDay, index);
+    const day = new Date(`${date}T00:00:00`).getDay();
+    return { date, dayName: dayNames[(day + 6) % 7], day: Number(date.slice(-2)), isToday: date === today };
+  });
 
   return (
-    <section className="overflow-hidden rounded-[30px] border border-slate-100 bg-white shadow-[0_22px_70px_rgba(70,95,80,0.08)]">
+    <section className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-[0_18px_50px_rgba(70,95,80,0.07)]">
       <div className="flex items-center justify-between gap-3 px-5 py-4">
         <div>
-          <p className="text-lg font-black text-slate-900">개인</p>
-          <p className="text-xs font-bold text-slate-400">월간 일정과 선택한 날짜</p>
+          <p className="text-lg font-black text-slate-900">주간 캘린더</p>
+          <p className="text-xs font-bold text-slate-400">{showNextWeek ? "이번 주와 다음 주를 함께 봐요." : "이번 주 일정만 가볍게 확인해요."}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onToday} className="grid h-10 w-10 place-items-center rounded-full bg-slate-50 text-sm font-black text-slate-700" aria-label="오늘">
-            {new Date().getDate()}
-          </button>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between border-y border-slate-100 px-5 py-3">
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => onMoveMonth(-1)} className="rounded-full bg-white px-3 py-2 text-sm font-black text-slate-400 shadow-sm">
-            이전
-          </button>
-          <span className="rounded-full border border-slate-100 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-sm">
-            {month + 1}월
-          </span>
-          <button type="button" onClick={() => onMoveMonth(1)} className="rounded-full bg-white px-3 py-2 text-sm font-black text-slate-400 shadow-sm">
-            다음
-          </button>
-        </div>
-        <button type="button" aria-label="월간 보기" className="grid h-10 w-10 place-items-center rounded-full bg-slate-50 text-lg text-slate-600">
-          ▦
+        <button type="button" onClick={onToday} className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white">
+          오늘
         </button>
       </div>
 
-      <div className="grid grid-cols-7 border-b border-slate-100 bg-white text-center text-xs font-black text-slate-400">
-        {dayNames.map((day, index) => (
-          <div key={day} className={`py-2 ${index === 0 ? "text-coral" : index === 6 ? "text-sky-500" : ""}`}>
-            {day}
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7 bg-white">
-        {cells.map((cell) => {
+      <div className={`grid bg-white ${showNextWeek ? "grid-cols-7 md:grid-cols-14" : "grid-cols-7"}`}>
+        {days.map((cell) => {
           const items = itemsByDate[cell.date] || [];
           const isSelected = selectedDate === cell.date;
           return (
@@ -91,33 +62,24 @@ export default function HomeMonthCalendar({ year, month, itemsByDate, selectedDa
               key={cell.date}
               type="button"
               onClick={() => onSelectDate(cell.date)}
-              className={`min-h-[68px] border-b border-r border-slate-100 p-1.5 text-left transition hover:bg-[#F9FCFA] md:min-h-[82px] ${!cell.inMonth ? "bg-slate-50/40 text-slate-300" : "text-slate-900"} ${isSelected ? "bg-[#F6FBF8] ring-2 ring-inset ring-clover-primary/70" : ""}`}
+              className={`min-h-[94px] border-t border-r border-slate-100 p-2 text-left transition hover:bg-[#F9FCFA] ${
+                isSelected ? "bg-[#F6FBF8] ring-2 ring-inset ring-clover-primary/70" : ""
+              }`}
             >
-              <span
-                className={`mb-1 inline-grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] font-black ${
-                  cell.isToday
-                    ? "bg-slate-800 text-white"
-                    : cell.dayOfWeek === 0
-                      ? "text-coral"
-                      : cell.dayOfWeek === 6
-                        ? "text-sky-500"
-                        : "text-slate-800"
-                }`}
-              >
-                {cell.day}
-              </span>
-              <div className="grid gap-0.5">
-                {items.slice(0, 2).map((item, index) => (
-                  <CalendarItem key={`${item.type}-${item.id || index}`} item={item} />
-                ))}
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[11px] font-black text-slate-400">{cell.dayName}</span>
+                <span className={`grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs font-black ${cell.isToday ? "bg-slate-900 text-white" : "text-slate-800"}`}>
+                  {cell.day}
+                </span>
+              </div>
+              <div className="grid gap-1">
+                {items.slice(0, 2).map((item, index) => <CalendarItem key={`${item.type}-${item.id || index}`} item={item} />)}
                 {items.length > 2 && <span className="text-[10px] font-black text-slate-400">+{items.length - 2}</span>}
               </div>
             </button>
           );
         })}
       </div>
-
-      {children && <div className="border-t border-slate-100 bg-[#FBFDFC] p-4">{children}</div>}
     </section>
   );
 }

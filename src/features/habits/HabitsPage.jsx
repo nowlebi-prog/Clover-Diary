@@ -3,6 +3,7 @@ import AppButton from "../../components/common/AppButton";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import StatusBadge from "../../components/common/StatusBadge";
+import SubPageTabs from "../../components/common/SubPageTabs";
 import PageHeader from "../../components/layout/PageHeader";
 import HabitFormModal from "../../components/habits/HabitFormModal";
 import HabitMonthView from "../../components/habits/HabitMonthView";
@@ -92,15 +93,7 @@ export default function HabitsPage() {
         <GlassCard className="p-4"><p className="text-xs text-clover-sub">Best streak</p><p className="mt-1 text-2xl font-bold">{maxStreak} days</p></GlassCard>
       </div>
 
-      <GlassCard className="mb-4 p-3">
-        <div className="flex gap-2 overflow-x-auto thin-scroll">
-          {tabs.map(([key, label]) => (
-            <button key={key} onClick={() => setTab(key)} className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-bold ${tab === key ? "bg-clover-mint text-clover-deep" : "bg-white/45 text-clover-sub"}`}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </GlassCard>
+      <SubPageTabs items={tabs.map(([key, label]) => ({ key, label, active: tab === key, onClick: () => setTab(key) }))} />
 
       {tab === "today" && (
         <GlassCard>

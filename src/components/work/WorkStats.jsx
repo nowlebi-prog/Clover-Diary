@@ -1,89 +1,69 @@
 import { useMemo } from "react";
 import GlassCard from "../common/GlassCard";
 import { fmtHM } from "../../lib/utils/workUtils";
-import { addDays } from "../../lib/utils/date";
 
-export default function WorkStats({ sessions = [], categories = [], today, weeklyGoalHours = 40 }) {
+const dayKey = (date) => date.toISOString().slice(0, 10);
+
+export default function WorkStats({ sessions = [], categories = [], today }) {
   const stats = useMemo(() => {
-    const weekStart = addDays(today, -6);
+    const todaySessions = sessions.filter((session) => session.date === today);
     const monthKey = today.slice(0, 7);
-    const todaySessions = sessions.filter((s) => s.date === today);
-    const weekSessions = sessions.filter((s) => s.date >= weekStart && s.date <= today);
-    const monthSessions = sessions.filter((s) => (s.date || "").startsWith(monthKey));
-
-    const sum = (list) => list.reduce((acc, s) => acc + s.duration, 0);
+    const monthSessions = sessions.filter((session) => (session.date || "").startsWith(monthKey));
+    const monthDays = Array.from({ length: new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0).getDate() }, (_, index) => `${monthKey}-${String(index + 1).padStart(2, "0")}`);
+    const sum = (list) => list.reduce((total, session) => total + Number(session.duration || 0), 0);
     const byCategory = {};
-    weekSessions.forEach((s) => {
-      byCategory[s.category] = (byCategory[s.category] || 0) + s.duration;
+    todaySessions.forEach((session) => {
+      byCategory[session.category] = (byCategory[session.category] || 0) + Number(session.duration || 0);
     });
-    const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
-    const weekSec = sum(weekSessions);
-    const goalSec = weeklyGoalHours * 3600;
-
-    return {
-      todaySec: sum(todaySessions),
-      weekSec,
-      monthSec: sum(monthSessions),
-      goalRate: goalSec ? Math.min(Math.round((weekSec / goalSec) * 100), 999) : 0,
-      sessionCount: weekSessions.length,
-      avgSec: weekSessions.length ? Math.round(weekSec / weekSessions.length) : 0,
-      byCategory,
-      topCategory
-    };
-  }, [sessions, today, weeklyGoalHours]);
+    const monthByDay = monthDays.map((date) => ({ date, sec: sum(monthSessions.filter((session) => session.date === date)) }));
+    return { todaySec: sum(todaySessions), monthSec: sum(monthSessions), byCategory, monthByDay };
+  }, [sessions, today]);
 
   const categoryEntries = Object.entries(stats.byCategory).sort((a, b) => b[1] - a[1]);
-  const maxCategorySec = categoryEntries[0]?.[1] || 1;
+  const maxCategory = Math.max(1, ...categoryEntries.map(([, sec]) => sec));
+  const maxDay = Math.max(1, ...stats.monthByDay.map((item) => item.sec));
 
   return (
-    <GlassCard className="p-5">
-      <h2 className="mb-3 text-base font-black">이번주 작업 통계</h2>
-
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-2xl bg-white/55 px-2 py-3">
-          <p className="text-[11px] font-bold text-clover-sub">오늘</p>
-          <p className="mt-1 text-sm font-black text-clover-deep">{fmtHM(stats.todaySec)}</p>
+    <GlassCard>
+      <div className="mb-3 grid gap-2 sm:grid-cols-2">
+        <div className="rounded-2xl bg-emerald-50 p-4">
+          <p className="text-xs font-black text-emerald-700">오늘 집중</p>
+          <p className="mt-1 text-2xl font-black">{fmtHM(stats.todaySec)}</p>
         </div>
-        <div className="rounded-2xl bg-white/55 px-2 py-3">
-          <p className="text-[11px] font-bold text-clover-sub">이번주</p>
-          <p className="mt-1 text-sm font-black text-clover-deep">{fmtHM(stats.weekSec)}</p>
-        </div>
-        <div className="rounded-2xl bg-white/55 px-2 py-3">
-          <p className="text-[11px] font-bold text-clover-sub">이번달</p>
-          <p className="mt-1 text-sm font-black text-clover-deep">{fmtHM(stats.monthSec)}</p>
+        <div className="rounded-2xl bg-sky-50 p-4">
+          <p className="text-xs font-black text-sky-700">이번 달 집중</p>
+          <p className="mt-1 text-2xl font-black">{fmtHM(stats.monthSec)}</p>
         </div>
       </div>
 
-      <div className="mt-4">
-        <div className="mb-1 flex items-center justify-between text-[11px] font-bold text-clover-sub">
-          <span>주간 목표 {weeklyGoalHours}시간 대비</span>
-          <span>{stats.goalRate}%</span>
-        </div>
-        <div className="h-2 rounded-full bg-white/70">
-          <div className="h-2 rounded-full bg-clover-primary" style={{ width: `${Math.min(stats.goalRate, 100)}%` }} />
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-1.5">
-        {categoryEntries.map(([name, sec]) => (
-          <div key={name} className="flex items-center gap-2">
-            <span className="w-16 shrink-0 truncate text-[11px] font-bold text-clover-sub">{name}</span>
-            <div className="h-2 flex-1 rounded-full bg-white/60">
-              <div
-                className="h-2 rounded-full"
-                style={{ width: `${(sec / maxCategorySec) * 100}%`, background: categories.find((c) => c.name === name)?.color || "#8DDFA8" }}
-              />
-            </div>
-            <span className="w-14 shrink-0 text-right text-[11px] font-bold text-clover-sub">{fmtHM(sec)}</span>
+      <div className="grid gap-4">
+        <section>
+          <h3 className="mb-2 text-sm font-black">일간 카테고리 그래프</h3>
+          <div className="grid gap-2">
+            {categoryEntries.map(([name, sec]) => (
+              <div key={name} className="grid grid-cols-[72px_1fr_56px] items-center gap-2 text-xs">
+                <span className="truncate font-bold text-clover-sub">{name}</span>
+                <div className="h-2 rounded-full bg-white/70">
+                  <div className="h-2 rounded-full" style={{ width: `${(sec / maxCategory) * 100}%`, background: categories.find((cat) => cat.name === name)?.color || "#8DDFA8" }} />
+                </div>
+                <span className="text-right font-bold text-clover-sub">{fmtHM(sec)}</span>
+              </div>
+            ))}
+            {!categoryEntries.length && <p className="text-xs font-bold text-clover-sub">오늘 기록이 아직 없어요.</p>}
           </div>
-        ))}
-        {!categoryEntries.length && <p className="text-xs text-clover-sub">이번주 기록이 아직 없어요.</p>}
-      </div>
+        </section>
 
-      <div className="mt-4 flex justify-between text-[11px] font-bold text-clover-sub">
-        <span>세션 {stats.sessionCount}건</span>
-        <span>평균 {fmtHM(stats.avgSec)}</span>
-        <span>최다 작업 · {stats.topCategory?.[0] || "-"}</span>
+        <section>
+          <h3 className="mb-2 text-sm font-black">월간 그래프</h3>
+          <div className="flex h-24 items-end gap-1 overflow-x-auto rounded-2xl bg-white/45 p-2">
+            {stats.monthByDay.map((item) => (
+              <div key={item.date} className="flex min-w-4 flex-col items-center justify-end gap-1">
+                <span className="w-2 rounded-full bg-clover-primary" style={{ height: `${Math.max(4, (item.sec / maxDay) * 68)}px` }} />
+                <span className="text-[9px] font-bold text-clover-sub">{Number(item.date.slice(-2))}</span>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </GlassCard>
   );
