@@ -3,6 +3,7 @@ import AppButton from "../../components/common/AppButton";
 import AppTextarea from "../../components/common/AppTextarea";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
+import SubPageTabs from "../../components/common/SubPageTabs";
 import PageHeader from "../../components/layout/PageHeader";
 import TimeTracker from "../../components/work/TimeTracker";
 import WorkLog from "../../components/work/WorkLog";
@@ -46,6 +47,16 @@ export default function WorkPage() {
       <PageHeader eyebrow="WORK" title="업무 실행실">
         <AppButton onClick={() => window.dispatchEvent(new CustomEvent("clover-open-quick-add", { detail: "todo" }))}>+ 할 일 추가</AppButton>
       </PageHeader>
+
+      <SubPageTabs
+        items={[
+          { key: "overview", label: "개요", active: true },
+          { key: "tasks", label: "할 일", to: "/tasks" },
+          { key: "calendar", label: "캘린더", to: "/calendar" },
+          { key: "content", label: "콘텐츠", to: "/content" },
+          { key: "campaigns", label: "캠페인", to: "/campaigns" }
+        ]}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(320px,.95fr)_minmax(0,1.05fr)]">
         <TimeTracker activeSession={activeSession} categories={categories} onEnded={load} />

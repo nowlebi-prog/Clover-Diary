@@ -1,6 +1,7 @@
 import { addDays, toDateKey } from "../../../lib/utils/date";
 
 const dayNames = ["월", "화", "수", "목", "금", "토", "일"];
+const fullDayNames = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
 const itemTone = {
   event: "bg-[#DFF5C9] text-[#577616]",
@@ -32,7 +33,8 @@ function CalendarItem({ item }) {
 
 export default function HomeMonthCalendar({ itemsByDate, selectedDate, onSelectDate, onToday }) {
   const today = toDateKey(new Date());
-  const todayDay = new Date(`${today}T00:00:00`).getDay();
+  const todayDate = new Date(`${today}T00:00:00`);
+  const todayDay = todayDate.getDay();
   const showNextWeek = todayDay === 0 || todayDay >= 5;
   const firstDay = startOfWeek(today);
   const days = Array.from({ length: showNextWeek ? 14 : 7 }, (_, index) => {
@@ -45,8 +47,12 @@ export default function HomeMonthCalendar({ itemsByDate, selectedDate, onSelectD
     <section className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-[0_18px_50px_rgba(70,95,80,0.07)]">
       <div className="flex items-center justify-between gap-3 px-5 py-4">
         <div>
-          <p className="text-lg font-black text-slate-900">주간 캘린더</p>
-          <p className="text-xs font-bold text-slate-400">{showNextWeek ? "이번 주와 다음 주를 함께 봐요." : "이번 주 일정만 가볍게 확인해요."}</p>
+          <p className="text-lg font-black text-slate-900">
+            {todayDate.getMonth() + 1}월 {todayDate.getDate()}일 {fullDayNames[todayDate.getDay()]}
+          </p>
+          <p className="text-xs font-bold text-slate-400">
+            {showNextWeek ? "이번 주와 다음 주 일정을 같이 봐요." : "이번 주 일정을 가볍게 확인해요."}
+          </p>
         </div>
         <button type="button" onClick={onToday} className="rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white">
           오늘

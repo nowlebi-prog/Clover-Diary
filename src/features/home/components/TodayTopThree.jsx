@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import CustomCheckbox from "../../../components/common/CustomCheckbox";
 import SectionTitle from "../../../components/common/SectionTitle";
 
@@ -10,16 +11,19 @@ const categoryOf = (item, todos) => {
   return ["work", "bg-sky-100 text-sky-700"];
 };
 
+const linkedTodoId = (item, todos) => item.todoId || todos.find((todo) => todo.title === item.title)?.id || "";
+
 export default function TodayTopThree({ items = [], todos = [], onToggle }) {
   const topItems = items.slice(0, 3);
 
   return (
     <section className="glass rounded-[28px] bg-gradient-to-br from-[#FFF8EA]/90 to-[#E9F8EF]/80 p-5">
-      <SectionTitle>오늘 꼭 해야 할 TOP 3</SectionTitle>
+      <SectionTitle action={<Link to="/tasks" className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">수정</Link>}>오늘 꼭 해야 할 TOP 3</SectionTitle>
       <p className="mb-4 text-sm font-bold text-clover-sub">오늘은 이 세 가지만 끝내도 충분해요.</p>
       <div className="grid gap-2">
         {topItems.map((item, index) => {
           const [category, tone] = categoryOf(item, todos);
+          const todoId = linkedTodoId(item, todos);
           return (
             <article
               key={item.id}
@@ -31,7 +35,10 @@ export default function TodayTopThree({ items = [], todos = [], onToggle }) {
                 {String(index + 1).padStart(2, "0")}
               </span>
               <div className="min-w-0 flex-1">
-                <span className={`mb-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${tone}`}>{category}</span>
+                <div className="mb-2 flex items-center gap-2">
+                  <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${tone}`}>{category}</span>
+                  {todoId && <Link to={`/tasks?edit=${todoId}`} className="text-[11px] font-black text-clover-deep">바로 수정</Link>}
+                </div>
                 <CustomCheckbox checked={item.completed} label={item.title} onChange={(checked) => onToggle(item.id, checked)} />
               </div>
             </article>

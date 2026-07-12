@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
@@ -99,6 +100,8 @@ function CalendarFilterPanel({ enabled, onToggle, onAddEvent }) {
 
 export default function CalendarPage() {
   const now = new Date();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [data, setData] = useState(getAllData());
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [selectedDate, setSelectedDate] = useState(toDateKey(now));
@@ -121,6 +124,16 @@ export default function CalendarPage() {
     };
   }, [selectedDate]);
 
+  useEffect(() => {
+    const date = params.get("date");
+    if (!date) return;
+    const parsed = new Date(`${date}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return;
+    setSelectedDate(date);
+    setCursor({ year: parsed.getFullYear(), month: parsed.getMonth() });
+    if (params.get("new") === "event") setEditing(emptyEvent(date));
+  }, [params]);
+
   const rawItemsByDate = useMemo(() => getMonthCalendarItems(data, cursor.year, cursor.month), [data, cursor]);
   const itemsByDate = useMemo(() => filterItemsByCalendar(rawItemsByDate, enabledCalendars), [rawItemsByDate, enabledCalendars]);
   const selectedItems = itemsByDate[selectedDate] || [];
@@ -141,6 +154,7 @@ export default function CalendarPage() {
     if (editing.id) updateEvent(editing.id, editing);
     else createEvent(editing);
     setEditing(null);
+    if (params.get("new") || params.get("date")) navigate("/calendar", { replace: true });
     load();
   };
 

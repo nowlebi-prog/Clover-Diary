@@ -206,9 +206,9 @@ export default function HomePage() {
           <SectionTitle>마감 임박</SectionTitle>
           <div className="grid gap-2">
             {closeDeadlines.map((item, index) => (
-              <Link key={`${item.type}-${item.id || index}`} to={item.type === "payment" ? "/money" : item.type === "content" || item.type === "campaign" ? "/archive" : "/tasks"} className="flex items-center justify-between rounded-2xl bg-rose-50/70 px-4 py-3 text-sm font-bold">
+              <Link key={`${item.type}-${item.id || index}`} to={item.type === "todo" && item.id ? `/tasks?edit=${item.id}` : item.type === "payment" ? "/money" : item.type === "content" || item.type === "campaign" ? "/archive" : "/tasks"} className="flex items-center justify-between rounded-2xl bg-rose-50/70 px-4 py-3 text-sm font-bold">
                 <span className="truncate">{item.displayTitle}</span>
-                <span className="rounded-full bg-white px-2 py-1 text-xs text-rose-600">D{item.dday >= 0 ? `-${item.dday}` : `+${Math.abs(item.dday)}`}</span>
+                <span className="ml-2 shrink-0 rounded-full bg-white px-2 py-1 text-xs text-rose-600">D{item.dday >= 0 ? `-${item.dday}` : `+${Math.abs(item.dday)}`}</span>
               </Link>
             ))}
             {!closeDeadlines.length && <p className="rounded-2xl bg-white/45 p-4 text-sm font-bold text-clover-sub">급한 마감은 없어요.</p>}
@@ -220,8 +220,8 @@ export default function HomePage() {
         <HomeMonthCalendar
           itemsByDate={monthItems}
           selectedDate={today}
-          onSelectDate={(date) => navigate(`/life/tasks?date=${date}`)}
-          onToday={() => navigate(`/life/tasks?date=${today}`)}
+          onSelectDate={(date) => navigate(`/calendar?date=${date}&new=event`)}
+          onToday={() => navigate(`/calendar?date=${today}&new=event`)}
         />
         <GlassCard>
           <SectionTitle action={<Link to={`/life/tasks?date=${today}`} className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">전체</Link>}>타임라인</SectionTitle>
