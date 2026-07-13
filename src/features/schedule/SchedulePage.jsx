@@ -51,6 +51,25 @@ const addDays = (dateKey, amount) => {
   date.setDate(date.getDate() + amount);
   return toDateKey(date);
 };
+const normalizeEndDate = (startDate, endDate) => {
+  if (!startDate) return "";
+  if (!endDate || endDate < startDate) return startDate;
+  return endDate;
+};
+const isDateInRange = (item, date) => {
+  if (!item.date || item.isUnscheduled) return false;
+  const endDate = item.endDate || item.date;
+  return item.date <= date && date <= endDate;
+};
+const forEachDateInRange = (item, callback) => {
+  if (!item.date || item.isUnscheduled) return;
+  const endDate = normalizeEndDate(item.date, item.endDate);
+  let cursor = item.date;
+  while (cursor <= endDate) {
+    callback(cursor);
+    cursor = addDays(cursor, 1);
+  }
+};
 const nextChoreDueDate = (chore, doneDate) => {
   if (chore.cycle === "매일") return addDays(doneDate, 1);
   if (chore.cycle === "매주") return addDays(doneDate, 7);
@@ -92,11 +111,13 @@ const fromCollection = (items, collection, dateField, fallbackCategory) =>
     .filter((item) => !item.completed)
     .map((item) => {
       const date = item[dateField] || item.date || null;
+      const endDate = normalizeEndDate(date, item.endDate);
       return {
         ...item,
         collection,
         date,
         scheduleDate: date,
+        endDate,
         title: titleOf(item),
         category: normalizeCategory(item, fallbackCategory),
         startTime: item.allDay ? "" : (item.startTime || item.time || item.dueTime || ""),
@@ -153,6 +174,7 @@ const emptySchedule = (selectedDate, unscheduled = false) => ({
   category: "기타",
   date: unscheduled ? "" : selectedDate,
   scheduleDate: unscheduled ? "" : selectedDate,
+  endDate: unscheduled ? "" : selectedDate,
   startTime: unscheduled ? "" : "09:00",
   endTime: unscheduled ? "" : "10:00",
   isAllDay: false,
@@ -216,7 +238,9 @@ function MonthCalendar({ year, month, selectedDate, items, filter, onSelect, onM
   const byDate = items.reduce((map, item) => {
     if (!item.date || item.isUnscheduled) return map;
     if (filter !== "전체" && filter !== "날짜 미정" && item.category !== filter) return map;
-    map[item.date] = [...(map[item.date] || []), item];
+    forEachDateInRange(item, (date) => {
+      map[date] = [...(map[date] || []), { ...item, displayDate: date }];
+    });
     return map;
   }, {});
 
@@ -443,10 +467,12 @@ function ScheduleEditor({ item, selectedDate, onClose, onSave, onDelete }) {
 
   useEffect(() => {
     setForm((current) => {
-      if (timeMode === "unscheduled") return { ...current, date: "", scheduleDate: "", startTime: "", endTime: "", isAllDay: false, isUnscheduled: true };
-      if (timeMode === "allDay") return { ...current, date: current.date || selectedDate, scheduleDate: current.scheduleDate || selectedDate, startTime: "", endTime: "", isAllDay: true, isUnscheduled: false };
-      if (timeMode === "noTime") return { ...current, date: current.date || selectedDate, scheduleDate: current.scheduleDate || selectedDate, startTime: "", endTime: "", isAllDay: false, isUnscheduled: false };
-      return { ...current, date: current.date || selectedDate, scheduleDate: current.scheduleDate || selectedDate, isAllDay: false, isUnscheduled: false };
+      const startDate = current.date || current.scheduleDate || selectedDate;
+      const endDate = normalizeEndDate(startDate, current.endDate);
+      if (timeMode === "unscheduled") return { ...current, date: "", scheduleDate: "", endDate: "", startTime: "", endTime: "", isAllDay: false, isUnscheduled: true };
+      if (timeMode === "allDay") return { ...current, date: startDate, scheduleDate: startDate, endDate, startTime: "", endTime: "", isAllDay: true, isUnscheduled: false };
+      if (timeMode === "noTime") return { ...current, date: startDate, scheduleDate: startDate, endDate, startTime: "", endTime: "", isAllDay: false, isUnscheduled: false };
+      return { ...current, date: startDate, scheduleDate: startDate, endDate, isAllDay: false, isUnscheduled: false };
     });
   }, [timeMode, selectedDate]);
 
@@ -512,6 +538,141 @@ function ScheduleEditor({ item, selectedDate, onClose, onSave, onDelete }) {
   );
 }
 
+function TogglePill({ label, tone = "white", checked, onChange }) {
+  const tones = {
+    white: "bg-white/75 text-clover-ink",
+    rose: "bg-red-50/80 text-rose-600",
+    mint: "bg-emerald-50/80 text-clover-deep"
+  };
+  return (
+    <label className={`flex min-w-0 items-center justify-between gap-2 rounded-2xl px-3 py-3 text-sm font-black ${tones[tone] || tones.white}`}>
+      <span className="truncate whitespace-nowrap">{label}</span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4 shrink-0 accent-clover-deep" />
+    </label>
+  );
+}
+
+function ScheduleEditorV2({ item, selectedDate, onClose, onSave, onDelete }) {
+  const initialMode = item?.isUnscheduled ? "unscheduled" : item?.isAllDay || item?.allDay ? "allDay" : item?.startTime || item?.time ? "timed" : "noTime";
+  const initialDate = item?.date || item?.scheduleDate || selectedDate;
+  const [form, setForm] = useState({
+    ...emptySchedule(selectedDate),
+    ...item,
+    date: initialDate,
+    scheduleDate: initialDate,
+    endDate: normalizeEndDate(initialDate, item?.endDate),
+    timeMode: item?.timeMode || initialMode,
+    priority: item?.priority || "normal",
+    needMove: Boolean(item?.needMove)
+  });
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const timeMode = form.timeMode || "timed";
+
+  useEffect(() => {
+    setForm((current) => {
+      const startDate = current.date || current.scheduleDate || selectedDate;
+      const endDate = normalizeEndDate(startDate, current.endDate);
+      if (timeMode === "unscheduled") return { ...current, date: "", scheduleDate: "", endDate: "", startTime: "", endTime: "", isAllDay: false, isUnscheduled: true };
+      if (timeMode === "allDay") return { ...current, date: startDate, scheduleDate: startDate, endDate, startTime: "", endTime: "", isAllDay: true, isUnscheduled: false };
+      if (timeMode === "noTime") return { ...current, date: startDate, scheduleDate: startDate, endDate, startTime: "", endTime: "", isAllDay: false, isUnscheduled: false };
+      return { ...current, date: startDate, scheduleDate: startDate, endDate, isAllDay: false, isUnscheduled: false };
+    });
+  }, [timeMode, selectedDate]);
+
+  const startDate = form.date || form.scheduleDate || selectedDate;
+  const endDate = normalizeEndDate(startDate, form.endDate);
+
+  return (
+    <Modal title={form.id ? "일정 상세 수정" : "일정 추가"} onClose={onClose}>
+      <div className="grid gap-4">
+        <label className="grid gap-1 text-sm font-bold">
+          일정 제목
+          <AppInput value={form.title || ""} onChange={(event) => set("title", event.target.value)} placeholder="예: 주간 보고서 작성" autoFocus />
+        </label>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="grid gap-1 text-sm font-bold">
+            유형
+            <AppSelect value={timeMode} onChange={(event) => set("timeMode", event.target.value)}>
+              <option value="timed">시간 지정</option>
+              <option value="allDay">종일</option>
+              <option value="noTime">시간 미정</option>
+              <option value="unscheduled">날짜 미정</option>
+            </AppSelect>
+          </label>
+          <label className="grid gap-1 text-sm font-bold">
+            분류
+            <AppSelect value={form.category || "湲고?"} onChange={(event) => set("category", event.target.value)}>
+              {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+            </AppSelect>
+          </label>
+        </div>
+
+        {timeMode !== "unscheduled" && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm font-bold">
+              시작일
+              <AppInput
+                type="date"
+                value={startDate}
+                onChange={(event) => {
+                  const nextDate = event.target.value;
+                  setForm((current) => ({
+                    ...current,
+                    date: nextDate,
+                    scheduleDate: nextDate,
+                    endDate: normalizeEndDate(nextDate, current.endDate)
+                  }));
+                }}
+              />
+            </label>
+            <label className="grid gap-1 text-sm font-bold">
+              종료일
+              <AppInput type="date" value={endDate} min={startDate} onChange={(event) => set("endDate", normalizeEndDate(startDate, event.target.value))} />
+            </label>
+          </div>
+        )}
+
+        {timeMode === "timed" && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm font-bold">시작<AppInput value={form.startTime || form.time || ""} onChange={(event) => { set("startTime", event.target.value); set("time", event.target.value); }} placeholder="09:00" /></label>
+            <label className="grid gap-1 text-sm font-bold">종료<AppInput value={form.endTime || ""} onChange={(event) => set("endTime", event.target.value)} placeholder="10:00" /></label>
+          </div>
+        )}
+
+        <div className="grid gap-3">
+          <label className="grid gap-1 text-sm font-bold">
+            우선순위
+            <AppSelect value={form.priority || "normal"} onChange={(event) => set("priority", event.target.value)}>
+              <option value="low">낮음</option>
+              <option value="normal">보통</option>
+              <option value="high">높음</option>
+            </AppSelect>
+          </label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <TogglePill label="종일" checked={timeMode === "allDay" || Boolean(form.isAllDay)} onChange={(checked) => set("timeMode", checked ? "allDay" : "timed")} />
+            <TogglePill label="이동 필요" tone="rose" checked={Boolean(form.needMove)} onChange={(checked) => set("needMove", checked)} />
+            <TogglePill label="오늘 꼭!" tone="mint" checked={Boolean(form.todayMust)} onChange={(checked) => set("todayMust", checked)} />
+          </div>
+        </div>
+
+        <label className="grid gap-1 text-sm font-bold">
+          메모
+          <AppTextarea value={form.memo || ""} onChange={(event) => set("memo", event.target.value)} placeholder="세부 메모를 적어주세요." />
+        </label>
+
+        <div className="flex flex-wrap justify-between gap-2">
+          {form.id ? <AppButton variant="danger" onClick={() => onDelete(form)}>삭제</AppButton> : <span />}
+          <div className="flex gap-2">
+            <AppButton variant="ghost" onClick={onClose}>취소</AppButton>
+            <AppButton onClick={() => onSave({ ...form, date: startDate, scheduleDate: startDate, endDate })}>저장</AppButton>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export default function SchedulePage() {
   const today = toDateKey(new Date());
   const [searchParams, setSearchParams] = useSearchParams();
@@ -542,7 +703,7 @@ export default function SchedulePage() {
 
   const allItems = useMemo(() => getScheduleItems(data), [data]);
   const filteredItems = filter === "전체" ? allItems : filter === "날짜 미정" ? allItems.filter((item) => item.isUnscheduled) : allItems.filter((item) => item.category === filter);
-  const selectedItems = filteredItems.filter((item) => item.date === selectedDate && !item.isUnscheduled);
+  const selectedItems = filteredItems.filter((item) => isDateInRange(item, selectedDate));
   const groups = {
     allDay: selectedItems.filter((item) => item.isAllDay),
     timed: selectedItems.filter((item) => item.startTime && item.endTime && !item.isAllDay),
@@ -562,12 +723,14 @@ export default function SchedulePage() {
     if (!form.title?.trim()) return;
     persist((next) => {
       const date = form.isUnscheduled ? null : (form.date || form.scheduleDate || selectedDate);
+      const endDate = form.isUnscheduled ? "" : normalizeEndDate(date, form.endDate);
       const payload = {
         title: form.title.trim(),
         category: form.category || "기타",
         scheduleCategory: form.category || "기타",
         date,
         scheduleDate: date,
+        endDate,
         time: form.isAllDay ? "" : (form.startTime || form.time || ""),
         startTime: form.isAllDay ? "" : (form.startTime || form.time || ""),
         endTime: form.isAllDay ? "" : (form.endTime || ""),
@@ -575,13 +738,15 @@ export default function SchedulePage() {
         isAllDay: Boolean(form.isAllDay),
         isUnscheduled: Boolean(form.isUnscheduled),
         memo: form.memo || "",
+        priority: form.priority || "normal",
+        needMove: Boolean(form.needMove),
         todayMust: Boolean(form.todayMust),
         completed: Boolean(form.completed),
         updatedAt: today
       };
 
       if (form.collection === "todos") {
-        next.todos = (next.todos || []).map((todo) => todo.id === form.id ? { ...todo, ...payload, dueDate: date, dueTime: payload.startTime, project: payload.category, projectName: payload.category } : todo);
+        next.todos = (next.todos || []).map((todo) => todo.id === form.id ? { ...todo, ...payload, dueDate: date, endDate, dueTime: payload.startTime, project: payload.category, projectName: payload.category } : todo);
       } else if (form.collection === "chores") {
         next.chores = (next.chores || []).map((chore) => chore.id === form.id ? {
           ...chore,
@@ -733,7 +898,7 @@ export default function SchedulePage() {
       </div>
 
       {editing && (
-        <ScheduleEditor
+        <ScheduleEditorV2
           item={editing}
           selectedDate={selectedDate}
           onClose={() => setEditing(null)}

@@ -3,6 +3,12 @@ import { addDays, daysBetween, toDateKey } from "./date";
 const titleOf = (item) => item.title || item.name || item.project || item.service || "Untitled";
 const compact = (item, type, date, meta = {}) => ({ ...item, type, date, displayTitle: titleOf(item), ...meta });
 const isImportant = (item) => item?.important || item?.isImportant || item?.priority === "high";
+const normalizeEndDate = (startDate, endDate) => {
+  if (!startDate) return "";
+  if (!endDate || endDate < startDate) return startDate;
+  return endDate;
+};
+const inRange = (date, startDate, endDate) => startDate && startDate <= date && date <= normalizeEndDate(startDate, endDate);
 const monthlyRecurringDate = (item, baseDate) => {
   if (!item.dayOfMonth) return "";
   const date = new Date(`${baseDate.slice(0, 8)}01T00:00:00`);
@@ -29,12 +35,12 @@ export function getOverdueTodos(data, today = toDateKey()) {
 
 export function getTodayItems(data, today = toDateKey()) {
   const items = [];
-  (data.events || []).filter((item) => item.date === today && !item.completed).forEach((item) => items.push(compact(item, "event", item.date, {
+  (data.events || []).filter((item) => inRange(today, item.date, item.endDate) && !item.completed).forEach((item) => items.push(compact(item, "event", today, {
     tone: "green",
     label: "Event",
-    time: item.allDay ? "" : (item.startTime || item.time || ""),
-    startTime: item.allDay ? "" : (item.startTime || item.time || ""),
-    endTime: item.allDay ? "" : (item.endTime || ""),
+    time: item.allDay ? "" : (item.date === today ? (item.startTime || item.time || "") : "00:00"),
+    startTime: item.allDay ? "" : (item.date === today ? (item.startTime || item.time || "") : "00:00"),
+    endTime: item.allDay ? "" : (item.endDate && item.endDate !== today ? "" : (item.endTime || "")),
     allDay: Boolean(item.allDay),
     needMove: Boolean(item.needMove),
     priority: item.priority || "normal",
@@ -98,14 +104,22 @@ export function getMonthCalendarItems(data, year, month) {
     if (!date) return;
     map[date] = [...(map[date] || []), item];
   };
-  (data.events || []).filter((item) => !item.completed).forEach((item) => push(item.date, compact(item, "event", item.date, {
-    badge: "E",
-    tone: "green",
-    isImportant: isImportant(item),
-    time: item.allDay ? "" : (item.startTime || item.time || ""),
-    allDay: Boolean(item.allDay),
-    needMove: Boolean(item.needMove)
-  })));
+  (data.events || []).filter((item) => !item.completed).forEach((item) => {
+    if (!item.date) return;
+    let cursor = item.date;
+    const endDate = normalizeEndDate(item.date, item.endDate);
+    while (cursor <= endDate) {
+      push(cursor, compact(item, "event", cursor, {
+        badge: "E",
+        tone: "green",
+        isImportant: isImportant(item),
+        time: item.allDay ? "" : (cursor === item.date ? (item.startTime || item.time || "") : "00:00"),
+        allDay: Boolean(item.allDay),
+        needMove: Boolean(item.needMove)
+      }));
+      cursor = addDays(cursor, 1);
+    }
+  });
   (data.todos || []).filter((item) => !item.completed).forEach((item) => {
     push(item.dueDate, compact(item, "todo", item.dueDate, { badge: "T", tone: "red", isImportant: isImportant(item), allDay: Boolean(item.allDay), needMove: Boolean(item.needMove), time: item.allDay ? "" : (item.startTime || item.dueTime || "") }));
     if (item.endDate && item.endDate !== item.dueDate) {
