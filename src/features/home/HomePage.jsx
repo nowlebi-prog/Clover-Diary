@@ -385,6 +385,18 @@ export default function HomePage() {
     ...todayTodos.filter((todo) => todo.todayMust).map((todo) => ({ ...todo, source: "todo" })),
     ...(data.events || []).filter((event) => !event.completed && event.todayMust && event.date === today).map((event) => ({ ...event, source: "event", displayTitle: event.title }))
   ];
+  const dailyQuote = useMemo(() => {
+    const savedQuotes = (data.quotes || [])
+      .map((quote) => ({
+        text: (quote.text || quote.body || quote.title || "").trim(),
+        source: (quote.source || "").trim()
+      }))
+      .filter((quote) => quote.text);
+    if (!savedQuotes.length) return "";
+    const seed = today.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const quote = savedQuotes[seed % savedQuotes.length];
+    return quote.source ? `${quote.text} · ${quote.source}` : quote.text;
+  }, [data.quotes, today]);
 
   const toggleTodo = (id, completed) => {
     updateTodo(id, { completed, completedAt: completed ? today : "" });
@@ -402,13 +414,18 @@ export default function HomePage() {
 
   return (
     <>
-      <PageHeader eyebrow={today} title="좋은 하루 보내세요!">
+      <PageHeader eyebrow={today} title="오늘도 Lucky Day 🍀">
         <div className="flex flex-wrap items-center gap-2">
           <WeatherCard />
           <AppButton variant="soft" onClick={refreshNow}>새로고침</AppButton>
           <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
         </div>
       </PageHeader>
+      {dailyQuote && (
+        <p className="-mt-3 mb-5 max-w-3xl break-keep text-sm font-bold leading-6 text-clover-sub">
+          {dailyQuote}
+        </p>
+      )}
 
       <SummaryChips todayItems={todayItems} deadlines={deadlines} habitStatus={habitStatus} todayFocusSec={todayFocusSec} />
 
