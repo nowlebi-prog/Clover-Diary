@@ -29,7 +29,17 @@ export function getOverdueTodos(data, today = toDateKey()) {
 
 export function getTodayItems(data, today = toDateKey()) {
   const items = [];
-  (data.events || []).filter((item) => item.date === today && !item.completed).forEach((item) => items.push(compact(item, "event", item.date, { tone: "green", label: "Event" })));
+  (data.events || []).filter((item) => item.date === today && !item.completed).forEach((item) => items.push(compact(item, "event", item.date, {
+    tone: "green",
+    label: "Event",
+    time: item.allDay ? "" : (item.startTime || item.time || ""),
+    startTime: item.allDay ? "" : (item.startTime || item.time || ""),
+    endTime: item.allDay ? "" : (item.endTime || ""),
+    allDay: Boolean(item.allDay),
+    needMove: Boolean(item.needMove),
+    priority: item.priority || "normal",
+    todayMust: Boolean(item.todayMust)
+  })));
   (data.todos || []).filter((item) => !item.completed && (item.dueDate === today || (item.endDate && item.dueDate <= today && today <= item.endDate))).forEach((item) => items.push(compact(item, "todo", item.dueDate, {
     tone: "red",
     label: "Todo",
@@ -37,7 +47,10 @@ export function getTodayItems(data, today = toDateKey()) {
     startTime: item.allDay ? "" : (item.dueDate === today ? (item.startTime || item.dueTime || "") : "00:00"),
     endTime: item.allDay ? "" : (item.endDate && item.endDate !== today ? "" : (item.endTime || "")),
     spansToNextDay: Boolean(item.endDate && item.endDate !== item.dueDate),
-    allDay: Boolean(item.allDay)
+    allDay: Boolean(item.allDay),
+    needMove: Boolean(item.needMove),
+    priority: item.priority || "normal",
+    todayMust: Boolean(item.todayMust)
   })));
   (data.contentPlans || []).filter((item) => item.publishDate === today && !item.completed).forEach((item) => items.push(compact(item, "content", item.publishDate, { tone: "blue", label: "Content" })));
   (data.payments || []).filter((item) => item.expectedDate === today && !item.completed).forEach((item) => items.push(compact(item, "payment", item.expectedDate, { tone: "red", label: "Payment" })));
@@ -85,8 +98,24 @@ export function getMonthCalendarItems(data, year, month) {
     if (!date) return;
     map[date] = [...(map[date] || []), item];
   };
-  (data.events || []).filter((item) => !item.completed).forEach((item) => push(item.date, compact(item, "event", item.date, { badge: "E", tone: "green", isImportant: isImportant(item) })));
-  (data.todos || []).filter((item) => !item.completed).forEach((item) => push(item.dueDate, compact(item, "todo", item.dueDate, { badge: "T", tone: "red", isImportant: isImportant(item) })));
+  (data.events || []).filter((item) => !item.completed).forEach((item) => push(item.date, compact(item, "event", item.date, {
+    badge: "E",
+    tone: "green",
+    isImportant: isImportant(item),
+    time: item.allDay ? "" : (item.startTime || item.time || ""),
+    allDay: Boolean(item.allDay),
+    needMove: Boolean(item.needMove)
+  })));
+  (data.todos || []).filter((item) => !item.completed).forEach((item) => {
+    push(item.dueDate, compact(item, "todo", item.dueDate, { badge: "T", tone: "red", isImportant: isImportant(item), allDay: Boolean(item.allDay), needMove: Boolean(item.needMove), time: item.allDay ? "" : (item.startTime || item.dueTime || "") }));
+    if (item.endDate && item.endDate !== item.dueDate) {
+      let cursor = addDays(item.dueDate, 1);
+      while (cursor <= item.endDate) {
+        push(cursor, compact(item, "todo", cursor, { badge: "T", tone: "red", isImportant: isImportant(item), allDay: Boolean(item.allDay), needMove: Boolean(item.needMove), time: cursor === item.endDate ? item.endTime || "" : "" }));
+        cursor = addDays(cursor, 1);
+      }
+    }
+  });
   (data.contentPlans || []).filter((item) => !item.completed).forEach((item) => push(item.publishDate, compact(item, "content", item.publishDate, { badge: "C", tone: "blue", isImportant: isImportant(item) })));
   (data.payments || []).filter((item) => !item.completed).forEach((item) => push(item.expectedDate, compact(item, "payment", item.expectedDate, { badge: "P", tone: "red", isImportant: true })));
   (data.expenses || []).filter((item) => !item.completed).forEach((item) => push(item.date, compact(item, "expense", item.date, { badge: "E", tone: "red", isImportant: item.category === "특별 지출" })));

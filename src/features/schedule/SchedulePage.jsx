@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
@@ -16,6 +16,11 @@ import { toDateKey } from "../../lib/utils/date";
 
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const categoryOptions = ["일정", "업무", "개인", "학습", "돈관리", "집안일", "기타"];
+const priorityOptions = [
+  ["high", "높음"],
+  ["normal", "보통"],
+  ["low", "낮음"]
+];
 const hours = Array.from({ length: 16 }, (_, index) => index + 8);
 
 const categoryTone = {
@@ -60,7 +65,16 @@ const timeText = (item) => {
 };
 
 const titleOf = (item) => item.title || item.project || item.name || "새 일정";
-const scheduleDateOf = (item) => item.date || item.dueDate || item.expectedDate || item.publishDate || "";
+const dateFieldByCollection = {
+  events: "date",
+  todos: "dueDate",
+  payments: "expectedDate",
+  expenses: "date",
+  contentPlans: "publishDate"
+};
+const editableCollections = ["events", "todos", "payments", "expenses", "contentPlans"];
+const editableDateField = (collection) => dateFieldByCollection[collection] || "date";
+const scheduleDateOf = (item) => item.date || item.dueDate || item.expectedDate || item.publishDate || item.applyDueDate || item.uploadDueDate || "";
 
 const fromCollection = (items, collection, selectedDate, dateKey, category, timeKey = "time") =>
   (items || [])
@@ -71,6 +85,7 @@ const fromCollection = (items, collection, selectedDate, dateKey, category, time
       sourceType: collection,
       title: titleOf(item),
       date: item[dateKey],
+      scheduleDate: item[dateKey],
       startTime: item.startTime || item[timeKey] || item.dueTime || "",
       endTime: item.endTime || "",
       category: item.category || category
@@ -85,6 +100,7 @@ const normalizeScheduleItems = (data, selectedDate) => {
       sourceType: "todo",
       title: titleOf(item),
       date: item.dueDate,
+      scheduleDate: selectedDate,
       startTime: item.allDay ? "" : (item.dueDate === selectedDate ? item.startTime || item.dueTime || "" : "00:00"),
       endTime: item.allDay ? "" : (item.endDate && item.endDate !== selectedDate ? "23:59" : item.endTime || ""),
       category: item.category || item.project || "업무"
@@ -97,6 +113,8 @@ const normalizeScheduleItems = (data, selectedDate) => {
       collection: "events",
       sourceType: "event",
       title: titleOf(item),
+      date: item.date,
+      scheduleDate: item.date,
       startTime: item.startTime || item.time || "",
       category: item.category || "일정"
     }));
@@ -120,10 +138,15 @@ const emptySchedule = (date) => ({
   collection: "events",
   title: "",
   date,
+  scheduleDate: date,
   startTime: "09:00",
   time: "09:00",
   endTime: "10:00",
   category: "일정",
+  priority: "normal",
+  allDay: false,
+  needMove: false,
+  todayMust: false,
   memo: "",
   completed: false
 });
@@ -254,41 +277,76 @@ function TimelineEditor({ selectedDate, items, quickText, onQuickText, onApplyQu
 function ScheduleEditor({ item, onClose, onSave, onDelete }) {
   const [form, setForm] = useState(item || {});
   const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const canEditSource = !form.collection || editableCollections.includes(form.collection);
 
   return (
     <Modal title={item ? "일정 상세 수정" : ""} onClose={onClose}>
       <div className="grid gap-4">
+        {!canEditSource && (
+          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
+            이 항목은 원본 페이지에서 관리하는 일정이에요. 삭제/완료는 가능하지만 상세 수정은 원본 화면에서 해주세요.
+          </p>
+        )}
         <label className="grid gap-1 text-sm font-bold">
           일정 제목
-          <AppInput value={form.title || ""} onChange={(event) => set("title", event.target.value)} placeholder="예: 주간 보고서 작성" autoFocus />
+          <AppInput disabled={!canEditSource} value={form.title || ""} onChange={(event) => set("title", event.target.value)} placeholder="예: 주간 보고서 작성" autoFocus />
         </label>
+        <div className="grid gap-3 sm:grid-cols-[1fr_130px_130px]">
+          <label className="grid gap-1 text-sm font-bold">
+            날짜 선택
+            <AppInput disabled={!canEditSource} type="date" value={form.date || form.scheduleDate || ""} onChange={(event) => {
+              set("date", event.target.value);
+              set("scheduleDate", event.target.value);
+              if (form.collection === "todos") set("dueDate", event.target.value);
+              if (form.collection === "payments") set("expectedDate", event.target.value);
+              if (form.collection === "expenses") set("date", event.target.value);
+              if (form.collection === "contentPlans") set("publishDate", event.target.value);
+            }} />
+          </label>
+          <label className="grid gap-1 text-sm font-bold">
+            시작
+            <AppInput disabled={!canEditSource || form.allDay} value={form.startTime || form.time || ""} onChange={(event) => { set("startTime", event.target.value); set("time", event.target.value); }} placeholder="09:00" />
+          </label>
+          <label className="grid gap-1 text-sm font-bold">
+            종료
+            <AppInput disabled={!canEditSource || form.allDay} value={form.endTime || ""} onChange={(event) => set("endTime", event.target.value)} placeholder="10:00" />
+          </label>
+        </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="grid gap-1 text-sm font-bold">
             분류
-            <AppSelect value={form.category || "일정"} onChange={(event) => set("category", event.target.value)}>
+            <AppSelect disabled={!canEditSource} value={form.category || "일정"} onChange={(event) => set("category", event.target.value)}>
               {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
             </AppSelect>
           </label>
           <label className="grid gap-1 text-sm font-bold">
-            시작
-            <AppInput value={form.startTime || form.time || ""} onChange={(event) => { set("startTime", event.target.value); set("time", event.target.value); }} placeholder="09:00" />
+            우선순위
+            <AppSelect disabled={!canEditSource} value={form.priority || "normal"} onChange={(event) => set("priority", event.target.value)}>
+              {priorityOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </AppSelect>
           </label>
-          <label className="grid gap-1 text-sm font-bold">
-            종료
-            <AppInput value={form.endTime || ""} onChange={(event) => set("endTime", event.target.value)} placeholder="10:00" />
-          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex items-center justify-between rounded-2xl bg-white/60 px-3 py-3 text-sm font-bold">
+              종일
+              <input disabled={!canEditSource} type="checkbox" checked={Boolean(form.allDay)} onChange={(event) => setForm((current) => ({ ...current, allDay: event.target.checked, startTime: event.target.checked ? "" : current.startTime, time: event.target.checked ? "" : current.time, endTime: event.target.checked ? "" : current.endTime }))} />
+            </label>
+            <label className="flex items-center justify-between rounded-2xl bg-red-50/70 px-3 py-3 text-sm font-bold text-rose-700">
+              이동 필요
+              <input disabled={!canEditSource} type="checkbox" checked={Boolean(form.needMove)} onChange={(event) => set("needMove", event.target.checked)} />
+            </label>
+          </div>
         </div>
         <label className="grid gap-1 text-sm font-bold">
           메모
-          <AppTextarea value={form.memo || ""} onChange={(event) => set("memo", event.target.value)} placeholder="세부 메모를 적어두세요." />
+          <AppTextarea disabled={!canEditSource} value={form.memo || ""} onChange={(event) => set("memo", event.target.value)} placeholder="세부 메모를 적어두세요." />
         </label>
         <label className="flex items-center justify-between rounded-2xl bg-emerald-50/60 px-4 py-3 text-sm font-bold text-clover-deep">
           오늘 꼭!
-          <input type="checkbox" checked={Boolean(form.todayMust)} onChange={(event) => set("todayMust", event.target.checked)} />
+          <input disabled={!canEditSource} type="checkbox" checked={Boolean(form.todayMust)} onChange={(event) => set("todayMust", event.target.checked)} />
         </label>
         <div className="flex flex-wrap justify-between gap-2">
           {form.id ? <AppButton variant="danger" onClick={() => onDelete(form)}>삭제</AppButton> : <span />}
-          <AppButton onClick={() => onSave(form)}>저장</AppButton>
+          <AppButton disabled={!canEditSource} onClick={() => onSave(form)}>저장</AppButton>
         </div>
       </div>
     </Modal>
@@ -310,6 +368,12 @@ export default function SchedulePage() {
   const [calendarMonth, setCalendarMonth] = useState({ year: initial.getFullYear(), month: initial.getMonth() });
 
   const load = () => setData(getAllData());
+
+  useEffect(() => {
+    window.addEventListener("clover-data-change", load);
+    return () => window.removeEventListener("clover-data-change", load);
+  }, []);
+
   const setSelectedDate = (date) => {
     setSelectedDateState(date);
     const next = new URLSearchParams(searchParams);
@@ -332,38 +396,71 @@ export default function SchedulePage() {
   const saveSchedule = (form) => {
     if (!form.title?.trim()) return;
     persist((next) => {
+      const targetDate = form.scheduleDate || form.date || form.dueDate || selectedDate;
       if (form.collection === "todos") {
         next.todos = (next.todos || []).map((todo) =>
           todo.id === form.id
             ? {
                 ...todo,
                 title: form.title.trim(),
+                dueDate: targetDate,
+                date: targetDate,
                 category: form.category || "일정",
                 project: form.category || "일정",
                 projectName: form.category || "일정",
-                startTime: form.startTime || form.time || "",
-                dueTime: form.startTime || form.time || "",
-                endTime: form.endTime || "",
+                allDay: Boolean(form.allDay),
+                needMove: Boolean(form.needMove),
+                priority: form.priority || "normal",
+                startTime: form.allDay ? "" : (form.startTime || form.time || ""),
+                dueTime: form.allDay ? "" : (form.startTime || form.time || ""),
+                time: form.allDay ? "" : (form.startTime || form.time || ""),
+                endTime: form.allDay ? "" : (form.endTime || ""),
                 memo: form.memo || "",
                 todayMust: Boolean(form.todayMust),
-                updatedAt: selectedDate
+                updatedAt: today
               }
             : todo
         );
+      } else if (form.collection && form.collection !== "events" && next[form.collection]) {
+        const dateField = editableDateField(form.collection);
+        next[form.collection] = (next[form.collection] || []).map((entry) => {
+          if (entry.id !== form.id) return entry;
+          return {
+            ...entry,
+            title: form.title.trim(),
+            project: form.collection === "payments" ? form.title.trim() : entry.project,
+            [dateField]: targetDate,
+            date: dateField === "date" ? targetDate : entry.date,
+            category: form.category || entry.category || "일정",
+            allDay: Boolean(form.allDay),
+            needMove: Boolean(form.needMove),
+            priority: form.priority || entry.priority || "normal",
+            time: form.allDay ? "" : (form.startTime || form.time || entry.time || ""),
+            startTime: form.allDay ? "" : (form.startTime || form.time || entry.startTime || ""),
+            endTime: form.allDay ? "" : (form.endTime || ""),
+            memo: form.memo || entry.memo || "",
+            todayMust: Boolean(form.todayMust),
+            updatedAt: today
+          };
+        });
       } else {
         const payload = {
           id: form.id || makeId("event"),
           title: form.title.trim(),
-          date: selectedDate,
-          time: form.startTime || form.time || "",
-          startTime: form.startTime || form.time || "",
-          endTime: form.endTime || "",
+          date: targetDate,
+          scheduleDate: targetDate,
+          allDay: Boolean(form.allDay),
+          needMove: Boolean(form.needMove),
+          priority: form.priority || "normal",
+          time: form.allDay ? "" : (form.startTime || form.time || ""),
+          startTime: form.allDay ? "" : (form.startTime || form.time || ""),
+          endTime: form.allDay ? "" : (form.endTime || ""),
           category: form.category || "일정",
           memo: form.memo || "",
           todayMust: Boolean(form.todayMust),
           completed: Boolean(form.completed),
-          createdAt: form.createdAt || selectedDate,
-          updatedAt: selectedDate
+          createdAt: form.createdAt || today,
+          updatedAt: today
         };
         next.events = form.id
           ? (next.events || []).map((event) => event.id === form.id ? payload : event)
@@ -383,11 +480,11 @@ export default function SchedulePage() {
   const completeSchedule = (item) => {
     persist((next) => {
       if (item.collection === "todos") {
-        next.todos = (next.todos || []).map((todo) => todo.id === item.id ? { ...todo, completed: true, completedAt: selectedDate, updatedAt: selectedDate } : todo);
+        next.todos = (next.todos || []).map((todo) => todo.id === item.id ? { ...todo, completed: true, completedAt: selectedDate, updatedAt: today } : todo);
       } else if (item.collection === "events") {
-        next.events = (next.events || []).map((event) => event.id === item.id ? { ...event, completed: true, completedAt: selectedDate, updatedAt: selectedDate } : event);
+        next.events = (next.events || []).map((event) => event.id === item.id ? { ...event, completed: true, completedAt: selectedDate, updatedAt: today } : event);
       } else {
-        next[item.collection] = (next[item.collection] || []).map((entry) => entry.id === item.id ? { ...entry, completed: true, completedAt: selectedDate, updatedAt: selectedDate } : entry);
+        next[item.collection] = (next[item.collection] || []).map((entry) => entry.id === item.id ? { ...entry, completed: true, completedAt: selectedDate, updatedAt: today } : entry);
       }
     });
   };
