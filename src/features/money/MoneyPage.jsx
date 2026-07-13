@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
@@ -15,6 +16,7 @@ const MONEY_PASSWORD = import.meta.env.VITE_MONEY_PASSWORD || "986454";
 const sum = (items, field = "amount") => items.reduce((total, item) => total + Number(item[field] || 0), 0);
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const money = (value) => `${Number(value || 0).toLocaleString()}원`;
+const moneyShort = (value) => `${Number(value || 0).toLocaleString()}`;
 const weekdayLabel = (dateKey) => ["일", "월", "화", "수", "목", "금", "토"][new Date(`${dateKey}T00:00:00`).getDay()];
 
 const PIE_COLORS = ["#FB7185", "#F6A845", "#FBCF4A", "#8DDFA8", "#6DCBD6", "#8FA6F0", "#C39BE8", "#F0A6C8"];
@@ -88,13 +90,13 @@ function MoneySummaryCards({ income, spending, subscriptionTotal, variableTotal 
   };
 
   return (
-    <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="mb-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
       {cards.map((card) => (
-        <div key={card.label} className={`flex items-center gap-4 rounded-[8px] border px-5 py-4 shadow-sm ${tones[card.tone]}`}>
-          <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-full text-2xl font-black ${card.iconBg}`}>{card.icon}</span>
-          <div>
+        <div key={card.label} className={`flex min-w-0 items-center gap-3 rounded-[8px] border px-4 py-3 shadow-sm ${tones[card.tone]}`}>
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-lg font-black ${card.iconBg}`}>{card.icon}</span>
+          <div className="min-w-0">
             <p className="text-xs font-black text-clover-sub">{card.label}</p>
-            <p className="mt-1 text-2xl font-black">{money(card.value)}</p>
+            <p className="mt-1 truncate whitespace-nowrap text-lg font-black leading-tight sm:text-xl" title={money(card.value)}>{moneyShort(card.value)}원</p>
           </div>
         </div>
       ))}
@@ -105,19 +107,19 @@ function MoneySummaryCards({ income, spending, subscriptionTotal, variableTotal 
 function TaxSavingsBanner({ taxReserve, saving }) {
   return (
     <div className="grid gap-3">
-      <div className="flex items-center gap-4 rounded-[8px] border border-clover-line bg-white/70 p-4 shadow-sm">
+      <div className="flex min-w-0 items-center gap-3 rounded-[8px] border border-clover-line bg-white/70 p-4 shadow-sm">
         <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-lg">▤</span>
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-black text-clover-sub">세금 저축 10%</p>
-          <p className="mt-1 text-2xl font-black text-clover-deep">{money(taxReserve)}</p>
+          <p className="mt-1 truncate whitespace-nowrap text-lg font-black text-clover-deep sm:text-xl" title={money(taxReserve)}>{money(taxReserve)}</p>
         </div>
       </div>
-      <div className="flex items-center justify-between gap-4 rounded-[8px] border border-clover-line bg-white/70 p-4 shadow-sm">
-        <div className="flex items-center gap-4">
+      <div className="flex min-w-0 items-center justify-between gap-3 rounded-[8px] border border-clover-line bg-white/70 p-4 shadow-sm">
+        <div className="flex min-w-0 items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-lg">♣</span>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-black text-clover-sub">저축 가능액</p>
-            <p className="mt-1 text-2xl font-black text-clover-deep">{money(saving)}</p>
+            <p className="mt-1 truncate whitespace-nowrap text-lg font-black text-clover-deep sm:text-xl" title={money(saving)}>{money(saving)}</p>
           </div>
         </div>
         <span className="text-xl text-clover-sub">›</span>
@@ -126,12 +128,13 @@ function TaxSavingsBanner({ taxReserve, saving }) {
   );
 }
 
-function CategoryPie({ segments, total }) {
+function CategoryPie({ segments, total, gapYearNeeded = 0, gapYearDone = 0 }) {
   if (!total) {
     return (
       <GlassCard className="rounded-[8px] border border-clover-line bg-white/70">
         <SectionTitle>카테고리별 지출</SectionTitle>
         <p className="rounded-2xl bg-white/45 p-6 text-center text-sm font-bold text-clover-sub">이번 달 지출 기록이 아직 없어요.</p>
+        <GapYearShortcut needed={gapYearNeeded} done={gapYearDone} />
       </GlassCard>
     );
   }
@@ -147,9 +150,9 @@ function CategoryPie({ segments, total }) {
       <div className="grid gap-4">
         {stops.slice(0, 5).map((s) => (
           <div key={s.name} className="grid gap-2">
-            <div className="flex items-center justify-between text-sm font-bold">
-              <span>{s.name}</span>
-              <span className="text-clover-sub">{s.pct.toFixed(1)}% <b className="ml-3 text-clover-text">{money(s.value)}</b></span>
+            <div className="flex min-w-0 items-center justify-between gap-2 text-sm font-bold">
+              <span className="min-w-0 truncate">{s.name}</span>
+              <span className="shrink-0 text-xs text-clover-sub sm:text-sm">{s.pct.toFixed(1)}% <b className="ml-2 text-clover-text">{money(s.value)}</b></span>
             </div>
             <div className="h-2 rounded-full bg-slate-100">
               <div className="h-2 rounded-full bg-clover-deep" style={{ width: `${Math.max(3, s.pct)}%` }} />
@@ -157,7 +160,20 @@ function CategoryPie({ segments, total }) {
           </div>
         ))}
       </div>
+      <GapYearShortcut needed={gapYearNeeded} done={gapYearDone} />
     </GlassCard>
+  );
+}
+
+function GapYearShortcut({ needed, done }) {
+  return (
+    <Link to="/gapyear" className="mt-4 flex items-center justify-between gap-3 rounded-[10px] border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm font-bold transition hover:bg-emerald-50">
+      <div className="min-w-0">
+        <p className="font-black text-clover-deep">갭이어 증빙 관리</p>
+        <p className="mt-1 text-xs text-clover-sub">업로드 필요 {needed}건 · 완료 {done}건</p>
+      </div>
+      <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-black text-clover-deep">이동</span>
+    </Link>
   );
 }
 
@@ -206,11 +222,11 @@ function DailyLedger({ monthKey, onShiftMonth, expenses, incomeItems, income, sp
           return (
             <div key={day.date} className="rounded-[8px] border border-clover-line bg-white/50 p-3">
               <div className="flex items-baseline justify-between">
-                <p className="text-lg font-black">
+                <p className="text-base font-black sm:text-lg">
                   {Number(day.date.slice(-2))}
                   <span className="ml-2 rounded-full bg-white/80 px-2 py-0.5 text-xs font-bold text-clover-sub">{weekdayLabel(day.date)}요일</span>
                 </p>
-                <p className="text-sm font-black">
+                <p className="shrink-0 text-xs font-black sm:text-sm">
                   {!!dayIncome && <span className="text-sky-600">{money(dayIncome)}</span>}
                   {!!dayIncome && !!dayExpense && <span className="mx-1 text-clover-sub">·</span>}
                   {!!dayExpense && <span className="text-rose-600">{money(dayExpense)}</span>}
@@ -382,7 +398,7 @@ function MoneyPageContent({ onLock }) {
 
       <MoneySummaryCards income={income} spending={spending} subscriptionTotal={subscriptionTotal} variableTotal={variableTotal} />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(280px,.9fr)]">
         <DailyLedger
           monthKey={monthKey}
           onShiftMonth={(delta) => setMonthOffset((value) => value + delta)}
@@ -397,16 +413,21 @@ function MoneyPageContent({ onLock }) {
         <div className="grid content-start gap-4">
           <TaxSavingsBanner taxReserve={taxReserve} saving={saving} />
 
-          <CategoryPie segments={categorySegments} total={spending} />
+          <CategoryPie
+            segments={categorySegments}
+            total={spending}
+            gapYearNeeded={monthExpenses.filter((item) => item.gapYearUploadRequired && !item.gapYearRegistered).length}
+            gapYearDone={monthExpenses.filter((item) => item.gapYearRegistered).length}
+          />
         </div>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <MoneySection title="구독·결제 관리" action="+ 구독" onAction={() => setEditor({ type: "subscription", item: { active: true, billingDay: "1", status: "유지" } })}>
           {subscriptions.slice(0, 3).map((item) => (
-            <button key={item.id} onClick={() => setEditor({ type: "subscription", item })} className="flex items-center justify-between rounded-[8px] bg-white/55 px-4 py-3 text-left text-sm font-bold">
+            <button key={item.id} onClick={() => setEditor({ type: "subscription", item })} className="flex min-w-0 items-center justify-between gap-3 rounded-[8px] bg-white/55 px-4 py-3 text-left text-sm font-bold">
               <span className="min-w-0 truncate">{item.title}</span>
-              <span className="shrink-0 text-clover-deep">{money(item.amount)} · {item.billingDay}일</span>
+              <span className="shrink-0 text-xs text-clover-deep sm:text-sm">{money(item.amount)} · {item.billingDay}일</span>
             </button>
           ))}
           {!subscriptions.length && <p className="rounded-[8px] bg-white/40 p-4 text-sm font-bold text-clover-sub">등록된 구독이 없어요.</p>}
@@ -414,10 +435,10 @@ function MoneyPageContent({ onLock }) {
 
         <MoneySection title="구매 필요 항목" action="+ 구매 항목" onAction={() => setEditor({ type: "shopping", item: { importance: 3, category: shoppingCategories[0] } })}>
           {shoppingItems.filter((item) => !item.completed).slice(0, 3).map((item) => (
-            <button key={item.id} onClick={() => setEditor({ type: "shopping", item })} className="rounded-[8px] bg-white/55 px-4 py-3 text-left text-sm font-bold">
+            <button key={item.id} onClick={() => setEditor({ type: "shopping", item })} className="min-w-0 rounded-[8px] bg-white/55 px-4 py-3 text-left text-sm font-bold">
               <div className="flex items-center justify-between gap-3">
-                <span className="truncate">{item.title}</span>
-                {!!item.amount && <span className="shrink-0 text-clover-sub">{money(item.amount)}</span>}
+                <span className="min-w-0 truncate">{item.title}</span>
+                {!!item.amount && <span className="shrink-0 text-xs text-clover-sub sm:text-sm">{money(item.amount)}</span>}
               </div>
               <div className="mt-1 flex items-center justify-between">
                 <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">{item.category || "기타"}</span>
@@ -430,9 +451,9 @@ function MoneyPageContent({ onLock }) {
 
         <MoneySection title="저축" action="+ 저축" onAction={() => setEditor({ type: "saving", item: { date: today } })}>
           {savings.slice(0, 3).map((item) => (
-            <button key={item.id} onClick={() => setEditor({ type: "saving", item })} className="flex items-center justify-between rounded-[8px] bg-white/55 px-4 py-3 text-left text-sm font-bold">
+            <button key={item.id} onClick={() => setEditor({ type: "saving", item })} className="flex min-w-0 items-center justify-between gap-3 rounded-[8px] bg-white/55 px-4 py-3 text-left text-sm font-bold">
               <span className="min-w-0 truncate">{item.title || "저축"}</span>
-              <span className="shrink-0 text-emerald-700">{money(item.amount)}</span>
+              <span className="shrink-0 text-xs text-emerald-700 sm:text-sm">{money(item.amount)}</span>
             </button>
           ))}
           {!savings.length && <p className="rounded-[8px] bg-white/40 p-4 text-sm font-bold text-clover-sub">저축 기록을 추가해보세요.</p>}
