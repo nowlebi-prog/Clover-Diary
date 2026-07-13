@@ -143,7 +143,7 @@ function HomeFocusTimer({ activeSession, todayTodos, categories, todayFocusSec, 
 
       <div className="my-5 text-center">
         <p className="mx-auto mb-3 max-w-sm truncate text-base font-black text-clover-text">{timerTitle}</p>
-        <p className="font-mono text-6xl font-black tracking-tight text-clover-ink">{activeSession ? fmtHMS(elapsed.workSec) : "25:00"}</p>
+        <p className="font-mono text-6xl font-black tracking-tight text-clover-ink">{activeSession ? fmtHMS(elapsed.workSec) : "00:00:00"}</p>
       </div>
 
       <div className="flex flex-wrap justify-center gap-2">
@@ -256,6 +256,122 @@ function HomeFocusTimerFixed({ activeSession, todayTodos, categories, todayFocus
 
       <div className="flex flex-wrap justify-center gap-2">
         {!activeSession && <AppButton className="min-w-40" disabled={!selectedTodo && !draftTitle.trim()} onClick={start}>시작하기</AppButton>}
+        {activeSession && (
+          elapsed.isPaused
+            ? <AppButton onClick={() => { resumeActiveSession(); setTick(Date.now()); onChange?.(); }}>재개</AppButton>
+            : <AppButton variant="soft" onClick={() => { pauseActiveSession(); setTick(Date.now()); onChange?.(); }}>일시정지</AppButton>
+        )}
+        {activeSession && <AppButton variant="danger" onClick={() => { endActiveSession(); setTick(Date.now()); onChange?.(); }}>종료</AppButton>}
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-clover-line bg-white/55 px-4 py-3">
+        <p className="text-xs font-black text-clover-sub">오늘 집중 시간</p>
+        <p className="mt-1 text-xl font-black text-clover-ink">{fmtHM(todayFocusSec + (elapsed?.workSec || 0))}</p>
+      </div>
+    </GlassCard>
+  );
+}
+
+function HomeFocusTimerLive({ activeSession, focusItems = [], categories = [], todayFocusSec, onChange }) {
+  const fallbackCategories = [
+    { id: "work", name: "업무", color: "#8DDFA8" },
+    { id: "meeting", name: "회의", color: "#A9C9FF" },
+    { id: "plan", name: "기획", color: "#F6C68D" },
+    { id: "etc", name: "잡무", color: "#F4B6D2" }
+  ];
+  const categoryList = categories.length ? categories : fallbackCategories;
+  const [tick, setTick] = useState(Date.now());
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftCategory, setDraftCategory] = useState(categoryList[0]?.name || "업무");
+
+  useEffect(() => {
+    if (!activeSession) return undefined;
+    const timer = window.setInterval(() => setTick(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [activeSession?.id]);
+
+  useEffect(() => {
+    if (!categoryList.some((category) => category.name === draftCategory)) {
+      setDraftCategory(categoryList[0]?.name || "업무");
+    }
+  }, [categoryList, draftCategory]);
+
+  const selectedItem = focusItems.find((item) => item.focusId === selectedItemId);
+  const elapsed = activeSession ? computeElapsed(activeSession, tick) : null;
+  const timerTitle = activeSession?.title || draftTitle || selectedItem?.title || "바로 시작할 일을 적어주세요";
+
+  const start = () => {
+    const title = draftTitle.trim() || selectedItem?.title;
+    if (!title) return;
+    startActiveSession({
+      title,
+      category: selectedItem?.category || draftCategory || "업무",
+      todoId: selectedItem?.todoId || ""
+    });
+    setSelectedItemId("");
+    setDraftTitle("");
+    setTick(Date.now());
+    onChange?.();
+  };
+
+  return (
+    <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <SectionTitle>Focus Timer</SectionTitle>
+        <Link to="/work" className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-black text-clover-deep">Work로 이동</Link>
+      </div>
+
+      {!activeSession && (
+        <div className="grid gap-3">
+          <AppSelect
+            value={selectedItemId}
+            onChange={(event) => {
+              const id = event.target.value;
+              const item = focusItems.find((entry) => entry.focusId === id);
+              setSelectedItemId(id);
+              if (item) {
+                setDraftTitle(item.title || "");
+                setDraftCategory(item.category || draftCategory);
+              }
+            }}
+          >
+            <option value="">직접 입력해서 시작</option>
+            {focusItems.map((item) => (
+              <option key={item.focusId} value={item.focusId}>
+                {item.timeLabel ? `${item.timeLabel} · ${item.title}` : item.title}
+              </option>
+            ))}
+          </AppSelect>
+          <AppInput value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} placeholder="지금 시작할 일을 적어주세요" />
+          <div className="flex flex-wrap gap-2">
+            {categoryList.map((category) => (
+              <button
+                key={category.id || category.name}
+                type="button"
+                onClick={() => setDraftCategory(category.name)}
+                className="rounded-full px-3 py-1.5 text-xs font-black transition"
+                style={{
+                  background: draftCategory === category.name ? category.color : "#ffffff90",
+                  color: draftCategory === category.name ? "#1F2A24" : "#718077"
+                }}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="my-5 text-center">
+        <p className="mx-auto mb-3 max-w-sm truncate text-base font-black text-clover-text">{timerTitle}</p>
+        <p className="font-mono text-5xl font-black tracking-tight text-clover-ink md:text-6xl">
+          {activeSession ? fmtHMS(elapsed.workSec) : "00:00:00"}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-2">
+        {!activeSession && <AppButton className="min-w-40" disabled={!selectedItem && !draftTitle.trim()} onClick={start}>시작하기</AppButton>}
         {activeSession && (
           elapsed.isPaused
             ? <AppButton onClick={() => { resumeActiveSession(); setTick(Date.now()); onChange?.(); }}>재개</AppButton>
@@ -489,6 +605,27 @@ export default function HomePage() {
   const studyDue = (data.studyCaptures || []).filter((item) => !item.isReviewed || item.reviewSchedule?.nextReviewAt <= today || item.status === "waiting");
   const todayTodos = (data.todos || []).filter((todo) => !todo.completed && (!todo.dueDate || todo.dueDate <= today));
   const categories = getWorkCategories();
+  const focusItems = useMemo(() => {
+    const seen = new Set();
+    const items = [];
+    const push = (item) => {
+      const title = item.title || item.displayTitle;
+      if (!title) return;
+      const focusId = item.focusId || `${item.type || item.source || "item"}-${item.id || title}`;
+      if (seen.has(focusId)) return;
+      seen.add(focusId);
+      items.push({
+        focusId,
+        title,
+        category: item.category || item.project || item.projectName || "업무",
+        todoId: item.type === "todo" || item.source === "todo" ? item.id : "",
+        timeLabel: item.allDay ? "종일" : (item.startTime || item.time || item.dueTime || "")
+      });
+    };
+    todayTodos.forEach((todo) => push({ ...todo, type: "todo" }));
+    todayItems.forEach((item) => push(item));
+    return items.slice(0, 20);
+  }, [todayItems, todayTodos]);
   const todayMustItems = [
     ...todayTodos.filter((todo) => todo.todayMust).map((todo) => ({ ...todo, source: "todo" })),
     ...(data.events || []).filter((event) => !event.completed && event.todayMust && event.date === today).map((event) => ({ ...event, source: "event", displayTitle: event.title }))
@@ -538,7 +675,7 @@ export default function HomePage() {
       <SummaryChips todayItems={todayItems} deadlines={deadlines} habitStatus={habitStatus} todayFocusSec={todayFocusSec} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(320px,.82fr)_minmax(0,1.18fr)]">
-        <HomeFocusTimerFixed activeSession={activeSession} todayTodos={todayTodos} categories={categories} todayFocusSec={todayFocusSec} onChange={load} />
+        <HomeFocusTimerLive activeSession={activeSession} focusItems={focusItems} categories={categories} todayFocusSec={todayFocusSec} onChange={load} />
         <PriorityCard
           topItems={todayMustItems}
           deadlineItems={deadlines}
