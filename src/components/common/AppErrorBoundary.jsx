@@ -18,8 +18,6 @@ export default class AppErrorBoundary extends Component {
   resetApp = () => {
     try {
       localStorage.removeItem(STORAGE_KEYS.auth);
-      localStorage.removeItem(STORAGE_KEYS.appData);
-      localStorage.removeItem("clover-desk:mandalart:v1");
     } catch {
       // Ignore storage cleanup errors and still reload.
     }

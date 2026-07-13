@@ -3,6 +3,7 @@ import AppShell from "./components/layout/AppShell";
 import { getSession } from "./lib/auth/localAuthAdapter";
 import { useEffect, useState } from "react";
 import { startCloudSync } from "./lib/storage/localStorageAdapter";
+import { startGoogleSheetsBackup } from "./lib/storage/googleSheetsBackup";
 import LoginPage from "./features/auth/LoginPage";
 import HomePage from "./features/home/HomePage";
 import MandalartPage from "./features/mandalart/MandalartPage";
@@ -38,6 +39,7 @@ export default function App() {
 
   useEffect(() => {
     startCloudSync();
+    startGoogleSheetsBackup();
   }, []);
 
   return (

@@ -17,6 +17,11 @@ import {
   saveAllData,
   syncAllDataFromCloud
 } from "../../lib/storage/localStorageAdapter";
+import {
+  backupToGoogleSheets,
+  getGoogleSheetsBackupConfig,
+  saveGoogleSheetsBackupConfig
+} from "../../lib/storage/googleSheetsBackup";
 import { toDateKey } from "../../lib/utils/date";
 
 const moreLinks = [
@@ -162,6 +167,73 @@ function TrashSettings() {
   );
 }
 
+function GoogleSheetsBackupSettings() {
+  const [config, setConfig] = useState(getGoogleSheetsBackupConfig());
+  const [webhookUrl, setWebhookUrl] = useState(config.webhookUrl || "");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const refresh = () => {
+      const next = getGoogleSheetsBackupConfig();
+      setConfig(next);
+      setWebhookUrl(next.webhookUrl || "");
+    };
+    window.addEventListener("clover-backup-change", refresh);
+    return () => window.removeEventListener("clover-backup-change", refresh);
+  }, []);
+
+  const save = (updates = {}) => {
+    const next = saveGoogleSheetsBackupConfig({ webhookUrl: webhookUrl.trim(), ...updates });
+    setConfig(next);
+  };
+
+  const backupNow = async () => {
+    save();
+    setBusy(true);
+    await backupToGoogleSheets({ manual: true });
+    setConfig(getGoogleSheetsBackupConfig());
+    setBusy(false);
+  };
+
+  return (
+    <GlassCard>
+      <SectionTitle>Google Sheets 자동 백업</SectionTitle>
+      <div className="grid gap-3 text-sm text-clover-sub">
+        <p>
+          앱이 켜져 있으면 하루 1회 이상 Google Sheets로 최신 데이터를 백업해요.
+          기록은 앱 안에 저장되고, 시트에는 복구용 원본 데이터와 항목별 탭이 같이 쌓입니다.
+        </p>
+        <label className="grid gap-1 font-bold text-clover-text">
+          Apps Script 웹앱 URL
+          <AppInput
+            value={webhookUrl}
+            onChange={(event) => setWebhookUrl(event.target.value)}
+            placeholder="https://script.google.com/macros/s/.../exec"
+          />
+        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <AppButton variant={config.enabled ? "primary" : "soft"} onClick={() => save({ enabled: !config.enabled })}>
+            {config.enabled ? "자동 백업 켜짐" : "자동 백업 켜기"}
+          </AppButton>
+          <AppButton variant="soft" onClick={save}>URL 저장</AppButton>
+          <AppButton variant="soft" onClick={backupNow} disabled={busy || !webhookUrl.trim()}>
+            {busy ? "백업 중..." : "지금 백업"}
+          </AppButton>
+        </div>
+        <div className="grid gap-1 rounded-[8px] bg-white/45 p-3 text-xs font-bold">
+          <span>상태: {config.lastStatus || "idle"}</span>
+          {config.lastBackupAt && <span>마지막 백업: {new Date(config.lastBackupAt).toLocaleString("ko-KR")}</span>}
+          {config.lastError && <span className="text-red-500">오류: {config.lastError}</span>}
+        </div>
+        <p className="text-xs font-bold text-clover-sub">
+          단, 브라우저 앱이라 컴퓨터나 앱이 완전히 꺼져 있으면 그 순간에는 실행되지 않아요.
+          앱을 다시 열면 누락된 날짜의 최신 스냅샷을 바로 올립니다.
+        </p>
+      </div>
+    </GlassCard>
+  );
+}
+
 export default function SettingsPage({ onLogout }) {
   const navigate = useNavigate();
   const [syncStatus, setSyncStatus] = useState(getCloudSyncStatus());
@@ -208,6 +280,7 @@ export default function SettingsPage({ onLogout }) {
         </GlassCard>
 
         <MonthlyArchiveSettings />
+        <GoogleSheetsBackupSettings />
         <TrashSettings />
 
         <GlassCard>
