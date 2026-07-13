@@ -1,8 +1,9 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
+import AppTextarea from "../../components/common/AppTextarea";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import StarRating from "../../components/common/StarRating";
@@ -18,6 +19,7 @@ import {
   getChores,
   getAllData,
   getShoppingItems,
+  saveAllData,
   updateChore,
   updateShoppingItem
 } from "../../lib/storage/localStorageAdapter";
@@ -114,13 +116,13 @@ function TodayRecordGraph({ entries, today }) {
   const hasRecord = days.some((date) => entryByDate[date]);
 
   return (
-    <Link to="/journal" className="glass rounded-[24px] bg-sky-50/70 p-4">
+    <div className="glass rounded-[24px] bg-sky-50/70 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-700">오늘의 기록</p>
           <p className="mt-1 text-sm font-bold text-clover-sub">기분과 수면 흐름</p>
         </div>
-        <span className="rounded-full bg-white/75 px-3 py-1 text-xs font-black text-sky-700">기록하기</span>
+        <span className="rounded-full bg-white/75 px-3 py-1 text-xs font-black text-sky-700">오늘 흐름</span>
       </div>
       <div className="mt-4 h-28 rounded-2xl bg-white/55 p-3">
         {hasRecord ? (
@@ -148,7 +150,142 @@ function TodayRecordGraph({ entries, today }) {
         <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-teal-400" />기분</span>
         <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-sky-300" />수면</span>
       </div>
-    </Link>
+    </div>
+  );
+}
+
+const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+function LifeJournalDetails({ data, today, onChange }) {
+  const mood = (data.moodEntries || []).find((item) => item.date === today);
+  const reflection = (data.reflections || []).find((item) => item.date === today);
+  const gratitudeEntry = (data.gratitudeEntries || []).find((item) => item.date === today);
+  const [score, setScore] = useState(mood?.score || 3);
+  const [sleepHours, setSleepHours] = useState(mood?.sleepHours || "");
+  const [weather, setWeather] = useState(mood?.weather || "");
+  const [summary, setSummary] = useState(reflection?.body || reflection?.memo || "");
+  const [gratitude, setGratitude] = useState([0, 1, 2].map((index) => gratitudeEntry?.items?.[index] || ""));
+
+  useEffect(() => {
+    setScore(mood?.score || 3);
+    setSleepHours(mood?.sleepHours || "");
+    setWeather(mood?.weather || "");
+    setSummary(reflection?.body || reflection?.memo || "");
+    setGratitude([0, 1, 2].map((index) => gratitudeEntry?.items?.[index] || ""));
+  }, [mood?.id, reflection?.id, gratitudeEntry?.id]);
+
+  const save = () => {
+    const next = getAllData();
+    next.moodEntries = [
+      {
+        id: mood?.id || makeId("mood"),
+        date: today,
+        mood: "normal",
+        emoji: "•",
+        label: "오늘 기록",
+        color: "#E7F0EA",
+        score: Number(score) || 3,
+        sleepHours: Number(sleepHours) || 0,
+        weather: weather.trim(),
+        photos: mood?.photos || [],
+        createdAt: mood?.createdAt || today,
+        updatedAt: today
+      },
+      ...(next.moodEntries || []).filter((item) => item.date !== today)
+    ];
+    next.reflections = [
+      {
+        id: reflection?.id || makeId("reflection"),
+        date: today,
+        title: "오늘 요약",
+        body: summary.trim(),
+        memo: summary.trim(),
+        createdAt: reflection?.createdAt || today,
+        updatedAt: today
+      },
+      ...(next.reflections || []).filter((item) => item.date !== today)
+    ];
+    next.gratitudeEntries = [
+      {
+        id: gratitudeEntry?.id || makeId("gratitude"),
+        date: today,
+        items: gratitude,
+        createdAt: gratitudeEntry?.createdAt || today,
+        updatedAt: today
+      },
+      ...(next.gratitudeEntries || []).filter((item) => item.date !== today)
+    ];
+    saveAllData(next);
+    onChange?.();
+  };
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[.85fr_1.15fr]">
+      <GlassCard>
+        <SectionTitle>오늘 기록</SectionTitle>
+        <TodayRecordGraph entries={data.moodEntries || []} today={today} />
+      </GlassCard>
+      <GlassCard>
+        <SectionTitle action={<AppButton onClick={save}>저장</AppButton>}>기록 작성</SectionTitle>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="grid gap-1 text-sm font-bold">
+            기분 점수
+            <AppInput type="number" min="1" max="5" step="0.5" value={score} onChange={(event) => setScore(event.target.value)} />
+          </label>
+          <label className="grid gap-1 text-sm font-bold">
+            수면 시간
+            <AppInput type="number" min="0" max="24" step="0.5" value={sleepHours} onChange={(event) => setSleepHours(event.target.value)} placeholder="예: 7.5" />
+          </label>
+          <label className="grid gap-1 text-sm font-bold">
+            날씨
+            <AppInput value={weather} onChange={(event) => setWeather(event.target.value)} placeholder="맑음, 비, 흐림" />
+          </label>
+        </div>
+        <div className="mt-3 grid gap-3">
+          <AppTextarea value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="오늘 하루를 짧게 정리해보세요." />
+          {gratitude.map((item, index) => (
+            <AppInput key={index} value={item} onChange={(event) => setGratitude((current) => current.map((value, i) => (i === index ? event.target.value : value)))} placeholder={`${index + 1}. 오늘 감사한 일`} />
+          ))}
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+function LifeMandalartDetails({ onChange }) {
+  const [goal, setGoal] = useState("");
+
+  useEffect(() => {
+    try {
+      setGoal(JSON.parse(localStorage.getItem("clover-desk:mandalart:v1") || "{}").mainGoal || "");
+    } catch {
+      setGoal("");
+    }
+  }, []);
+
+  const save = () => {
+    let current = {};
+    try {
+      current = JSON.parse(localStorage.getItem("clover-desk:mandalart:v1") || "{}");
+    } catch {
+      current = {};
+    }
+    localStorage.setItem("clover-desk:mandalart:v1", JSON.stringify({ ...current, mainGoal: goal, updatedAt: new Date().toISOString() }));
+    onChange?.();
+  };
+
+  return (
+    <GlassCard>
+      <SectionTitle action={<AppButton onClick={save}>저장</AppButton>}>만다라트</SectionTitle>
+      <div className="rounded-[26px] bg-violet-50/70 p-5">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-700">Mandalart</p>
+        <label className="mt-3 grid gap-2 text-sm font-bold">
+          내 삶의 최종 목표
+          <AppTextarea value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="내 삶의 최종 목표를 적어보세요" />
+        </label>
+        <p className="mt-2 text-sm font-bold text-clover-sub">상단 탭에서 바로 확인하고 수정할 수 있게 했어요.</p>
+      </div>
+    </GlassCard>
   );
 }
 
@@ -282,12 +419,6 @@ export default function LifePage() {
   const [shoppingDraft, setShoppingDraft] = useState(() => emptyShopping());
   const load = () => setData(getAllData());
   const today = toDateKey(new Date());
-  let mandalartGoal = "";
-  try {
-    mandalartGoal = JSON.parse(localStorage.getItem("clover-desk:mandalart:v1") || "{}").mainGoal || "";
-  } catch {
-    mandalartGoal = "";
-  }
 
   useEffect(() => {
     window.addEventListener("clover-data-change", load);
@@ -344,13 +475,7 @@ export default function LifePage() {
 
   return (
     <>
-      <PageHeader eyebrow="LIFE" title="생활 허브">
-        <div className="flex flex-wrap gap-2">
-          <Link to="/habits"><AppButton variant="soft">Habits</AppButton></Link>
-          <Link to="/journal"><AppButton variant="soft">Journal</AppButton></Link>
-          <Link to="/mandalart"><AppButton variant="soft">Mandalart</AppButton></Link>
-        </div>
-      </PageHeader>
+      <PageHeader eyebrow="LIFE" title="생활 허브" />
 
       <LifeTabs value={tab} onChange={setTab} />
 
@@ -370,10 +495,7 @@ export default function LifePage() {
         )}
 
         {tab === "journal" && (
-          <GlassCard>
-            <SectionTitle action={<Link to="/journal"><AppButton variant="soft">오늘 기록 열기</AppButton></Link>}>하루 기록</SectionTitle>
-            <TodayRecordGraph entries={data.moodEntries || []} today={today} />
-          </GlassCard>
+          <LifeJournalDetails data={data} today={today} onChange={load} />
         )}
 
         {tab === "habits" && <LifeHabitTracker data={data} onChange={load} />}
@@ -397,14 +519,7 @@ export default function LifePage() {
         )}
 
         {tab === "mandalart" && (
-          <GlassCard>
-            <SectionTitle action={<Link to="/mandalart"><AppButton variant="soft">만다라트 열기</AppButton></Link>}>만다라트</SectionTitle>
-            <div className="rounded-[26px] bg-violet-50/70 p-5">
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-700">Mandalart</p>
-              <p className="mt-3 text-xl font-black text-clover-text">{mandalartGoal || "내 삶의 최종 목표를 적어보세요"}</p>
-              <p className="mt-2 text-sm font-bold text-clover-sub">삶의 방향표는 별도 창 대신 여기에서 확인하고, 버튼으로 편집 화면을 열 수 있어요.</p>
-            </div>
-          </GlassCard>
+          <LifeMandalartDetails onChange={load} />
         )}
       </div>
     </>
