@@ -427,6 +427,7 @@ function Timeline({ selectedDate, items, quickText, onQuickText, onApplyQuick, o
 }
 
 function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQuick, onEdit, onDelete }) {
+  const [showDetails, setShowDetails] = useState(false);
   const timedItems = items.filter((item) => item.startTime && item.endTime && !item.isAllDay && !item.isUnscheduled);
   const current = new Date();
   const isToday = selectedDate === toDateKey(current);
@@ -439,7 +440,13 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
           <SectionTitle>타임라인</SectionTitle>
           <span className="text-sm font-black text-clover-sub">{Number(selectedDate.slice(5, 7))}월 {Number(selectedDate.slice(8))}일</span>
         </div>
-        <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-sub">시간 있는 일정만 표시</span>
+        <button
+          type="button"
+          onClick={() => setShowDetails((currentValue) => !currentValue)}
+          className={`rounded-full border px-3 py-2 text-xs font-black transition ${showDetails ? "border-clover-deep bg-clover-deep text-white" : "border-clover-line bg-white/80 text-clover-sub"}`}
+        >
+          세부옵션
+        </button>
       </div>
 
       <div className="mb-3 rounded-[14px] border border-clover-line bg-white/70 p-2.5">
@@ -457,6 +464,12 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
         </div>
       </div>
 
+      {showDetails && (
+        <p className="mb-3 rounded-[14px] bg-slate-50 px-4 py-3 text-xs font-bold text-clover-sub">
+          아래 타임라인의 일정 블록에서 수정, 삭제할 수 있어요.
+        </p>
+      )}
+
       <div className="relative">
         {isToday && current.getHours() >= 8 && current.getHours() <= 23 && (
           <div className="pointer-events-none absolute left-[58px] right-0 z-20 flex items-center" style={{ top: `${Math.max(0, currentTop)}px` }}>
@@ -473,18 +486,22 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
                 {hourItems.map((item) => (
                   <article key={`${item.collection}-${item.id}`} className={`grid grid-cols-[130px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-4 py-2.5 text-sm shadow-sm max-sm:grid-cols-[1fr_auto] ${categoryMeta[item.category]?.block || categoryMeta["湲고?"].block}`}>
                     <span className="text-xs font-black max-sm:hidden">{timeText(item)}</span>
-                    <b className="min-w-0 truncate">{item.title}</b>
-                    <div className="flex gap-1">
-                      <button type="button" onClick={() => onEdit(item)} className="rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-black">수정</button>
-                      <button type="button" onClick={() => onDelete(item)} className="rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-black">삭제</button>
-                    </div>
+                    <button type="button" onClick={() => onEdit(item)} className="min-w-0 truncate text-left font-black">
+                      {item.title}
+                    </button>
+                    {showDetails && (
+                      <div className="flex gap-1">
+                        <button type="button" onClick={() => onEdit(item)} className="rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-black">수정</button>
+                        <button type="button" onClick={() => onDelete(item)} className="rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-black">삭제</button>
+                      </div>
+                    )}
                   </article>
                 ))}
               </div>
             </div>
           );
         })}
-        {!timedItems.length && <p className="mt-3 rounded-[14px] bg-white/55 p-4 text-sm font-bold text-clover-sub">시간이 정해진 일정이 아직 없어요.</p>}
+        {!timedItems.length && <p className="mt-3 rounded-[14px] bg-white/55 p-4 text-sm font-bold text-clover-sub">시간이 정해진 일정이 아직 없어요. 빠른 입력으로 추가한 뒤 세부옵션에서 수정해보세요.</p>}
       </div>
     </GlassCard>
   );
