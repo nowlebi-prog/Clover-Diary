@@ -33,7 +33,7 @@ function ActionButton({ active, icon, title, sub, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-h-[58px] items-center justify-center gap-3 rounded-[8px] border px-5 py-3 text-left transition ${
+      className={`flex min-h-[58px] w-full items-center justify-start gap-3 rounded-[8px] border px-4 py-3 text-left transition sm:justify-center sm:px-5 ${
         active ? "border-clover-deep bg-emerald-50/85 text-clover-deep shadow-sm" : "border-clover-line bg-white/65 text-clover-text hover:bg-white"
       }`}
     >
@@ -107,7 +107,23 @@ function QuoteTable({ quotes, onAdd, onUpdate, onDelete }) {
         <h2 className="text-xl font-black">좋은 문구</h2>
         <AppButton onClick={onAdd}>등록</AppButton>
       </div>
-      <div className="overflow-x-auto rounded-[8px] border border-clover-line bg-white/60">
+      <div className="grid gap-3 md:hidden">
+        {quotes.map((quote) => (
+          <article key={quote.id} className="rounded-[14px] border border-clover-line bg-white/65 p-3">
+            <label className="grid gap-1 text-xs font-black text-clover-sub">
+              문구
+              <AppTextarea value={quote.text || ""} onChange={(event) => onUpdate(quote.id, { text: event.target.value })} className="min-h-20" />
+            </label>
+            <div className="mt-2 grid gap-2">
+              <label className="grid gap-1 text-xs font-black text-clover-sub">출처<AppInput value={quote.source || ""} onChange={(event) => onUpdate(quote.id, { source: event.target.value })} /></label>
+              <label className="grid gap-1 text-xs font-black text-clover-sub">태그<AppInput value={quote.tags || ""} onChange={(event) => onUpdate(quote.id, { tags: event.target.value })} /></label>
+            </div>
+            <button type="button" onClick={() => onDelete(quote)} className="mt-3 w-full rounded-full bg-red-50 px-3 py-2 text-xs font-black text-red-500">삭제</button>
+          </article>
+        ))}
+        {!quotes.length && <p className="rounded-[8px] bg-white/45 p-4 text-sm font-bold text-clover-sub">아직 저장된 문구가 없어요.</p>}
+      </div>
+      <div className="hidden overflow-x-auto rounded-[8px] border border-clover-line bg-white/60 md:block">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-white/80 text-left text-xs font-black text-clover-sub">
             <tr>
@@ -198,26 +214,48 @@ function IdeaManager({ ideas, selectedCategory, setSelectedCategory, onAdd, onUp
       <div className="grid gap-2">
         <AppInput value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="아이디어를 입력하세요" />
         <AppTextarea value={draftBody} onChange={(event) => setDraftBody(event.target.value)} placeholder="세부 메모나 다음에 해볼 것을 적어두세요" className="min-h-20" />
-        <div className="max-w-48">
+        <div className="max-w-full sm:max-w-48">
           <AppSelect value={draftStatus} onChange={(event) => setDraftStatus(event.target.value)}>
             {ideaStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
           </AppSelect>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
         {["전체", ...ideaCategories].map((category) => (
           <button
             key={category}
             type="button"
             onClick={() => setSelectedCategory(category)}
-            className={`rounded-full border px-4 py-2 text-xs font-black ${selectedCategory === category ? "border-clover-deep bg-clover-deep text-white" : "border-clover-line bg-white/70 text-clover-sub"}`}
+            className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black ${selectedCategory === category ? "border-clover-deep bg-clover-deep text-white" : "border-clover-line bg-white/70 text-clover-sub"}`}
           >
             {category}
           </button>
         ))}
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-[8px] border border-clover-line bg-white/60">
+      <div className="mt-4 grid gap-3 md:hidden">
+        {filtered.map((idea) => (
+          <article key={idea.id} className={`rounded-[14px] border p-4 ${selectedId === idea.id ? "border-clover-deep bg-emerald-50/70" : "border-clover-line bg-white/65"}`}>
+            <button type="button" onClick={() => selectIdea(idea)} className="w-full text-left">
+              <p className="line-clamp-2 text-base font-black text-clover-text">{idea.title || "제목 없음"}</p>
+              {!!idea.body && <p className="mt-2 line-clamp-3 text-sm font-bold leading-6 text-clover-sub">{idea.body}</p>}
+            </button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className={`rounded-full px-3 py-1 text-xs font-black ${categoryTone(idea.category || "기타")}`}>{idea.category || "기타"}</span>
+              <span className={`rounded-full px-3 py-1 text-xs font-black ${statusTone(idea.status || "아이디어")}`}>{idea.status || "아이디어"}</span>
+              <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-clover-sub">{idea.createdAt || "-"}</span>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <button type="button" onClick={() => selectIdea(idea)} className="rounded-full bg-white px-3 py-2 text-xs font-black text-clover-sub">수정</button>
+              <button type="button" onClick={() => onDelete(idea)} className="rounded-full bg-red-50 px-3 py-2 text-xs font-black text-red-500">삭제</button>
+              <button type="button" onClick={() => onPromote(idea)} className="rounded-full bg-clover-deep px-3 py-2 text-xs font-black text-white">실험</button>
+            </div>
+          </article>
+        ))}
+        {!filtered.length && <p className="rounded-[8px] bg-white/45 p-4 text-sm font-bold text-clover-sub">이 카테고리에는 아직 아이디어가 없어요.</p>}
+      </div>
+
+      <div className="mt-4 hidden overflow-x-auto rounded-[8px] border border-clover-line bg-white/60 md:block">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-white/80 text-left text-xs font-black text-clover-sub">
             <tr>
@@ -252,7 +290,7 @@ function IdeaManager({ ideas, selectedCategory, setSelectedCategory, onAdd, onUp
         {!filtered.length && <p className="p-4 text-sm font-bold text-clover-sub">이 카테고리에는 아직 아이디어가 없어요.</p>}
       </div>
 
-      <div className="mt-5 flex flex-wrap justify-end gap-3">
+      <div className="mt-5 grid gap-2 sm:flex sm:flex-wrap sm:justify-end sm:gap-3">
         <button
           type="button"
           onClick={() => {
@@ -425,20 +463,20 @@ export default function ArchivePage() {
   return (
     <>
       <PageHeader eyebrow="ARCHIVE" title="생각과 기록 보관함">
-        <div className="flex flex-wrap items-center gap-2">
-          <AppInput type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="min-h-10 w-36" />
-          <AppButton onClick={openPdf} className="min-h-10 px-3 text-xs">월별 리포트 PDF</AppButton>
+        <div className="grid w-full grid-cols-[1fr_auto] items-center gap-2 sm:w-auto sm:flex sm:flex-wrap">
+          <AppInput type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="min-h-10 min-w-0 sm:w-36" />
+          <AppButton onClick={openPdf} className="min-h-10 px-3 text-xs">PDF</AppButton>
         </div>
       </PageHeader>
 
-      <GlassCard className="mb-4 rounded-[8px] border border-clover-line bg-white/55 p-7">
+      <GlassCard className="mb-4 rounded-[8px] border border-clover-line bg-white/55 p-4 sm:p-7">
         <div className="grid gap-6 lg:grid-cols-[1fr_310px]">
           <div>
             <div className="mb-4 flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-black">오늘의 질문</h2>
+              <h2 className="text-xl font-black sm:text-2xl">오늘의 질문</h2>
               <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">오늘 랜덤 질문</span>
             </div>
-            <h3 className="mb-4 text-xl font-black text-clover-text">
+            <h3 className="mb-4 break-keep text-lg font-black text-clover-text sm:text-xl">
               {dailyQuestion?.text || "질문 목록을 먼저 추가해 주세요."}
             </h3>
             <AppTextarea
@@ -449,13 +487,13 @@ export default function ArchivePage() {
               maxLength={1000}
               disabled={!dailyQuestion}
             />
-            <div className="mt-2 flex items-center justify-between text-xs font-bold text-clover-sub">
+            <div className="mt-2 grid gap-1 text-xs font-bold text-clover-sub sm:flex sm:items-center sm:justify-between">
               <span>답변을 저장하면 해당 질문은 질문 목록에서 자동 제거됩니다.</span>
               <span>{answer.length} / 1000</span>
             </div>
           </div>
 
-          <div className="grid content-center gap-4 border-clover-line/80 lg:border-l lg:pl-8">
+          <div className="grid content-center gap-3 border-clover-line/80 lg:border-l lg:pl-8">
             <button type="button" onClick={() => setMode("questions")} className="rounded-[8px] border border-clover-line bg-white/75 px-5 py-4 text-base font-black text-clover-text">
               질문 목록 관리
             </button>
