@@ -5,6 +5,7 @@ import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
 import CustomCheckbox from "../../components/common/CustomCheckbox";
 import GlassCard from "../../components/common/GlassCard";
+import Modal from "../../components/common/Modal";
 import SectionTitle from "../../components/common/SectionTitle";
 import StatusBadge from "../../components/common/StatusBadge";
 import WeatherCard from "../../components/dashboard/WeatherCard";
@@ -52,6 +53,97 @@ const ddayLabel = (dday) => {
   if (dday > 0) return `D-${dday}`;
   return `D+${Math.abs(dday)}`;
 };
+
+const dailySummarySeenKey = (date) => `clover-daily-summary-seen:${date}`;
+
+function DailyStartSummaryModal({ today, todayItems, deadlines, habitStatus, studyDue, onClose }) {
+  const firstItems = todayItems.slice(0, 4);
+  const firstDeadlines = deadlines.slice(0, 3);
+  const remainingHabits = habitStatus.remaining.slice(0, 4);
+  const firstStudy = studyDue.slice(0, 3);
+
+  return (
+    <Modal title="오늘 요약" onClose={onClose}>
+      <div className="grid gap-4">
+        <div className="rounded-[20px] bg-emerald-50/70 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-clover-deep">{today}</p>
+          <h3 className="mt-1 text-2xl font-black text-clover-ink">오늘 시작 전에 이것만 볼게요</h3>
+          <p className="mt-2 text-sm font-bold text-clover-sub">일정, 마감, 습관, 공부를 한 번에 정리했어요.</p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <section className="rounded-[18px] border border-clover-line bg-white/75 p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <b className="text-sm font-black text-clover-ink">오늘 일정</b>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-clover-deep">{todayItems.length}개</span>
+            </div>
+            <div className="grid gap-2">
+              {firstItems.map((item, index) => (
+                <Link key={`${item.type}-${item.id || index}`} to={`/schedule?date=${today}`} className="grid grid-cols-[68px_1fr] gap-2 rounded-xl bg-white/70 px-3 py-2 text-sm">
+                  <span className="text-xs font-black text-clover-sub">{formatTime(item)}</span>
+                  <b className="min-w-0 truncate text-clover-ink">{item.displayTitle}</b>
+                </Link>
+              ))}
+              {!firstItems.length && <p className="rounded-xl bg-white/60 p-3 text-sm font-bold text-clover-sub">오늘 일정은 아직 없어요.</p>}
+            </div>
+          </section>
+
+          <section className="rounded-[18px] border border-rose-100 bg-rose-50/35 p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <b className="text-sm font-black text-clover-ink">마감인 일</b>
+              <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-black text-rose-600">{deadlines.length}건</span>
+            </div>
+            <div className="grid gap-2">
+              {firstDeadlines.map((item, index) => (
+                <Link key={`${item.type}-${item.id || index}`} to={item.type === "payment" ? "/money" : `/schedule?date=${item.date}`} className="flex items-center justify-between gap-2 rounded-xl bg-white/70 px-3 py-2 text-sm">
+                  <b className="min-w-0 truncate text-clover-ink">{item.displayTitle}</b>
+                  <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-black text-rose-600">{ddayLabel(item.dday)}</span>
+                </Link>
+              ))}
+              {!firstDeadlines.length && <p className="rounded-xl bg-white/60 p-3 text-sm font-bold text-clover-sub">오늘 급한 마감은 없어요.</p>}
+            </div>
+          </section>
+
+          <section className="rounded-[18px] border border-clover-line bg-white/75 p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <b className="text-sm font-black text-clover-ink">습관</b>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-clover-deep">{habitStatus.doneCount}/{habitStatus.total} 완료</span>
+            </div>
+            <div className="grid gap-2">
+              {remainingHabits.map((habit) => (
+                <Link key={habit.id} to="/life?tab=habits" className="flex items-center justify-between gap-2 rounded-xl bg-white/70 px-3 py-2 text-sm">
+                  <b className="min-w-0 truncate text-clover-ink">{habit.name}</b>
+                  <span className="text-xs font-black text-clover-sub">남음</span>
+                </Link>
+              ))}
+              {!remainingHabits.length && <p className="rounded-xl bg-white/60 p-3 text-sm font-bold text-clover-sub">오늘 루틴은 다 했거나 등록된 루틴이 없어요.</p>}
+            </div>
+          </section>
+
+          <section className="rounded-[18px] border border-indigo-100 bg-indigo-50/35 p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <b className="text-sm font-black text-clover-ink">오늘의 공부</b>
+              <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-black text-indigo-700">{studyDue.length}개</span>
+            </div>
+            <div className="grid gap-2">
+              {firstStudy.map((item, index) => (
+                <Link key={item.id || index} to="/study" className="rounded-xl bg-white/70 px-3 py-2 text-sm">
+                  <b className="line-clamp-1 text-clover-ink">{item.title || item.summary || "다시 볼 공부"}</b>
+                  <p className="mt-1 text-xs font-bold text-clover-sub">{item.status || "대기"}</p>
+                </Link>
+              ))}
+              {!firstStudy.length && <p className="rounded-xl bg-white/60 p-3 text-sm font-bold text-clover-sub">오늘 다시 볼 공부는 없어요.</p>}
+            </div>
+          </section>
+        </div>
+
+        <div className="flex justify-end">
+          <AppButton onClick={onClose}>오늘 시작하기</AppButton>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function SummaryChips({ todayItems, deadlines, habitStatus, todayFocusSec }) {
   const chips = [
@@ -579,6 +671,7 @@ function RecentActivity({ data, today }) {
 export default function HomePage() {
   const [data, setData] = useState(getAllData());
   const [activeSession, setActiveSessionState] = useState(getActiveSession());
+  const [showDailySummary, setShowDailySummary] = useState(false);
   const today = toDateKey(new Date());
   const navigate = useNavigate();
 
@@ -591,6 +684,13 @@ export default function HomePage() {
     window.addEventListener("clover-data-change", load);
     return () => window.removeEventListener("clover-data-change", load);
   }, []);
+
+  useEffect(() => {
+    const key = dailySummarySeenKey(today);
+    if (localStorage.getItem(key) !== "yes") {
+      setShowDailySummary(true);
+    }
+  }, [today]);
 
   const refreshNow = async () => {
     await syncAllDataFromCloud();
@@ -657,8 +757,24 @@ export default function HomePage() {
     navigate(`/schedule?date=${item.dueDate || item.date || today}`);
   };
 
+  const closeDailySummary = () => {
+    localStorage.setItem(dailySummarySeenKey(today), "yes");
+    setShowDailySummary(false);
+  };
+
   return (
     <>
+      {showDailySummary && (
+        <DailyStartSummaryModal
+          today={today}
+          todayItems={todayItems}
+          deadlines={deadlines}
+          habitStatus={habitStatus}
+          studyDue={studyDue}
+          onClose={closeDailySummary}
+        />
+      )}
+
       <PageHeader eyebrow={today} title="오늘도 Lucky Day 🍀">
         <div className="flex flex-wrap items-center gap-2">
           <WeatherCard />
