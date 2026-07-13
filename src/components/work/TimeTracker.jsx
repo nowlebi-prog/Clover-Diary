@@ -1,23 +1,21 @@
 import { useEffect, useState } from "react";
 import AppButton from "../common/AppButton";
 import AppInput from "../common/AppInput";
-import AppTextarea from "../common/AppTextarea";
-import GlassCard from "../common/GlassCard";
 import {
-  startActiveSession,
+  addActiveSessionMemo,
+  discardActiveSession,
+  endActiveSession,
   pauseActiveSession,
   resumeActiveSession,
-  updateActiveSession,
-  addActiveSessionMemo,
-  endActiveSession,
-  discardActiveSession
+  startActiveSession,
+  updateActiveSession
 } from "../../lib/storage/localStorageAdapter";
-import { computeElapsed, fmtHMS, fmtHM } from "../../lib/utils/workUtils";
+import { computeElapsed, fmtHM, fmtHMS } from "../../lib/utils/workUtils";
 
-export default function TimeTracker({ activeSession, categories, onEnded }) {
+export default function TimeTracker({ activeSession, categories = [], onChange }) {
   const [tick, setTick] = useState(Date.now());
   const [draftTitle, setDraftTitle] = useState("");
-  const [draftCategory, setDraftCategory] = useState(categories[0]?.name || "");
+  const [draftCategory, setDraftCategory] = useState(categories[0]?.name || "업무");
   const [memoText, setMemoText] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
@@ -28,10 +26,30 @@ export default function TimeTracker({ activeSession, categories, onEnded }) {
     return () => clearInterval(timer);
   }, [activeSession?.id]);
 
+  useEffect(() => {
+    if (!categories.some((category) => category.name === draftCategory)) {
+      setDraftCategory(categories[0]?.name || "업무");
+    }
+  }, [categories, draftCategory]);
+
+  const selectedColor = categories.find((category) => category.name === draftCategory)?.color || "#8DDFA8";
+
+  const addMemo = () => {
+    if (!memoText.trim()) return;
+    addActiveSessionMemo(memoText.trim(), activeSession && computeElapsed(activeSession, tick).isPaused ? "break" : "working");
+    setMemoText("");
+    onChange?.();
+  };
+
   if (!activeSession) {
     return (
-      <GlassCard className="bg-white/70 p-5">
-        <p className="mb-3 text-[11px] font-black uppercase tracking-[0.14em] text-clover-deep">Focus Timer</p>
+      <section className="glass rounded-[28px] bg-white/76 p-5">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-clover-deep">Focus Timer</p>
+          <span className="rounded-full px-3 py-1 text-xs font-black text-clover-text" style={{ background: selectedColor }}>
+            대기
+          </span>
+        </div>
         <div className="grid gap-3">
           <AppInput
             placeholder="지금 시작할 업무명을 적어주세요"
@@ -39,58 +57,60 @@ export default function TimeTracker({ activeSession, categories, onEnded }) {
             onChange={(event) => setDraftTitle(event.target.value)}
           />
           <div className="flex flex-wrap gap-2">
-            {categories.map((cat) => (
+            {categories.map((category) => (
               <button
-                key={cat.id}
-                onClick={() => setDraftCategory(cat.name)}
-                className="rounded-full px-3 py-1.5 text-xs font-bold transition"
+                key={category.id || category.name}
+                type="button"
+                onClick={() => setDraftCategory(category.name)}
+                className="rounded-full px-3 py-1.5 text-xs font-black transition"
                 style={{
-                  background: draftCategory === cat.name ? cat.color : "#ffffff90",
-                  color: draftCategory === cat.name ? "#1F2A24" : "#7A887F"
+                  background: draftCategory === category.name ? category.color : "#ffffff90",
+                  color: draftCategory === category.name ? "#1F2A24" : "#718077"
                 }}
               >
-                {cat.name}
+                {category.name}
               </button>
             ))}
           </div>
           <AppButton
+            className="w-full"
             disabled={!draftTitle.trim()}
             onClick={() => {
               startActiveSession({ title: draftTitle.trim(), category: draftCategory });
               setDraftTitle("");
+              onChange?.();
             }}
           >
-            ▶ 업무 시작
+            업무 시작
           </AppButton>
         </div>
-      </GlassCard>
+      </section>
     );
   }
 
   const { workSec, pauseSec, isPaused } = computeElapsed(activeSession, tick);
+  const categoryColor = categories.find((category) => category.name === activeSession.category)?.color || "#8DDFA8";
 
   return (
-    <GlassCard className="bg-gradient-to-br from-emerald-50/80 to-white/70 p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">
+    <section className="glass rounded-[28px] bg-white/76 p-5">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-clover-deep">
           {isPaused ? "쉬는 중" : "집중 중"}
         </p>
-        <span
-          className="rounded-full px-3 py-1 text-xs font-bold"
-          style={{ background: categories.find((c) => c.name === activeSession.category)?.color || "#8DDFA8" }}
-        >
+        <span className="rounded-full px-3 py-1 text-xs font-black text-clover-text" style={{ background: categoryColor }}>
           {activeSession.category}
         </span>
       </div>
 
       {editingTitle ? (
-        <div className="mb-2 flex gap-2">
+        <div className="mb-3 flex gap-2">
           <AppInput value={titleInput} onChange={(event) => setTitleInput(event.target.value)} autoFocus />
           <AppButton
-            className="min-h-9 px-3 py-1 text-xs"
+            className="px-3"
             onClick={() => {
               updateActiveSession({ title: titleInput.trim() || activeSession.title });
               setEditingTitle(false);
+              onChange?.();
             }}
           >
             저장
@@ -98,7 +118,8 @@ export default function TimeTracker({ activeSession, categories, onEnded }) {
         </div>
       ) : (
         <button
-          className="mb-2 text-left text-lg font-black text-clover-text"
+          type="button"
+          className="mb-2 text-left text-xl font-black text-clover-text"
           onClick={() => {
             setTitleInput(activeSession.title);
             setEditingTitle(true);
@@ -108,62 +129,49 @@ export default function TimeTracker({ activeSession, categories, onEnded }) {
         </button>
       )}
 
-      <div className="mb-4 font-mono text-4xl font-black tracking-tight text-clover-deep">{fmtHMS(workSec)}</div>
-      {pauseSec > 0 && <p className="-mt-3 mb-4 text-xs font-bold text-clover-sub">휴식 {fmtHM(pauseSec)} 포함</p>}
+      <div className="mb-4 font-mono text-5xl font-black tracking-tight text-clover-deep">{fmtHMS(workSec)}</div>
+      {pauseSec > 0 && <p className="-mt-3 mb-4 text-xs font-bold text-clover-sub">쉬는 시간 {fmtHM(pauseSec)} 포함</p>}
 
       <div className="mb-4 flex flex-wrap gap-2">
         {isPaused ? (
-          <AppButton onClick={resumeActiveSession}>▶ 다시 시작</AppButton>
+          <AppButton onClick={() => { resumeActiveSession(); onChange?.(); }}>다시 시작</AppButton>
         ) : (
-          <AppButton variant="soft" onClick={pauseActiveSession}>⏸ 잠깐 휴식</AppButton>
+          <AppButton variant="soft" onClick={() => { pauseActiveSession(); onChange?.(); }}>휴식</AppButton>
         )}
         <AppButton
           variant="danger"
           onClick={() => {
-            const session = endActiveSession();
-            onEnded?.(session);
+            endActiveSession();
+            onChange?.();
           }}
         >
-          ■ 업무 종료
+          업무 종료
         </AppButton>
-        <AppButton variant="ghost" onClick={discardActiveSession}>취소(저장 안 함)</AppButton>
+        <AppButton variant="ghost" onClick={() => { discardActiveSession(); onChange?.(); }}>취소</AppButton>
       </div>
 
       <div className="flex gap-2">
         <AppInput
-          placeholder={isPaused ? "휴식 중 메모 남기기" : "중간 메모 남기기"}
+          placeholder={isPaused ? "쉬는 중 메모" : "중간 메모"}
           value={memoText}
           onChange={(event) => setMemoText(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && memoText.trim()) {
-              addActiveSessionMemo(memoText, isPaused ? "break" : "working");
-              setMemoText("");
-            }
+            if (event.key === "Enter") addMemo();
           }}
         />
-        <AppButton
-          className="min-h-11 px-4"
-          variant="soft"
-          onClick={() => {
-            if (!memoText.trim()) return;
-            addActiveSessionMemo(memoText, isPaused ? "break" : "working");
-            setMemoText("");
-          }}
-        >
-          추가
-        </AppButton>
+        <AppButton className="px-4" variant="soft" onClick={addMemo}>추가</AppButton>
       </div>
 
-      {activeSession.memos?.length > 0 && (
+      {!!activeSession.memos?.length && (
         <div className="mt-3 grid gap-1.5">
           {activeSession.memos.map((memo) => (
             <p key={memo.id} className="rounded-xl bg-white/60 px-3 py-2 text-xs text-clover-sub">
-              <span className="mr-1 font-bold text-clover-deep">{memo.phase === "break" ? "🌿" : "📝"}</span>
+              <span className="mr-1 font-bold text-clover-deep">{memo.phase === "break" ? "휴식" : "업무"}</span>
               {memo.text}
             </p>
           ))}
         </div>
       )}
-    </GlassCard>
+    </section>
   );
 }

@@ -330,6 +330,94 @@ export function saveTaskCategories(categories) {
   saveAllData(data, { silent: true });
 }
 
+export function getWorkCategories() {
+  return getTaskCategories().map((category, index) => {
+    const colors = ["#8DDFA8", "#A9C9FF", "#F6C68D", "#F4B6D2", "#BDE7E7"];
+    return typeof category === "string"
+      ? { id: `work-category-${index}`, name: category, color: colors[index % colors.length] }
+      : category;
+  });
+}
+
+export function getActiveSession() {
+  return getAllData().activeSession || null;
+}
+
+export function startActiveSession({ title, category }) {
+  const data = getAllData();
+  const now = Date.now();
+  data.activeSession = {
+    id: makeId("activeWork"),
+    title,
+    category,
+    date: today(),
+    startTime: now,
+    pauses: [],
+    pauseSec: 0,
+    memos: [],
+    createdAt: today(),
+    updatedAt: today()
+  };
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function updateActiveSession(updates) {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  data.activeSession = { ...data.activeSession, ...updates, updatedAt: today() };
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function pauseActiveSession() {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  const open = (data.activeSession.pauses || []).some((pause) => !pause.end);
+  if (!open) data.activeSession.pauses = [...(data.activeSession.pauses || []), { start: Date.now() }];
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function resumeActiveSession() {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  const now = Date.now();
+  data.activeSession.pauses = (data.activeSession.pauses || []).map((pause) => (!pause.end ? { ...pause, end: now } : pause));
+  data.activeSession.pauseSec = (data.activeSession.pauses || []).reduce((sum, pause) => sum + Math.max(0, Math.round(((pause.end || now) - pause.start) / 1000)), 0);
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function addActiveSessionMemo(text, phase = "working") {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  data.activeSession.memos = [...(data.activeSession.memos || []), { id: makeId("memo"), text, phase, time: Date.now() }];
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function endActiveSession() {
+  const data = getAllData();
+  const session = data.activeSession;
+  if (!session) return null;
+  const now = Date.now();
+  const pauses = (session.pauses || []).map((pause) => (!pause.end ? { ...pause, end: now } : pause));
+  const pauseSec = pauses.reduce((sum, pause) => sum + Math.max(0, Math.round((pause.end - pause.start) / 1000)), 0);
+  const duration = Math.max(0, Math.round((now - session.startTime) / 1000) - pauseSec);
+  const saved = { ...session, id: makeId("workSessions"), endTime: now, pauses, pauseSec, duration, updatedAt: today() };
+  data.workSessions = [saved, ...(data.workSessions || [])];
+  data.activeSession = null;
+  saveAllData(data);
+  return saved;
+}
+
+export function discardActiveSession() {
+  const data = getAllData();
+  data.activeSession = null;
+  saveAllData(data);
+}
+
 export function getActiveWorkTimer() {
   return getAllData().activeWorkTimer || null;
 }
@@ -369,9 +457,9 @@ export function ensureGapYearDailyTodo() {
       endTime: "",
       dueTime: "",
       priority: "high",
-      category: "데일리",
-      project: "데일리",
-      projectName: "데일리",
+      category: "돈관리",
+      project: "돈관리",
+      projectName: "돈관리",
       memo: "지출을 갭이어 예산 시트에 반영했는지 체크해요.",
       completed: false,
       subTasks: [],
@@ -392,5 +480,5 @@ export function isGapYearTodoDoneToday() {
 
 export function getUnregisteredGapYearExpenses() {
   const data = getAllData();
-  return (data.expenses || []).filter((item) => !item.gapYearRegistered).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  return (data.expenses || []).filter((item) => item.gapYearUploadRequired && !item.gapYearRegistered).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }

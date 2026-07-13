@@ -1,21 +1,174 @@
-import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
+import AppTextarea from "../../components/common/AppTextarea";
 import GlassCard from "../../components/common/GlassCard";
-import SectionTitle from "../../components/common/SectionTitle";
-import DurationTimeline from "../../components/dashboard/DurationTimeline";
 import PageHeader from "../../components/layout/PageHeader";
-import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
-import { getIncompleteTodos, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
+import TimeTracker from "../../components/work/TimeTracker";
+import WorkLog from "../../components/work/WorkLog";
+import WorkStats from "../../components/work/WorkStats";
+import {
+  getActiveSession,
+  getAllData,
+  getWorkCategories,
+  saveAllData
+} from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
 
-const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const pad = (hour) => `${String(hour).padStart(2, "0")}:00`;
-const spaceLink = "rounded-[20px] bg-white/55 px-4 py-3 text-sm font-bold text-clover-deep transition hover:bg-white/80";
+const WORK_TABS = [
+  { label: "개요", to: "/work", active: true },
+  { label: "할 일", to: "/tasks" },
+  { label: "캘린더", to: "/calendar" },
+  { label: "콘텐츠", to: "/content" },
+  { label: "캠페인", to: "/campaigns" }
+];
+
+const memoId = () => `work-memo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+function WorkMemoPad({ today, onChange }) {
+  const [draft, setDraft] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [data, setData] = useState(getAllData());
+
+  const notes = useMemo(() => data.workMemos?.[today] || [], [data, today]);
+  const openNotes = notes.filter((note) => !note.confirmed);
+  const confirmedNotes = notes.filter((note) => note.confirmed);
+
+  const refresh = () => {
+    const next = getAllData();
+    setData(next);
+    onChange?.();
+  };
+
+  const commit = (recipe) => {
+    const next = getAllData();
+    next.workMemos = next.workMemos || {};
+    next.workMemos[today] = next.workMemos[today] || [];
+    recipe(next.workMemos[today]);
+    saveAllData(next);
+    refresh();
+  };
+
+  const saveMemo = () => {
+    const text = draft.trim();
+    if (!text) return;
+    commit((list) => {
+      if (editingId) {
+        const target = list.find((note) => note.id === editingId);
+        if (target) {
+          target.text = text;
+          target.updatedAt = new Date().toISOString();
+        }
+      } else {
+        list.unshift({
+          id: memoId(),
+          text,
+          confirmed: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      }
+    });
+    setDraft("");
+    setEditingId(null);
+  };
+
+  const editMemo = (note) => {
+    setEditingId(note.id);
+    setDraft(note.text);
+  };
+
+  const toggleConfirm = (noteId) => {
+    commit((list) => {
+      const target = list.find((note) => note.id === noteId);
+      if (target) {
+        target.confirmed = !target.confirmed;
+        target.updatedAt = new Date().toISOString();
+      }
+    });
+  };
+
+  const deleteMemo = (noteId) => {
+    commit((list) => {
+      const index = list.findIndex((note) => note.id === noteId);
+      if (index >= 0) list.splice(index, 1);
+    });
+  };
+
+  return (
+    <GlassCard className="p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-black">메모장</h2>
+        {editingId && (
+          <button
+            type="button"
+            onClick={() => {
+              setDraft("");
+              setEditingId(null);
+            }}
+            className="text-xs font-black text-clover-sub"
+          >
+            취소
+          </button>
+        )}
+      </div>
+
+      <div className="grid gap-3">
+        <AppTextarea
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="메모할 내용을 입력하세요. 여러 개를 하나씩 쌓아둘 수 있어요."
+          className="min-h-[104px]"
+        />
+        <AppButton onClick={saveMemo} className="w-full">
+          {editingId ? "메모 수정하기" : "메모 추가하기"}
+        </AppButton>
+      </div>
+
+      <div className="mt-6">
+        <h3 className="mb-3 text-sm font-black">메모 목록 ({openNotes.length})</h3>
+        <div className="grid gap-2">
+          {openNotes.map((note) => (
+            <div key={note.id} className="rounded-[22px] bg-white/60 p-4">
+              <p className="whitespace-pre-wrap text-sm font-bold leading-6">{note.text}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button onClick={() => toggleConfirm(note.id)} className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
+                  확인
+                </button>
+                <button onClick={() => editMemo(note)} className="rounded-full bg-white px-3 py-1 text-xs font-black text-clover-deep">
+                  수정
+                </button>
+                <button onClick={() => deleteMemo(note.id)} className="rounded-full bg-rose-100 px-3 py-1 text-xs font-black text-rose-600">
+                  삭제
+                </button>
+              </div>
+            </div>
+          ))}
+          {!openNotes.length && <p className="rounded-2xl bg-white/45 p-4 text-sm font-bold text-clover-sub">등록된 메모가 없어요.</p>}
+        </div>
+      </div>
+
+      <details className="mt-4 rounded-[22px] bg-white/45 p-4">
+        <summary className="cursor-pointer text-sm font-black text-clover-sub">확인된 메모 ({confirmedNotes.length})</summary>
+        <div className="mt-3 grid gap-2">
+          {confirmedNotes.map((note) => (
+            <div key={note.id} className="rounded-2xl bg-white/55 p-3 text-sm font-bold text-clover-sub">
+              <p className="whitespace-pre-wrap">{note.text}</p>
+              <div className="mt-2 flex gap-2">
+                <button onClick={() => toggleConfirm(note.id)} className="text-xs font-black text-clover-deep">되돌리기</button>
+                <button onClick={() => deleteMemo(note.id)} className="text-xs font-black text-rose-500">삭제</button>
+              </div>
+            </div>
+          ))}
+          {!confirmedNotes.length && <p className="text-sm font-bold text-clover-sub">아직 확인된 메모가 없어요.</p>}
+        </div>
+      </details>
+    </GlassCard>
+  );
+}
 
 export default function WorkPage() {
   const [data, setData] = useState(getAllData());
-  const [active, setActive] = useState(null);
   const today = toDateKey(new Date());
 
   const load = () => setData(getAllData());
@@ -25,150 +178,40 @@ export default function WorkPage() {
     return () => window.removeEventListener("clover-data-change", load);
   }, []);
 
-  const todos = getIncompleteTodos(data);
-  const deadlines = getUpcomingDeadlines(data, today);
-  const contents = data.contentPlans || [];
-  const campaigns = data.campaigns || [];
-  const trackables = useMemo(() => [
-    ...todos.slice(0, 8).map((item) => ({ id: item.id, type: "todo", title: item.title })),
-    ...(data.events || []).filter((item) => item.date === today).map((item) => ({ id: item.id, type: "event", title: item.title }))
-  ], [todos, data.events, today]);
-
-  const durationItems = [
-    ...(data.timelineEntries || []).filter((item) => item.date === today).map((item) => ({ ...item, title: item.title || "기록" })),
-    ...(data.events || []).filter((item) => item.date === today).map((item) => ({ ...item, title: item.title || "일정" })),
-    ...(data.todos || []).filter((item) => item.dueDate === today && (item.startTime || item.dueTime)).map((item) => ({ ...item, time: item.startTime || item.dueTime, title: item.title || "할 일" })),
-    ...(data.timeSessions || []).filter((item) => item.date === today).map((item) => ({ ...item, time: new Date(item.startedAt).toTimeString().slice(0, 5), title: item.title || "작업" }))
-  ];
-
-  const commit = (recipe) => {
-    const next = getAllData();
-    recipe(next);
-    saveAllData(next);
-    setData(getAllData());
-  };
-
-  const saveTimelineDrafts = (entries) => {
-    commit((next) => {
-      const savedAt = toDateKey(new Date());
-      const newEntries = entries.map((entry) => ({
-        id: makeId("timeline"),
-        date: today,
-        time: `${String(entry.startHour ?? entry.hour ?? 0).padStart(2, "0")}:${String(entry.startMinute ?? 0).padStart(2, "0")}`,
-        startTime: `${String(entry.startHour ?? entry.hour ?? 0).padStart(2, "0")}:${String(entry.startMinute ?? 0).padStart(2, "0")}`,
-        endTime: `${String(entry.endHour ?? (entry.startHour ?? entry.hour ?? 0) + 1).padStart(2, "0")}:${String(entry.endMinute ?? 0).padStart(2, "0")}`,
-        title: entry.title,
-        memo: "",
-        createdAt: savedAt,
-        updatedAt: savedAt
-      }));
-      next.timelineEntries = [...newEntries, ...(next.timelineEntries || [])];
-    });
-  };
-
-  const startTracker = (target) => setActive({ ...target, startedAt: Date.now() });
-
-  const stopTracker = () => {
-    if (!active) return;
-    const endedAt = Date.now();
-    commit((next) => {
-      next.timeSessions = [
-        {
-          id: makeId("time"),
-          date: today,
-          targetId: active.id,
-          targetType: active.type,
-          title: active.title,
-          startedAt: active.startedAt,
-          endedAt,
-          minutes: Math.max(1, Math.round((endedAt - active.startedAt) / 60000)),
-          createdAt: today,
-          updatedAt: today
-        },
-        ...(next.timeSessions || [])
-      ];
-    });
-    setActive(null);
-  };
+  const categories = getWorkCategories();
+  const activeSession = getActiveSession();
+  const sessions = data.workSessions || [];
 
   return (
     <>
       <PageHeader eyebrow="WORK" title="업무 실행실">
-        <AppButton onClick={() => window.dispatchEvent(new CustomEvent("clover-open-quick-add", { detail: "todo" }))}>+ 할 일 추가</AppButton>
+        <AppButton onClick={() => window.dispatchEvent(new CustomEvent("clover-open-quick-add", { detail: "todo" }))}>
+          + 할 일 추가
+        </AppButton>
       </PageHeader>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_380px]">
-        <div className="grid gap-4">
-          <DurationTimeline items={durationItems} date={today} onSaveEntries={saveTimelineDrafts} />
+      <nav className="mb-5 flex gap-2 overflow-x-auto rounded-[28px] bg-white/55 p-2 shadow-glass">
+        {WORK_TABS.map((tab) => (
+          <Link
+            key={tab.label}
+            to={tab.to}
+            className={`shrink-0 rounded-full px-5 py-3 text-sm font-black transition ${
+              tab.active ? "bg-clover-deep text-white" : "text-clover-sub hover:bg-white/70"
+            }`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </nav>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <GlassCard>
-              <SectionTitle>오늘 처리할 업무</SectionTitle>
-              <div className="grid gap-2">
-                {todos.slice(0, 6).map((todo) => (
-                  <Link key={todo.id} to="/tasks" className="rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">
-                    <span className="mr-2 text-clover-deep">{todo.priority === "high" ? "중요" : "Todo"}</span>
-                    {todo.title}
-                  </Link>
-                ))}
-                {!todos.length && <p className="text-sm font-bold text-clover-sub">남은 업무가 없어요.</p>}
-              </div>
-            </GlassCard>
+      <div className="grid gap-4 xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.05fr)]">
+        <TimeTracker activeSession={activeSession} categories={categories} onChange={load} />
+        <WorkStats sessions={sessions} categories={categories} today={today} />
+      </div>
 
-            <GlassCard>
-              <SectionTitle>가까운 마감</SectionTitle>
-              <div className="grid gap-2">
-                {deadlines.slice(0, 6).map((item, index) => (
-                  <Link key={`${item.type}-${item.id || index}`} to={item.type === "payment" ? "/money" : item.type === "content" ? "/content" : "/tasks"} className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">
-                    <span className="truncate">{item.displayTitle}</span>
-                    <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-700">D{item.dday >= 0 ? `-${item.dday}` : `+${Math.abs(item.dday)}`}</span>
-                  </Link>
-                ))}
-              </div>
-            </GlassCard>
-          </div>
-        </div>
-
-        <div className="grid content-start gap-4">
-          <GlassCard>
-            <SectionTitle>업무 타이머</SectionTitle>
-            {active ? (
-              <div className="rounded-[22px] bg-emerald-50 p-4">
-                <p className="font-black">{active.title}</p>
-                <p className="mt-1 text-sm font-bold text-clover-sub">진행 중이에요. 끝나면 저장됩니다.</p>
-                <AppButton className="mt-3 w-full" variant="danger" onClick={stopTracker}>종료하고 저장</AppButton>
-              </div>
-            ) : (
-              <div className="grid gap-2">
-                {trackables.map((item) => (
-                  <button key={`${item.type}-${item.id}`} onClick={() => startTracker(item)} className="rounded-2xl bg-white/55 p-3 text-left text-sm font-bold">{item.title}</button>
-                ))}
-                {!trackables.length && <p className="text-sm font-bold text-clover-sub">오늘 실행할 업무를 먼저 추가해보세요.</p>}
-              </div>
-            )}
-          </GlassCard>
-
-          <GlassCard>
-            <SectionTitle>WORK 바로가기</SectionTitle>
-            <div className="grid gap-2">
-              <Link to="/tasks" className={spaceLink}>전체 할 일 {todos.length}개</Link>
-              <Link to="/campaigns" className={spaceLink}>프로젝트 / 캠페인 {campaigns.length}개</Link>
-              <Link to="/files" className={spaceLink}>자료 / 파일 메모</Link>
-              <Link to="/worklog" className={spaceLink}>업무일지 열기</Link>
-              <Link to="/memo" className={spaceLink}>메모장 열기</Link>
-            </div>
-          </GlassCard>
-
-          <GlassCard>
-            <SectionTitle>오늘 사용 시간</SectionTitle>
-            <div className="grid gap-2">
-              {(data.timeSessions || []).filter((item) => item.date === today).slice(0, 6).map((item) => (
-                <p key={item.id} className="rounded-2xl bg-white/55 p-3 text-sm"><b>{item.title}</b> · {item.minutes}분</p>
-              ))}
-              {!data.timeSessions?.some((item) => item.date === today) && <p className="text-sm font-bold text-clover-sub">아직 기록된 시간이 없어요.</p>}
-            </div>
-          </GlassCard>
-        </div>
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <WorkLog sessions={sessions} categories={categories} today={today} onChange={load} />
+        <WorkMemoPad today={today} onChange={load} />
       </div>
     </>
   );
