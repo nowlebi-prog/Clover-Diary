@@ -51,6 +51,16 @@ const addDays = (dateKey, amount) => {
   date.setDate(date.getDate() + amount);
   return toDateKey(date);
 };
+const nextChoreDueDate = (chore, doneDate) => {
+  if (chore.cycle === "매일") return addDays(doneDate, 1);
+  if (chore.cycle === "매주") return addDays(doneDate, 7);
+  if (chore.cycle === "매달") {
+    const date = new Date(`${doneDate}T00:00:00`);
+    date.setMonth(date.getMonth() + 1);
+    return toDateKey(date);
+  }
+  return chore.nextDueDate || doneDate;
+};
 const monthCells = (year, month) => {
   const first = new Date(year, month, 1);
   const start = new Date(year, month, 1 - first.getDay());
@@ -98,12 +108,35 @@ const fromCollection = (items, collection, dateField, fallbackCategory) =>
     });
 
 const getScheduleItems = (data) => {
+  const todayKey = toDateKey(new Date());
   const items = [
     ...fromCollection(data.events, "events", "date", "기타"),
     ...fromCollection(data.todos, "todos", "dueDate", "PPT"),
     ...fromCollection(data.payments, "payments", "expectedDate", "갭이어"),
     ...fromCollection(data.expenses, "expenses", "date", "기타"),
-    ...fromCollection(data.contentPlans, "contentPlans", "publishDate", "PPT")
+    ...fromCollection(data.contentPlans, "contentPlans", "publishDate", "PPT"),
+    ...(data.chores || [])
+      .filter((item) => !item.archived)
+      .map((item) => {
+        const rawDueDate = item.nextDueDate || todayKey;
+        const dueDate = rawDueDate < todayKey ? todayKey : rawDueDate;
+        if (item.lastDoneAt === dueDate) return null;
+        return {
+          ...item,
+          collection: "chores",
+          date: dueDate,
+          scheduleDate: dueDate,
+          title: item.title || "집안일",
+          category: "집안일",
+          startTime: "",
+          endTime: "",
+          isAllDay: true,
+          allDay: true,
+          isUnscheduled: false,
+          status: "todo"
+        };
+      })
+      .filter(Boolean)
   ];
 
   (data.campaigns || []).filter((item) => !item.completed).forEach((item) => {
@@ -549,6 +582,16 @@ export default function SchedulePage() {
 
       if (form.collection === "todos") {
         next.todos = (next.todos || []).map((todo) => todo.id === form.id ? { ...todo, ...payload, dueDate: date, dueTime: payload.startTime, project: payload.category, projectName: payload.category } : todo);
+      } else if (form.collection === "chores") {
+        next.chores = (next.chores || []).map((chore) => chore.id === form.id ? {
+          ...chore,
+          title: form.title.trim(),
+          nextDueDate: date || chore.nextDueDate,
+          category: form.category || chore.category || "집안일",
+          memo: form.memo || chore.memo || "",
+          allDay: true,
+          updatedAt: today
+        } : chore);
       } else if (form.collection && form.collection !== "events" && next[form.collection]) {
         const realId = form.originalId || form.id;
         const dateField = form.dateField || dateFields[form.collection] || "date";
@@ -580,7 +623,18 @@ export default function SchedulePage() {
     persist((next) => {
       const collection = item.collection || "events";
       const id = item.originalId || item.id;
-      next[collection] = (next[collection] || []).map((entry) => entry.id === id ? { ...entry, completed: true, completedAt: selectedDate, updatedAt: today } : entry);
+      if (collection === "chores") {
+        next.chores = (next.chores || []).map((chore) => chore.id === id ? {
+          ...chore,
+          completed: false,
+          lastDoneAt: selectedDate,
+          postponedAt: "",
+          nextDueDate: nextChoreDueDate(chore, selectedDate),
+          updatedAt: today
+        } : chore);
+      } else {
+        next[collection] = (next[collection] || []).map((entry) => entry.id === id ? { ...entry, completed: true, completedAt: selectedDate, updatedAt: today } : entry);
+      }
     });
   };
 
