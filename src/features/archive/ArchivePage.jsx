@@ -150,6 +150,46 @@ function QuoteTable({ quotes, onAdd, onUpdate, onDelete }) {
   );
 }
 
+function QuoteTableCompact({ quotes, onAdd, onUpdate, onDelete }) {
+  return (
+    <GlassCard>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-xl font-black">좋은 문구</h2>
+        <AppButton onClick={onAdd}>등록</AppButton>
+      </div>
+      <div className="grid gap-2">
+        {quotes.map((quote) => (
+          <article key={quote.id} className="grid gap-2 rounded-[12px] border border-clover-line bg-white/70 p-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+            <AppInput
+              value={quote.text || ""}
+              onChange={(event) => onUpdate(quote.id, { text: event.target.value })}
+              placeholder="좋은 문구를 한 줄로 적어두세요"
+              className="min-h-10"
+            />
+            <div className="flex shrink-0 justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={() => onUpdate(quote.id, { updatedAt: todayKey() })}
+                className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-black text-clover-deep"
+              >
+                수정
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(quote)}
+                className="rounded-full bg-red-50 px-3 py-2 text-xs font-black text-red-500"
+              >
+                삭제
+              </button>
+            </div>
+          </article>
+        ))}
+        {!quotes.length && <p className="rounded-[8px] bg-white/45 p-4 text-sm font-bold text-clover-sub">아직 저장된 문구가 없어요.</p>}
+      </div>
+    </GlassCard>
+  );
+}
+
 function statusTone(status) {
   if (status === "실험 준비") return "bg-sky-100 text-sky-700";
   if (status === "실험 중") return "bg-emerald-100 text-emerald-700";
@@ -523,7 +563,7 @@ export default function ArchivePage() {
         <div>
           {mode === "questions" && <QuestionManager prompts={prompts} onAdd={addQuestion} onUpdate={updateQuestion} onDelete={deleteQuestion} />}
           {mode === "answers" && <AnswerArchive answers={answers} />}
-          {mode === "quotes" && <QuoteTable quotes={quotes} onAdd={addQuote} onUpdate={updateQuote} onDelete={deleteQuote} />}
+          {mode === "quotes" && <QuoteTableCompact quotes={quotes} onAdd={addQuote} onUpdate={updateQuote} onDelete={deleteQuote} />}
           {mode === "ideas" && <IdeaManager ideas={ideas} selectedCategory={ideaCategory} setSelectedCategory={setIdeaCategory} onAdd={addIdea} onUpdate={updateIdea} onDelete={deleteIdea} onPromote={promoteIdeaToStudy} />}
           {mode === "memos" && <MemoArchive memos={memos} onMoveToIdea={moveMemoToIdea} onDone={doneMemo} onDelete={deleteMemo} />}
         </div>
