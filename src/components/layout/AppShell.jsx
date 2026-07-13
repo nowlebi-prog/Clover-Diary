@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import BottomNav from "./BottomNav";
 import Sidebar from "./Sidebar";
 import QuickAddModal from "../dashboard/QuickAddModal";
+import FocusHourReminder from "../dashboard/FocusHourReminder";
 import RoutineCoachModal from "../dashboard/RoutineCoachModal";
 import TodayTaskReminder from "../dashboard/TodayTaskReminder";
 import WeeklyReportModal from "../dashboard/WeeklyReportModal";
@@ -54,6 +55,7 @@ export default function AppShell() {
       {weeklyReport && <WeeklyReportModal data={weeklyReport.data} today={weeklyReport.today} onClose={closeWeeklyReport} />}
       {!weeklyReport && routineCoach && <RoutineCoachModal data={routineCoach.data} today={routineCoach.today} onClose={closeRoutineCoach} />}
       {!quickAddType && !weeklyReport && !routineCoach && <TodayTaskReminder />}
+      {!quickAddType && !weeklyReport && !routineCoach && <FocusHourReminder />}
       <BottomNav />
     </div>
   );
