@@ -233,17 +233,34 @@ function TodayScheduleCard({ items, today }) {
 }
 
 function WeeklyStrip({ data, today }) {
-  const navigate = useNavigate();
-  const days = Array.from({ length: 7 }, (_, index) => addDays(today, index));
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const days = Array.from({ length: 7 }, (_, index) => addDays(today, weekOffset * 7 + index));
+  const selectedItems = getTodayItems(data, selectedDate).slice(0, 8);
+  const monthLabel = new Date(`${days[0]}T00:00:00`).toLocaleDateString("ko-KR", { year: "numeric", month: "long" });
+
   return (
     <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
-      <SectionTitle>이번주 한눈에 보기</SectionTitle>
+      <SectionTitle action={<Link to={`/schedule?date=${selectedDate}`} className="rounded-full bg-white/75 px-3 py-1 text-xs font-black text-clover-deep">Schedule로 이동</Link>}>이번주 한눈에 보기</SectionTitle>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <button type="button" onClick={() => setWeekOffset((value) => {
+          const next = value - 1;
+          setSelectedDate(addDays(today, next * 7));
+          return next;
+        })} className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-black text-clover-sub">이전</button>
+        <span className="text-xs font-black text-clover-sub">{monthLabel}</span>
+        <button type="button" onClick={() => setWeekOffset((value) => {
+          const next = value + 1;
+          setSelectedDate(addDays(today, next * 7));
+          return next;
+        })} className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-black text-clover-sub">다음</button>
+      </div>
       <div className="grid grid-cols-7 gap-2 rounded-[16px] border border-clover-line bg-white/55 p-3 text-center">
         {days.map((date) => {
           const count = getTodayItems(data, date).length;
           const day = new Date(`${date}T00:00:00`).toLocaleDateString("ko-KR", { weekday: "short" });
           return (
-            <button key={date} type="button" onClick={() => navigate(`/schedule?date=${date}`)} className={`rounded-[12px] px-1 py-3 ${date === today ? "bg-emerald-50 text-clover-deep" : "hover:bg-white/70"}`}>
+            <button key={date} type="button" onClick={() => setSelectedDate(date)} className={`rounded-[12px] px-1 py-3 ${date === selectedDate ? "bg-emerald-50 text-clover-deep" : "hover:bg-white/70"}`}>
               <p className="text-xs font-black text-clover-sub">{day}</p>
               <p className="mt-1 text-lg font-black">{Number(date.slice(-2))}</p>
               <p className="mt-2 text-xs font-bold text-clover-sub">{count}개</p>
@@ -251,7 +268,22 @@ function WeeklyStrip({ data, today }) {
           );
         })}
       </div>
-      <Link to={`/schedule?date=${today}`} className="mt-3 block text-center text-sm font-black text-clover-deep">Schedule로 이동</Link>
+      <div className="mt-4 rounded-[16px] bg-white/45 p-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-xs font-black text-clover-deep">{Number(selectedDate.slice(5, 7))}월 {Number(selectedDate.slice(8))}일 일정</p>
+          <span className="rounded-full bg-white/70 px-2 py-1 text-[11px] font-black text-clover-sub">{selectedItems.length}개</span>
+        </div>
+        <div className="grid gap-1.5">
+          {selectedItems.map((item, index) => (
+            <article key={`${item.type}-${item.id || index}`} className="grid grid-cols-[52px_1fr_auto] items-center gap-2 rounded-[10px] bg-white/65 px-2.5 py-2 text-xs">
+              <span className="font-black text-clover-sub">{formatTime(item)}</span>
+              <b className="min-w-0 truncate text-clover-ink">{item.displayTitle}</b>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-clover-deep">{item.label || item.type}</span>
+            </article>
+          ))}
+          {!selectedItems.length && <p className="rounded-[10px] bg-white/55 p-3 text-xs font-bold text-clover-sub">선택한 날짜에는 일정이 없어요.</p>}
+        </div>
+      </div>
     </GlassCard>
   );
 }
