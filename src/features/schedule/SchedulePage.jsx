@@ -313,6 +313,28 @@ function ScheduleRow({ item, onComplete, onEdit, onDelete, extraAction }) {
   );
 }
 
+function ScheduleRowCompact({ item, onComplete, onEdit, onDelete, extraAction }) {
+  return (
+    <article className="border-b border-clover-line/70 px-3 py-3 text-sm last:border-0">
+      <div className="flex min-w-0 items-center gap-2">
+        <input type="checkbox" checked={false} onChange={() => onComplete(item)} className="h-4 w-4 shrink-0 accent-clover-deep" aria-label="완료" />
+        <span className="shrink-0 whitespace-nowrap text-[11px] font-black leading-tight text-clover-sub sm:text-xs">{timeText(item)}</span>
+        <span className={`h-2 w-2 shrink-0 rounded-full ${categoryMeta[item.category]?.dot || "bg-slate-300"}`} />
+        <b className="min-w-0 flex-1 truncate text-[13px] font-black text-clover-ink sm:text-sm">{item.title}</b>
+        <span className="shrink-0">
+          <CategoryChip category={item.category} />
+        </span>
+      </div>
+      {item.memo && <p className="mt-1 truncate pl-6 text-xs font-bold text-clover-sub">{item.memo}</p>}
+      <div className="mt-2 flex flex-wrap justify-end gap-1 pl-6">
+        {extraAction}
+        <button type="button" onClick={() => onEdit(item)} className="rounded-lg border border-clover-line bg-white px-2.5 py-1.5 text-xs font-black text-clover-sub">수정</button>
+        <button type="button" onClick={() => onDelete(item)} className="rounded-lg border border-clover-line bg-white px-2.5 py-1.5 text-xs font-black text-clover-sub">삭제</button>
+      </div>
+    </article>
+  );
+}
+
 function GroupBox({ title, tone = "mint", items, children }) {
   const colors = {
     rose: "border-rose-100 bg-rose-50/35 text-rose-600",
@@ -339,14 +361,14 @@ function SelectedDateCard({ selectedDate, groups, onAdd, onComplete, onEdit, onD
       </div>
       <div className="grid gap-3">
         <GroupBox title="종일" tone="rose" items={groups.allDay}>
-          {groups.allDay.map((item) => <ScheduleRow key={`${item.collection}-${item.id}`} item={item} onComplete={onComplete} onEdit={onEdit} onDelete={onDelete} />)}
+          {groups.allDay.map((item) => <ScheduleRowCompact key={`${item.collection}-${item.id}`} item={item} onComplete={onComplete} onEdit={onEdit} onDelete={onDelete} />)}
         </GroupBox>
         <GroupBox title="시간 있음" tone="blue" items={groups.timed}>
-          {groups.timed.map((item) => <ScheduleRow key={`${item.collection}-${item.id}`} item={item} onComplete={onComplete} onEdit={onEdit} onDelete={onDelete} />)}
+          {groups.timed.map((item) => <ScheduleRowCompact key={`${item.collection}-${item.id}`} item={item} onComplete={onComplete} onEdit={onEdit} onDelete={onDelete} />)}
         </GroupBox>
         <GroupBox title="시간 미정" tone="violet" items={groups.noTime}>
           {groups.noTime.map((item) => (
-            <ScheduleRow
+            <ScheduleRowCompact
               key={`${item.collection}-${item.id}`}
               item={item}
               onComplete={onComplete}
@@ -519,7 +541,7 @@ function UnscheduledPanel({ items, selectedDate, onAdd, onToday, onSetDate, onEd
       </div>
       <div className="grid gap-2">
         {items.slice(0, 8).map((item) => (
-          <ScheduleRow
+          <ScheduleRowCompact
             key={`${item.collection}-${item.id}`}
             item={item}
             onComplete={onComplete}
