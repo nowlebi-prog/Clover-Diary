@@ -7,6 +7,7 @@ import SectionTitle from "../../components/common/SectionTitle";
 import StatusBadge from "../../components/common/StatusBadge";
 import PageHeader from "../../components/layout/PageHeader";
 import TodayTimeline from "../../components/dashboard/TodayTimeline";
+import CategoryManager from "../../components/work/CategoryManager";
 import TimeTracker from "../../components/work/TimeTracker";
 import WorkLog from "../../components/work/WorkLog";
 import WorkStats from "../../components/work/WorkStats";
@@ -355,7 +356,7 @@ export default function WorkPage() {
         <WorkStats sessions={sessions} categories={categories} today={today} weeklyGoalHours={weeklyGoalHours} onWeeklyGoalHoursChange={saveWeeklyGoal} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(320px,0.85fr)]">
+      <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(320px,0.85fr)]">
         <WorkCalendarCard
           year={calendarMonth.year}
           month={calendarMonth.month}
@@ -375,7 +376,7 @@ export default function WorkPage() {
           </div>
           <TodayTimeline items={todayItems} onToggleNeedMove={toggleTodoNeedMove} />
         </GlassCard>
-        <div id="memo">
+        <div id="memo" className="xl:col-span-2 2xl:col-span-1">
           <WorkMemoPad today={today} onChange={load} />
         </div>
       </div>
@@ -384,7 +385,10 @@ export default function WorkPage() {
         <div id="worklog">
           <WorkLog sessions={sessions} categories={categories} today={today} onChange={load} />
         </div>
-        <WorkReflectionCard today={today} onChange={load} />
+        <div className="grid gap-4">
+          <WorkReflectionCard today={today} onChange={load} />
+          <CategoryManager categories={categories} />
+        </div>
       </div>
     </>
   );

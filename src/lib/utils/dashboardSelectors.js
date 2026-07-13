@@ -29,7 +29,7 @@ export function getOverdueTodos(data, today = toDateKey()) {
 
 export function getTodayItems(data, today = toDateKey()) {
   const items = [];
-  (data.events || []).filter((item) => item.date === today).forEach((item) => items.push(compact(item, "event", item.date, { tone: "green", label: "Event" })));
+  (data.events || []).filter((item) => item.date === today && !item.completed).forEach((item) => items.push(compact(item, "event", item.date, { tone: "green", label: "Event" })));
   (data.todos || []).filter((item) => !item.completed && (item.dueDate === today || (item.endDate && item.dueDate <= today && today <= item.endDate))).forEach((item) => items.push(compact(item, "todo", item.dueDate, {
     tone: "red",
     label: "Todo",
@@ -39,20 +39,20 @@ export function getTodayItems(data, today = toDateKey()) {
     spansToNextDay: Boolean(item.endDate && item.endDate !== item.dueDate),
     allDay: Boolean(item.allDay)
   })));
-  (data.contentPlans || []).filter((item) => item.publishDate === today).forEach((item) => items.push(compact(item, "content", item.publishDate, { tone: "blue", label: "Content" })));
-  (data.payments || []).filter((item) => item.expectedDate === today).forEach((item) => items.push(compact(item, "payment", item.expectedDate, { tone: "red", label: "Payment" })));
-  (data.expenses || []).filter((item) => item.date === today).forEach((item) => items.push(compact(item, "expense", item.date, { tone: "red", label: "Expense" })));
+  (data.contentPlans || []).filter((item) => item.publishDate === today && !item.completed).forEach((item) => items.push(compact(item, "content", item.publishDate, { tone: "blue", label: "Content" })));
+  (data.payments || []).filter((item) => item.expectedDate === today && !item.completed).forEach((item) => items.push(compact(item, "payment", item.expectedDate, { tone: "red", label: "Payment" })));
+  (data.expenses || []).filter((item) => item.date === today && !item.completed).forEach((item) => items.push(compact(item, "expense", item.date, { tone: "red", label: "Expense" })));
   (data.subscriptions || []).forEach((item) => {
     const billingDate = item.billingDay ? `${today.slice(0, 8)}${String(item.billingDay).padStart(2, "0")}` : "";
-    if (billingDate === today) items.push(compact(item, "subscription", billingDate, { tone: "red", label: "Sub" }));
+    if (billingDate === today && !item.completed) items.push(compact(item, "subscription", billingDate, { tone: "red", label: "Sub" }));
   });
   (data.recurringEvents || []).forEach((item) => {
     const date = monthlyRecurringDate(item, today);
     if (date === today) items.push(compact(item, "recurring", date, { tone: "blue", label: item.kind || "Repeat" }));
   });
   (data.campaigns || []).forEach((item) => {
-    if (item.applyDueDate === today) items.push(compact(item, "campaign", item.applyDueDate, { tone: "mint", label: "Apply" }));
-    if (item.uploadDueDate === today) items.push(compact(item, "campaign", item.uploadDueDate, { tone: "mint", label: "Upload" }));
+    if (!item.completed && item.applyDueDate === today) items.push(compact(item, "campaign", item.applyDueDate, { tone: "mint", label: "Apply" }));
+    if (!item.completed && item.uploadDueDate === today) items.push(compact(item, "campaign", item.uploadDueDate, { tone: "mint", label: "Upload" }));
   });
   return items.sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
 }
@@ -60,14 +60,14 @@ export function getTodayItems(data, today = toDateKey()) {
 export function getUpcomingDeadlines(data, today = toDateKey()) {
   const items = [];
   getIncompleteTodos(data).forEach((item) => item.dueDate && items.push(compact(item, "todo", item.dueDate, { label: "Todo" })));
-  (data.events || []).forEach((item) => item.date && items.push(compact(item, "event", item.date, { label: "Event" })));
-  (data.contentPlans || []).forEach((item) => item.publishDate && items.push(compact(item, "content", item.publishDate, { label: "Content" })));
-  (data.payments || []).filter((item) => item.status !== "입금 완료").forEach((item) => item.expectedDate && items.push(compact(item, "payment", item.expectedDate, { label: "Payment" })));
-  (data.campaigns || []).forEach((item) => {
+  (data.events || []).filter((item) => !item.completed).forEach((item) => item.date && items.push(compact(item, "event", item.date, { label: "Event" })));
+  (data.contentPlans || []).filter((item) => !item.completed).forEach((item) => item.publishDate && items.push(compact(item, "content", item.publishDate, { label: "Content" })));
+  (data.payments || []).filter((item) => !item.completed && item.status !== "입금 완료").forEach((item) => item.expectedDate && items.push(compact(item, "payment", item.expectedDate, { label: "Payment" })));
+  (data.campaigns || []).filter((item) => !item.completed).forEach((item) => {
     if (item.applyDueDate) items.push(compact(item, "campaign", item.applyDueDate, { label: "Apply" }));
     if (item.uploadDueDate) items.push(compact(item, "campaign", item.uploadDueDate, { label: "Upload" }));
   });
-  (data.subscriptions || []).forEach((item) => item.billingDay && items.push(compact(item, "subscription", `${today.slice(0, 8)}${String(item.billingDay).padStart(2, "0")}`, { label: "Sub" })));
+  (data.subscriptions || []).filter((item) => !item.completed).forEach((item) => item.billingDay && items.push(compact(item, "subscription", `${today.slice(0, 8)}${String(item.billingDay).padStart(2, "0")}`, { label: "Sub" })));
   (data.recurringEvents || []).forEach((item) => {
     const date = monthlyRecurringDate(item, today);
     if (date) items.push(compact(item, "recurring", date, { label: item.kind || "Repeat" }));
@@ -85,12 +85,12 @@ export function getMonthCalendarItems(data, year, month) {
     if (!date) return;
     map[date] = [...(map[date] || []), item];
   };
-  (data.events || []).forEach((item) => push(item.date, compact(item, "event", item.date, { badge: "E", tone: "green", isImportant: isImportant(item) })));
+  (data.events || []).filter((item) => !item.completed).forEach((item) => push(item.date, compact(item, "event", item.date, { badge: "E", tone: "green", isImportant: isImportant(item) })));
   (data.todos || []).filter((item) => !item.completed).forEach((item) => push(item.dueDate, compact(item, "todo", item.dueDate, { badge: "T", tone: "red", isImportant: isImportant(item) })));
-  (data.contentPlans || []).forEach((item) => push(item.publishDate, compact(item, "content", item.publishDate, { badge: "C", tone: "blue", isImportant: isImportant(item) })));
-  (data.payments || []).forEach((item) => push(item.expectedDate, compact(item, "payment", item.expectedDate, { badge: "P", tone: "red", isImportant: true })));
-  (data.expenses || []).forEach((item) => push(item.date, compact(item, "expense", item.date, { badge: "E", tone: "red", isImportant: item.category === "특별 지출" })));
-  (data.subscriptions || []).forEach((item) => {
+  (data.contentPlans || []).filter((item) => !item.completed).forEach((item) => push(item.publishDate, compact(item, "content", item.publishDate, { badge: "C", tone: "blue", isImportant: isImportant(item) })));
+  (data.payments || []).filter((item) => !item.completed).forEach((item) => push(item.expectedDate, compact(item, "payment", item.expectedDate, { badge: "P", tone: "red", isImportant: true })));
+  (data.expenses || []).filter((item) => !item.completed).forEach((item) => push(item.date, compact(item, "expense", item.date, { badge: "E", tone: "red", isImportant: item.category === "특별 지출" })));
+  (data.subscriptions || []).filter((item) => !item.completed).forEach((item) => {
     const date = item.billingDay ? `${year}-${String(month + 1).padStart(2, "0")}-${String(item.billingDay).padStart(2, "0")}` : "";
     push(date, compact(item, "subscription", date, { badge: "S", tone: "red", isImportant: item.status === "해지 고민" }));
   });
@@ -100,7 +100,7 @@ export function getMonthCalendarItems(data, year, month) {
     const date = monthlyRecurringDate(item, base);
     push(date, compact(item, "recurring", date, { badge: "R", tone: "blue", isImportant: isImportant(item) }));
   });
-  (data.campaigns || []).forEach((item) => {
+  (data.campaigns || []).filter((item) => !item.completed).forEach((item) => {
     push(item.applyDueDate, compact(item, "campaign", item.applyDueDate, { badge: "A", tone: "mint", isImportant: isImportant(item) }));
     push(item.uploadDueDate, compact(item, "campaign", item.uploadDueDate, { badge: "U", tone: "mint", isImportant: isImportant(item) }));
   });

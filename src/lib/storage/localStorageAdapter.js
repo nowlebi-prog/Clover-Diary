@@ -339,6 +339,25 @@ export function getWorkCategories() {
   });
 }
 
+export function createWorkCategory(payload) {
+  const categories = getWorkCategories();
+  const item = {
+    id: makeId("workCategory"),
+    name: payload.name || "새 카테고리",
+    color: payload.color || "#8DDFA8"
+  };
+  saveTaskCategories([...categories, item]);
+  return item;
+}
+
+export function updateWorkCategory(id, updates) {
+  saveTaskCategories(getWorkCategories().map((category) => category.id === id ? { ...category, ...updates } : category));
+}
+
+export function deleteWorkCategory(id) {
+  saveTaskCategories(getWorkCategories().filter((category) => category.id !== id));
+}
+
 export function getActiveSession() {
   return getAllData().activeSession || null;
 }

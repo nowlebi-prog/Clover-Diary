@@ -24,8 +24,8 @@ const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).sli
 const defaults = (type) => {
   const today = toDateKey(new Date());
   const map = {
-    todo: { title: "", dueDate: today, allDay: false, startTime: "", endTime: "", endDate: "", dueTime: "", priority: "normal", category: "개인", completed: false, subTasks: [], memo: "" },
-    event: { title: "", date: today, allDay: false, time: "09:00", endTime: "", category: "개인", memo: "" },
+    todo: { title: "", dueDate: today, allDay: false, startTime: "", endTime: "", endDate: "", dueTime: "", priority: "normal", category: "개인", completed: false, subTasks: [], memo: "", todayMust: false },
+    event: { title: "", date: today, allDay: false, time: "09:00", endTime: "", category: "개인", memo: "", todayMust: false },
     payment: { project: "", client: "", amount: "", category: "자유소득", status: "입금 예정", expectedDate: today, memo: "" },
     expense: { title: "", amount: "", date: today, category: "생활비", memo: "" },
     memo: { body: "" },
@@ -140,11 +140,13 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
             </div>
             <label className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">다음날로 종료<input type="checkbox" disabled={form.allDay} checked={Boolean(form.endDate && form.endDate !== form.dueDate)} onChange={(event) => set("endDate", event.target.checked ? addDays(form.dueDate || toDateKey(new Date()), 1) : "")} /></label>
             <label className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">하루종일<input type="checkbox" checked={Boolean(form.allDay)} onChange={(event) => setForm((current) => ({ ...current, allDay: event.target.checked, startTime: "", endTime: "", endDate: "", dueTime: "" }))} /></label>
+            <label className="flex items-center justify-between rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm font-bold text-clover-deep">오늘 꼭!<input type="checkbox" checked={Boolean(form.todayMust)} onChange={(event) => set("todayMust", event.target.checked)} /></label>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1 text-sm font-bold">중요도<AppSelect value={form.priority || "normal"} onChange={(event) => set("priority", event.target.value)}><option value="high">매우 중요</option><option value="normal">보통</option><option value="low">가벼움</option></AppSelect></label>
               <label className="grid gap-1 text-sm font-bold">분류<AppSelect value={form.category || "개인"} onChange={(event) => set("category", event.target.value)}>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</AppSelect></label>
             </div>
             <label className="grid gap-1 text-sm font-bold">메모<AppTextarea value={form.memo || ""} onChange={(event) => set("memo", event.target.value)} /></label>
+            <label className="flex items-center justify-between rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm font-bold text-clover-deep">오늘 꼭!<input type="checkbox" checked={Boolean(form.todayMust)} onChange={(event) => set("todayMust", event.target.checked)} /></label>
           </>
         )}
 

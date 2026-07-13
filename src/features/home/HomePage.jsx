@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import AppButton from "../../components/common/AppButton";
+import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
 import CustomCheckbox from "../../components/common/CustomCheckbox";
 import GlassCard from "../../components/common/GlassCard";
@@ -19,8 +20,7 @@ import {
   saveAllData,
   startActiveSession,
   syncAllDataFromCloud,
-  updateTodo,
-  updateTop3
+  updateTodo
 } from "../../lib/storage/localStorageAdapter";
 import { getTodayHabitStatus } from "../../lib/utils/habitSelectors";
 import { addDays, daysBetween, toDateKey } from "../../lib/utils/date";
@@ -76,9 +76,11 @@ function SummaryChips({ todayItems, deadlines, habitStatus, todayFocusSec }) {
   );
 }
 
-function HomeFocusTimer({ activeSession, todayTodos, todayFocusSec, onChange }) {
+function HomeFocusTimer({ activeSession, todayTodos, categories, todayFocusSec, onChange }) {
   const [tick, setTick] = useState(Date.now());
   const [selectedTodoId, setSelectedTodoId] = useState(todayTodos[0]?.id || "");
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftCategory, setDraftCategory] = useState(categories[0]?.name || "업무");
 
   useEffect(() => {
     if (!activeSession) return undefined;
@@ -92,12 +94,13 @@ function HomeFocusTimer({ activeSession, todayTodos, todayFocusSec, onChange }) 
 
   const selectedTodo = todayTodos.find((todo) => todo.id === selectedTodoId);
   const elapsed = activeSession ? computeElapsed(activeSession, tick) : null;
-  const timerTitle = activeSession?.title || selectedTodo?.title || "시작할 일을 골라주세요";
+  const timerTitle = activeSession?.title || selectedTodo?.title || draftTitle || "시작할 일을 골라주세요";
 
   const start = () => {
-    const target = selectedTodo || todayTodos[0];
-    if (!target) return;
-    startActiveSession({ title: target.title, category: target.category || target.project || "업무", todoId: target.id });
+    const title = selectedTodo?.title || draftTitle.trim();
+    if (!title) return;
+    startActiveSession({ title, category: selectedTodo?.category || selectedTodo?.project || draftCategory || "업무", todoId: selectedTodo?.id || "" });
+    setDraftTitle("");
     onChange();
   };
 
@@ -109,9 +112,33 @@ function HomeFocusTimer({ activeSession, todayTodos, todayFocusSec, onChange }) 
       </div>
 
       {!activeSession && (
-        <AppSelect value={selectedTodoId} onChange={(event) => setSelectedTodoId(event.target.value)}>
-          {todayTodos.length ? todayTodos.map((todo) => <option key={todo.id} value={todo.id}>{todo.title}</option>) : <option value="">오늘 할 일이 없어요</option>}
-        </AppSelect>
+        <div className="grid gap-3">
+          <AppSelect value={selectedTodoId} onChange={(event) => setSelectedTodoId(event.target.value)}>
+            <option value="">직접 입력해서 시작</option>
+            {todayTodos.map((todo) => <option key={todo.id} value={todo.id}>{todo.title}</option>)}
+          </AppSelect>
+          {!selectedTodoId && (
+            <>
+              <AppInput value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} placeholder="지금 시작할 일을 적어주세요" />
+              <div className="flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <button
+                    key={category.id || category.name}
+                    type="button"
+                    onClick={() => setDraftCategory(category.name)}
+                    className="rounded-full px-3 py-1.5 text-xs font-black transition"
+                    style={{
+                      background: draftCategory === category.name ? category.color : "#ffffff90",
+                      color: draftCategory === category.name ? "#1F2A24" : "#718077"
+                    }}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       <div className="my-5 text-center">
@@ -120,7 +147,7 @@ function HomeFocusTimer({ activeSession, todayTodos, todayFocusSec, onChange }) 
       </div>
 
       <div className="flex flex-wrap justify-center gap-2">
-        {!activeSession && <AppButton className="min-w-40" disabled={!todayTodos.length} onClick={start}>시작하기</AppButton>}
+        {!activeSession && <AppButton className="min-w-40" disabled={!selectedTodo && !draftTitle.trim()} onClick={start}>시작하기</AppButton>}
         {activeSession && (
           elapsed.isPaused
             ? <AppButton onClick={() => { resumeActiveSession(); onChange(); }}>재개</AppButton>
@@ -137,33 +164,33 @@ function HomeFocusTimer({ activeSession, todayTodos, todayFocusSec, onChange }) 
   );
 }
 
-function PriorityCard({ topItems, deadlineItems, onToggleTodo, onToggleTop3, onStart, onSchedule }) {
+function PriorityCard({ topItems, deadlineItems, onToggleTodo, onStart, onSchedule }) {
   const seen = new Set();
   const cleanTop = topItems.filter((item) => {
     const key = item.todoId || item.title;
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).slice(0, 3);
+  });
   const cleanDeadlines = deadlineItems.filter((item) => !seen.has(item.id) && !seen.has(item.displayTitle)).slice(0, 3);
 
   return (
     <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
       <SectionTitle>오늘 우선순위</SectionTitle>
-      <div className="grid gap-4 md:grid-cols-[1.05fr_.95fr]">
+      <div className="grid gap-4">
         <div className="rounded-[16px] border border-clover-line bg-white/55 p-3">
-          <p className="mb-3 text-xs font-black text-clover-deep">오늘 꼭 할 3가지</p>
+          <p className="mb-3 text-xs font-black text-clover-deep">오늘 꼭!</p>
           <div className="grid gap-2">
             {cleanTop.map((item) => (
-              <article key={item.id || item.title} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-[12px] border border-clover-line bg-white/75 px-3 py-2">
-                <CustomCheckbox checked={Boolean(item.completed)} onChange={(checked) => item.source === "top3" ? onToggleTop3(item.id, checked) : onToggleTodo(item.id, checked)} label={item.title} />
-                <div className="flex gap-1">
+              <article key={`${item.source}-${item.id || item.title}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[12px] border border-clover-line bg-white/75 px-3 py-2">
+                <CustomCheckbox checked={Boolean(item.completed)} onChange={(checked) => item.source === "todo" ? onToggleTodo(item.id, checked) : onSchedule(item)} label={item.title || item.displayTitle} />
+                <div className="flex shrink-0 gap-1">
                   <button type="button" onClick={() => onStart(item)} className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-clover-deep">시작</button>
                   <button type="button" onClick={() => onSchedule(item)} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-clover-sub">일정</button>
                 </div>
               </article>
             ))}
-            {!cleanTop.length && <p className="rounded-[12px] bg-white/55 p-3 text-sm font-bold text-clover-sub">오늘 우선순위가 비어 있어요.</p>}
+            {!cleanTop.length && <p className="rounded-[12px] bg-white/55 p-3 text-sm font-bold text-clover-sub">일정이나 할 일에서 오늘 꼭!을 체크해보세요.</p>}
           </div>
         </div>
 
@@ -321,12 +348,10 @@ export default function HomePage() {
   const todayFocusSec = workSessions.reduce((sum, item) => sum + Number(item.duration || 0), 0);
   const studyDue = (data.studyCaptures || []).filter((item) => !item.isReviewed || item.reviewSchedule?.nextReviewAt <= today || item.status === "waiting");
   const todayTodos = (data.todos || []).filter((todo) => !todo.completed && (!todo.dueDate || todo.dueDate <= today));
-  const topPriority = [
-    ...(data.top3 || []).filter((item) => !item.completed).map((item) => ({ ...item, source: "top3" })),
-    ...todayTodos
-      .filter((todo) => todo.priority === "high")
-      .map((todo) => ({ ...todo, source: "todo" })),
-    ...todayTodos.map((todo) => ({ ...todo, source: "todo" }))
+  const categories = getWorkCategories();
+  const todayMustItems = [
+    ...todayTodos.filter((todo) => todo.todayMust).map((todo) => ({ ...todo, source: "todo" })),
+    ...(data.events || []).filter((event) => !event.completed && event.todayMust && event.date === today).map((event) => ({ ...event, source: "event", displayTitle: event.title }))
   ];
 
   const toggleTodo = (id, completed) => {
@@ -334,18 +359,13 @@ export default function HomePage() {
     load();
   };
 
-  const toggleTop3 = (id, completed) => {
-    updateTop3(id, { completed });
-    load();
-  };
-
   const startTodo = (todo) => {
-    startActiveSession({ title: todo.title, category: todo.category || todo.project || "업무", todoId: todo.source === "todo" ? todo.id : "" });
+    startActiveSession({ title: todo.title || todo.displayTitle, category: todo.category || todo.project || "업무", todoId: todo.source === "todo" ? todo.id : "" });
     load();
   };
 
   const scheduleTodo = (item) => {
-    navigate(`/schedule?date=${item.dueDate || today}`);
+    navigate(`/schedule?date=${item.dueDate || item.date || today}`);
   };
 
   return (
@@ -361,12 +381,11 @@ export default function HomePage() {
       <SummaryChips todayItems={todayItems} deadlines={deadlines} habitStatus={habitStatus} todayFocusSec={todayFocusSec} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(320px,.82fr)_minmax(0,1.18fr)]">
-        <HomeFocusTimer activeSession={activeSession} todayTodos={todayTodos} todayFocusSec={todayFocusSec} onChange={load} />
+        <HomeFocusTimer activeSession={activeSession} todayTodos={todayTodos} categories={categories} todayFocusSec={todayFocusSec} onChange={load} />
         <PriorityCard
-          topItems={topPriority}
+          topItems={todayMustItems}
           deadlineItems={deadlines}
           onToggleTodo={toggleTodo}
-          onToggleTop3={toggleTop3}
           onStart={startTodo}
           onSchedule={scheduleTodo}
         />

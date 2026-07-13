@@ -60,6 +60,21 @@ const timeText = (item) => {
 };
 
 const titleOf = (item) => item.title || item.project || item.name || "새 일정";
+const scheduleDateOf = (item) => item.date || item.dueDate || item.expectedDate || item.publishDate || "";
+
+const fromCollection = (items, collection, selectedDate, dateKey, category, timeKey = "time") =>
+  (items || [])
+    .filter((item) => !item.completed && item[dateKey] === selectedDate)
+    .map((item) => ({
+      ...item,
+      collection,
+      sourceType: collection,
+      title: titleOf(item),
+      date: item[dateKey],
+      startTime: item.startTime || item[timeKey] || item.dueTime || "",
+      endTime: item.endTime || "",
+      category: item.category || category
+    }));
 
 const normalizeScheduleItems = (data, selectedDate) => {
   const todos = (data.todos || [])
@@ -86,7 +101,15 @@ const normalizeScheduleItems = (data, selectedDate) => {
       category: item.category || "일정"
     }));
 
-  return [...events, ...todos].sort((a, b) => {
+  const payments = fromCollection(data.payments, "payments", selectedDate, "expectedDate", "돈관리");
+  const expenses = fromCollection(data.expenses, "expenses", selectedDate, "date", "돈관리");
+  const contentPlans = fromCollection(data.contentPlans, "contentPlans", selectedDate, "publishDate", "업무");
+  const campaigns = [
+    ...fromCollection(data.campaigns, "campaigns", selectedDate, "applyDueDate", "업무"),
+    ...fromCollection(data.campaigns, "campaigns", selectedDate, "uploadDueDate", "업무")
+  ];
+
+  return [...events, ...todos, ...payments, ...expenses, ...contentPlans, ...campaigns].sort((a, b) => {
     const aTime = a.allDay ? "00:00" : (a.startTime || a.time || "99:99");
     const bTime = b.allDay ? "00:00" : (b.startTime || b.time || "99:99");
     return aTime.localeCompare(bTime) || titleOf(a).localeCompare(titleOf(b));
@@ -259,6 +282,10 @@ function ScheduleEditor({ item, onClose, onSave, onDelete }) {
           메모
           <AppTextarea value={form.memo || ""} onChange={(event) => set("memo", event.target.value)} placeholder="세부 메모를 적어두세요." />
         </label>
+        <label className="flex items-center justify-between rounded-2xl bg-emerald-50/60 px-4 py-3 text-sm font-bold text-clover-deep">
+          오늘 꼭!
+          <input type="checkbox" checked={Boolean(form.todayMust)} onChange={(event) => set("todayMust", event.target.checked)} />
+        </label>
         <div className="flex flex-wrap justify-between gap-2">
           {form.id ? <AppButton variant="danger" onClick={() => onDelete(form)}>삭제</AppButton> : <span />}
           <AppButton onClick={() => onSave(form)}>저장</AppButton>
@@ -318,6 +345,7 @@ export default function SchedulePage() {
                 dueTime: form.startTime || form.time || "",
                 endTime: form.endTime || "",
                 memo: form.memo || "",
+                todayMust: Boolean(form.todayMust),
                 updatedAt: selectedDate
               }
             : todo
@@ -332,6 +360,7 @@ export default function SchedulePage() {
           endTime: form.endTime || "",
           category: form.category || "일정",
           memo: form.memo || "",
+          todayMust: Boolean(form.todayMust),
           completed: Boolean(form.completed),
           createdAt: form.createdAt || selectedDate,
           updatedAt: selectedDate
@@ -355,8 +384,10 @@ export default function SchedulePage() {
     persist((next) => {
       if (item.collection === "todos") {
         next.todos = (next.todos || []).map((todo) => todo.id === item.id ? { ...todo, completed: true, completedAt: selectedDate, updatedAt: selectedDate } : todo);
-      } else {
+      } else if (item.collection === "events") {
         next.events = (next.events || []).map((event) => event.id === item.id ? { ...event, completed: true, completedAt: selectedDate, updatedAt: selectedDate } : event);
+      } else {
+        next[item.collection] = (next[item.collection] || []).map((entry) => entry.id === item.id ? { ...entry, completed: true, completedAt: selectedDate, updatedAt: selectedDate } : entry);
       }
     });
   };
