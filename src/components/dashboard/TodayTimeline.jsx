@@ -1,4 +1,7 @@
+import { Link } from "react-router-dom";
 import StatusBadge from "../common/StatusBadge";
+
+const hours = Array.from({ length: 24 }, (_, index) => index);
 
 const formatTime = (value) => {
   if (!value) return "";
@@ -14,6 +17,7 @@ const hourOf = (item) => {
 };
 
 const endHourOf = (item) => {
+  if (!item.endTime && item.spansToNextDay) return 24;
   const match = String(item.endTime || "").match(/^(\d{1,2})/);
   return match ? Number(match[1]) : null;
 };
@@ -26,92 +30,105 @@ const timeLabel = (item) => {
 };
 
 const labelOf = (item) => {
-  if (item.label && !/[�]/.test(item.label)) return item.label;
-  if (item.type === "todo") return "할 일";
-  if (item.type === "content") return "콘텐츠";
-  if (item.type === "payment") return "결제";
-  if (item.type === "expense") return "지출";
-  if (item.type === "campaign") return "신청";
-  return "일정";
+  if (item.label) return item.label;
+  if (item.type === "todo") return "Todo";
+  if (item.type === "content") return "Content";
+  if (item.type === "payment") return "Payment";
+  return "Event";
 };
 
 const toneOf = (item) => {
-  if (item.type === "payment" || item.type === "expense") return "danger";
+  if (item.type === "payment") return "danger";
   if (item.type === "todo") return "blue";
   if (item.type === "content") return "lavender";
   return "mint";
 };
 
-export default function TodayTimeline({ items = [] }) {
+export default function TodayTimeline({ items = [], onToggleNeedMove, fullDay = false }) {
+  const needMoveItems = items.filter((item) => item.needMove);
+  const allDayItems = items.filter((item) => item.allDay && !item.needMove);
+  const timedItems = items.filter((item) => !item.allDay && !item.needMove);
   const currentHour = new Date().getHours();
-  const startHour = Math.min(19, Math.max(0, currentHour - 2));
-  const visibleHours = Array.from({ length: 5 }, (_, index) => startHour + index);
-  const hasTime = (item) => Boolean(formatTime(item.time || item.startTime || item.dueTime));
-  const travelItems = items.filter((item) => item.travelNeeded);
-  const allDayItems = items.filter((item) => !item.travelNeeded && (item.allDay || !hasTime(item)));
-  const timedItems = items.filter((item) => !item.allDay && hasTime(item));
+  const visibleHours = fullDay ? hours : hours.filter((hour) => hour >= currentHour - 2 && hour <= currentHour + 2);
+  const hasTimed = timedItems.length > 0;
 
   return (
-    <div className="grid gap-3">
-      <div className="rounded-[18px] bg-emerald-50/70 p-3">
-        <div className="mb-2 flex items-center justify-between">
+    <div className="grid gap-4">
+      <div className="rounded-[22px] bg-emerald-50/70 p-4">
+        <div className="mb-3 flex items-center justify-between">
           <b className="text-sm">종일 일정</b>
-          <StatusBadge tone="mint">{allDayItems.length}</StatusBadge>
+          <StatusBadge tone="mint">{allDayItems.length + needMoveItems.length}</StatusBadge>
         </div>
-        <div className="grid gap-1.5">
-          {allDayItems.slice(0, 8).map((item, index) => (
-            <div key={`${item.type}-${item.id || index}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 text-xs font-bold">
+        <div className="grid gap-2">
+          {allDayItems.map((item, index) => (
+            <div key={`${item.type}-${item.id || index}`} className="flex items-center justify-between rounded-2xl bg-white/70 px-4 py-3 text-sm font-bold">
               <span className="truncate">{item.displayTitle}</span>
               <StatusBadge tone={toneOf(item)}>{labelOf(item)}</StatusBadge>
             </div>
           ))}
-          {!allDayItems.length && <p className="text-xs font-bold text-clover-sub">오늘 종일 일정은 없어요.</p>}
+          {needMoveItems.map((item, index) => (
+            <div key={`move-${item.type}-${item.id || index}`} className="flex items-center justify-between rounded-2xl bg-red-100/60 px-4 py-3 text-sm font-bold">
+              <span className="truncate">이동 필요 일정 {timeLabel(item)} {item.displayTitle}</span>
+              <StatusBadge tone="danger">{labelOf(item)}</StatusBadge>
+            </div>
+          ))}
+          {!allDayItems.length && !needMoveItems.length && <p className="text-sm font-bold text-clover-sub">오늘 종일 일정은 없어요.</p>}
         </div>
       </div>
 
-      {!!travelItems.length && (
-        <div className="grid gap-1.5">
-          {travelItems.map((item, index) => (
-            <div key={`${item.type}-travel-${item.id || index}`} className="truncate rounded-2xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-700">
-              이동 필요 일정 {timeLabel(item)} {item.displayTitle}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="overflow-hidden rounded-[22px] bg-white/35 p-2">
+      <div className="rounded-[24px] bg-white/35 p-3">
         <div className="grid gap-0">
           {visibleHours.map((hour) => {
             const hourItems = timedItems.filter((item) => {
               const start = hourOf(item);
               const end = endHourOf(item);
-              if (start === null) return false;
+              if (start === null) return hour === 23 && !formatTime(item.time || item.startTime || item.dueTime);
               return end ? hour >= start && hour < end : hour === start;
             });
             return (
-              <div key={hour} className={`grid min-h-12 grid-cols-[44px_minmax(0,1fr)] gap-2 border-b border-clover-line/70 ${hour === currentHour ? "rounded-2xl bg-clover-mint/25" : ""}`}>
-                <div className="pt-3 text-right text-[11px] font-black text-clover-sub">{String(hour).padStart(2, "0")}:00</div>
-                <div className="min-w-0 py-1.5">
-                  <div className="grid gap-1.5 border-l border-clover-line pl-3">
-                    {hourItems.map((item, index) => (
-                      <article key={`${item.type}-${item.id || index}`} className="min-w-0 rounded-2xl border border-white/70 bg-white/75 px-3 py-2 shadow-sm">
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-black text-clover-deep">{timeLabel(item)}</p>
-                            <h3 className="truncate text-xs font-bold">{item.displayTitle}</h3>
+              <div key={hour} className={`grid min-h-16 grid-cols-[58px_1fr] gap-3 border-b border-clover-line/70 ${hour === currentHour ? "rounded-2xl bg-clover-mint/30" : ""}`}>
+                <div className="pt-3 text-right text-xs font-black text-clover-sub">{String(hour).padStart(2, "0")}:00</div>
+                <div className="relative py-2">
+                  <span className="absolute left-0 top-0 h-full w-px bg-clover-line" />
+                  <div className="ml-4 grid gap-2">
+                    {hourItems.map((item, index) => {
+                      const editable = item.type === "todo" && item.id;
+                      const Wrapper = editable ? Link : "article";
+                      const wrapperProps = editable ? { to: `/tasks?edit=${item.id}` } : {};
+                      return (
+                        <Wrapper key={`${item.type}-${item.id || index}`} {...wrapperProps} className="block rounded-2xl border border-white/70 bg-white/75 px-4 py-3 shadow-sm transition hover:bg-white">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs font-black text-clover-deep">{timeLabel(item)}</p>
+                              <h3 className="truncate text-sm font-bold">{item.displayTitle}</h3>
+                              {item.memo && <p className="mt-1 line-clamp-2 text-xs text-clover-sub">{item.memo}</p>}
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {item.type === "todo" && onToggleNeedMove && (
+                                <label className="flex items-center gap-1 text-[10px] font-black text-rose-500" onClick={(event) => event.stopPropagation()}>
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(item.needMove)}
+                                    onChange={(event) => { event.stopPropagation(); onToggleNeedMove(item); }}
+                                    onClick={(event) => event.stopPropagation()}
+                                  />
+                                  이동 필요
+                                </label>
+                              )}
+                              <StatusBadge tone={toneOf(item)}>{labelOf(item)}</StatusBadge>
+                            </div>
                           </div>
-                          <StatusBadge tone={toneOf(item)}>{labelOf(item)}</StatusBadge>
-                        </div>
-                      </article>
-                    ))}
-                    {!hourItems.length && <div className="h-5 rounded-2xl bg-white/25" />}
+                        </Wrapper>
+                      );
+                    })}
+                    {!hourItems.length && <div className="h-8 rounded-2xl bg-white/25" />}
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
-        {!timedItems.length && <p className="p-3 text-xs font-bold text-clover-sub">시간별 일정은 아직 비어 있어요.</p>}
+        {!hasTimed && <p className="p-4 text-sm font-bold text-clover-sub">시간별 일정은 아직 비어 있어요.</p>}
       </div>
     </div>
   );

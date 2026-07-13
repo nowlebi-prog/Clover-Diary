@@ -4,23 +4,24 @@ import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
 import AppTextarea from "../../components/common/AppTextarea";
+import TimeField from "../../components/common/TimeField";
 import Modal from "../../components/common/Modal";
-import PageHeader from "../../components/layout/PageHeader";
 import TaskBoard from "../../components/tasks/TaskBoard";
 import SubTaskEditor, { cleanSubTasks } from "../../components/tasks/SubTaskEditor";
+import PageHeader from "../../components/layout/PageHeader";
 import { createDelayedTask, createTodo, deleteTodo, getAllData, updateTodo } from "../../lib/storage/localStorageAdapter";
-import { daysBetween, toDateKey } from "../../lib/utils/date";
+import { addDays, daysBetween, toDateKey } from "../../lib/utils/date";
 
-const baseCategories = ["개인", "업무", "집안일", "스터디", "돈관리", "콘텐츠", "건강", "기타"];
+const baseCategories = ["개인", "업무", "스터디", "집안일", "콘텐츠", "건강", "돈관리", "정리", "기타"];
 
 const emptyTodo = () => ({
   title: "",
   subTasks: [],
   dueDate: toDateKey(new Date()),
-  endDate: "",
   allDay: false,
   startTime: "",
   endTime: "",
+  endDate: "",
   dueTime: "",
   priority: "normal",
   category: "개인",
@@ -29,8 +30,7 @@ const emptyTodo = () => ({
   memo: "",
   completed: false,
   delayedCount: 0,
-  delayedReason: "",
-  travelNeeded: false
+  delayedReason: ""
 });
 
 const normalizeTodo = (todo) => {
@@ -44,8 +44,7 @@ const normalizeTodo = (todo) => {
     dueTime: todo.allDay ? "" : todo.startTime || todo.dueTime || "",
     startTime: todo.allDay ? "" : todo.startTime || todo.dueTime || "",
     endTime: todo.allDay ? "" : todo.endTime || "",
-    endDate: todo.endDate || todo.dueDate || "",
-    travelNeeded: Boolean(todo.travelNeeded)
+    endDate: todo.allDay ? "" : (todo.endDate && todo.endDate > todo.dueDate ? todo.endDate : "")
   };
 };
 
@@ -56,10 +55,20 @@ export default function TasksPage() {
   const [category, setCategory] = useState("all");
   const [view, setView] = useState("board");
   const navigate = useNavigate();
-  const [params] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const today = toDateKey(new Date());
 
   const load = () => setData(getAllData());
+
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+    const target = (getAllData().todos || []).find((item) => item.id === editId);
+    if (target) setEditing(normalizeTodo(target));
+    const next = new URLSearchParams(searchParams);
+    next.delete("edit");
+    setSearchParams(next, { replace: true });
+  }, [searchParams]);
 
   useEffect(() => {
     const openTodo = () => setEditing(emptyTodo());
@@ -76,26 +85,19 @@ export default function TasksPage() {
     };
   }, []);
 
-  useEffect(() => {
-    const editId = params.get("edit");
-    const date = params.get("date");
-    if (editId) {
-      const target = (data.todos || []).find((todo) => todo.id === editId);
-      if (target) setEditing(normalizeTodo(target));
-      return;
-    }
-    if (date) setEditing({ ...emptyTodo(), dueDate: date, endDate: date });
-  }, [params, data.todos]);
-
   const categories = useMemo(() => {
     const fromTodos = (data.todos || []).map((todo) => todo.category || todo.project).filter(Boolean);
     return [...new Set([...baseCategories, ...fromTodos])];
   }, [data.todos]);
 
-  const categoryStats = useMemo(() => categories.map((name) => ({
-    name,
-    count: (data.todos || []).filter((todo) => !todo.completed && (todo.category || todo.project) === name).length
-  })), [categories, data.todos]);
+  const categoryStats = useMemo(() => {
+    return categories
+      .map((name) => ({
+        name,
+        count: (data.todos || []).filter((todo) => !todo.completed && (todo.category || todo.project) === name).length
+      }))
+      .filter((item) => item.count > 0 || baseCategories.includes(item.name));
+  }, [categories, data.todos]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -115,8 +117,8 @@ export default function TasksPage() {
   const sections = [
     { key: "today", title: "오늘 처리", items: todayItems },
     { key: "urgent", title: "가까운 마감", items: urgent },
-    { key: "delayed", title: "미룬 일", items: delayed },
-    { key: "open", title: "예정", items: upcoming },
+    { key: "delayed", title: "미뤄둔 일", items: delayed },
+    { key: "open", title: "예정된 일", items: upcoming },
     { key: "done", title: "완료", items: completed }
   ];
 
@@ -126,7 +128,6 @@ export default function TasksPage() {
     if (editing.id) updateTodo(editing.id, payload);
     else createTodo(payload);
     setEditing(null);
-    if (params.get("edit") || params.get("date")) navigate("/tasks", { replace: true });
     load();
   };
 
@@ -143,7 +144,7 @@ export default function TasksPage() {
   };
 
   const delay = (todo) => {
-    const reason = prompt("왜 미뤘는지 짧게 적어둘까요?", todo.delayedReason || "");
+    const reason = prompt("왜 미뤄졌는지 짧게 적어둘까요?", todo.delayedReason || "");
     const count = Number(todo.delayedCount || 0) + 1;
     updateTodo(todo.id, { delayedCount: count, delayedReason: reason || todo.delayedReason || "나중에 처리" });
     createDelayedTask({ title: todo.title, count, reason: reason || "나중에 처리" });
@@ -193,29 +194,77 @@ export default function TasksPage() {
       <Modal title={editing ? (editing.id ? "할 일 수정" : "할 일 추가") : ""} onClose={() => setEditing(null)}>
         {editing && (
           <div className="grid gap-4">
-            <label className="grid gap-1 text-sm font-bold">할 일<AppInput value={editing.title} onChange={(event) => setEditing({ ...editing, title: event.target.value })} placeholder="예: 클라이언트 수정본 전달" autoFocus /></label>
-            <SubTaskEditor value={editing.subTasks || []} onChange={(subTasks) => setEditing({ ...editing, subTasks })} />
+            <section className="grid gap-3 rounded-[22px] border border-slate-100 bg-white p-4">
+              <label className="grid gap-1 text-sm font-bold">
+                할 일
+                <AppInput value={editing.title} onChange={(event) => setEditing({ ...editing, title: event.target.value })} placeholder="예: 클라이언트 수정본 전달" autoFocus />
+              </label>
+              <SubTaskEditor value={editing.subTasks || []} onChange={(subTasks) => setEditing({ ...editing, subTasks })} />
+            </section>
 
-            <div className="grid gap-3 md:grid-cols-[1fr_1fr_120px_120px]">
-              <label className="grid gap-1 text-sm font-bold">시작 날짜<AppInput type="date" value={editing.dueDate || ""} onChange={(event) => setEditing({ ...editing, dueDate: event.target.value, endDate: editing.endDate || event.target.value })} /></label>
-              <label className="grid gap-1 text-sm font-bold">종료 날짜<AppInput type="date" value={editing.endDate || editing.dueDate || ""} onChange={(event) => setEditing({ ...editing, endDate: event.target.value })} /></label>
-              <label className="grid gap-1 text-sm font-bold">시작<AppInput type="time" step="60" value={editing.startTime || ""} disabled={editing.allDay} onChange={(event) => setEditing({ ...editing, startTime: event.target.value, dueTime: event.target.value })} /></label>
-              <label className="grid gap-1 text-sm font-bold">종료<AppInput type="time" step="60" value={editing.endTime || ""} disabled={editing.allDay} onChange={(event) => setEditing({ ...editing, endTime: event.target.value })} /></label>
-            </div>
+            <section className="grid gap-3 rounded-[22px] border border-sky-100 bg-sky-50/50 p-4">
+              <p className="text-xs font-black uppercase tracking-wide text-sky-700">일정</p>
+              <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+                <label className="grid gap-1 text-sm font-bold">
+                  날짜
+                  <AppInput type="date" value={editing.dueDate || ""} onChange={(event) => setEditing({ ...editing, dueDate: event.target.value })} />
+                </label>
+                <label className="grid gap-1 text-sm font-bold">
+                  시작
+                  <TimeField value={editing.startTime || ""} disabled={editing.allDay} onChange={(value) => setEditing({ ...editing, startTime: value, dueTime: value })} />
+                </label>
+                <label className="grid gap-1 text-sm font-bold">
+                  종료
+                  <TimeField value={editing.endTime || ""} disabled={editing.allDay} onChange={(value) => setEditing({ ...editing, endTime: value })} />
+                </label>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-bold">
+                  다음날로 종료
+                  <input
+                    type="checkbox"
+                    disabled={editing.allDay}
+                    checked={Boolean(editing.endDate && editing.endDate !== editing.dueDate)}
+                    onChange={(event) => setEditing({ ...editing, endDate: event.target.checked ? addDays(editing.dueDate || toDateKey(new Date()), 1) : "" })}
+                  />
+                </label>
+                <label className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-bold">
+                  하루종일
+                  <input type="checkbox" checked={Boolean(editing.allDay)} onChange={(event) => setEditing({ ...editing, allDay: event.target.checked, startTime: "", endTime: "", dueTime: "" })} />
+                </label>
+              </div>
+            </section>
 
-            <label className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">하루종일<input type="checkbox" checked={Boolean(editing.allDay)} onChange={(event) => setEditing({ ...editing, allDay: event.target.checked, startTime: "", endTime: "", dueTime: "" })} /></label>
-            <label className="flex items-center justify-between rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">이동 필요<input type="checkbox" checked={Boolean(editing.travelNeeded)} onChange={(event) => setEditing({ ...editing, travelNeeded: event.target.checked })} /></label>
+            <section className="grid gap-3 rounded-[22px] border border-amber-100 bg-amber-50/50 p-4">
+              <p className="text-xs font-black uppercase tracking-wide text-amber-700">분류 · 우선순위</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="grid gap-1 text-sm font-bold">
+                  중요도
+                  <AppSelect value={editing.priority || "normal"} onChange={(event) => setEditing({ ...editing, priority: event.target.value })}>
+                    <option value="high">매우 중요</option>
+                    <option value="normal">보통</option>
+                    <option value="low">가벼움</option>
+                  </AppSelect>
+                </label>
+                <label className="grid gap-1 text-sm font-bold">
+                  분류
+                  <AppSelect value={editing.category || "개인"} onChange={(event) => setEditing({ ...editing, category: event.target.value })}>
+                    {categories.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </AppSelect>
+                </label>
+              </div>
+            </section>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1 text-sm font-bold">중요도<AppSelect value={editing.priority || "normal"} onChange={(event) => setEditing({ ...editing, priority: event.target.value })}><option value="high">매우 중요</option><option value="normal">보통</option><option value="low">가벼움</option></AppSelect></label>
-              <label className="grid gap-1 text-sm font-bold">분류<AppInput list="todo-category-list" value={editing.category || ""} onChange={(event) => setEditing({ ...editing, category: event.target.value })} placeholder="직접 입력하거나 선택" /><datalist id="todo-category-list">{categories.map((item) => <option key={item} value={item} />)}</datalist></label>
-            </div>
-
-            <label className="grid gap-1 text-sm font-bold">메모<AppTextarea value={editing.memo || ""} onChange={(event) => setEditing({ ...editing, memo: event.target.value })} placeholder="필요한 설명만 적어두면 돼요." /></label>
+            <section className="grid gap-3 rounded-[22px] border border-slate-100 bg-white p-4">
+              <label className="grid gap-1 text-sm font-bold">
+                메모
+                <AppTextarea value={editing.memo || ""} onChange={(event) => setEditing({ ...editing, memo: event.target.value })} placeholder="맨 마지막에 필요한 설명만 적어두면 돼요." />
+              </label>
+            </section>
 
             <div className="flex flex-wrap gap-2">
               <AppButton onClick={save}>저장</AppButton>
-              {editing.id && <AppButton variant="danger" onClick={() => { deleteTodo(editing.id); setEditing(null); if (params.get("edit") || params.get("date")) navigate("/tasks", { replace: true }); load(); }}>삭제</AppButton>}
+              {editing.id && <AppButton variant="danger" onClick={() => { deleteTodo(editing.id); setEditing(null); load(); }}>삭제</AppButton>}
             </div>
           </div>
         )}

@@ -4,8 +4,9 @@ import { logout } from "../../lib/auth/localAuthAdapter";
 
 const items = [
   { to: "/", label: "Home", paths: ["/"] },
-  { to: "/life", label: "Life", paths: ["/life", "/life/tasks", "/habits", "/journal", "/mandalart"] },
-  { to: "/work", label: "Work", paths: ["/work", "/tasks", "/calendar", "/daily", "/content", "/campaigns", "/files"] },
+  { to: "/schedule", label: "Schedule", paths: ["/schedule"] },
+  { to: "/work", label: "Work", paths: ["/work", "/tasks", "/daily", "/campaigns", "/files", "/worklog"] },
+  { to: "/life", label: "Life", paths: ["/life", "/habits", "/journal", "/mandalart", "/calendar", "/memo"] },
   { to: "/study", label: "Study", paths: ["/study"] },
   { to: "/money", label: "Money", paths: ["/money", "/gapyear"] },
   { to: "/archive", label: "Archive", paths: ["/archive"] }

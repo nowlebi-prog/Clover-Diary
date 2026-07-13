@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
@@ -9,7 +10,6 @@ import PageHeader from "../../components/layout/PageHeader";
 import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
 import WorkTimer from "./WorkTimer";
-import WorkLogPanel from "./WorkLogPanel";
 
 const today = toDateKey(new Date());
 const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -180,7 +180,11 @@ export default function DailyPage() {
 
         <div className="grid content-start gap-4">
           <WorkTimer />
-          <WorkLogPanel />
+          <GlassCard>
+            <SectionTitle>업무일지</SectionTitle>
+            <p className="mb-3 text-sm font-bold text-clover-sub">타이머로 기록한 세션은 업무일지 탭에서 한눈에 볼 수 있어요.</p>
+            <Link to="/worklog"><AppButton className="w-full" variant="soft">업무일지 열기</AppButton></Link>
+          </GlassCard>
         </div>
       </div>
     </>

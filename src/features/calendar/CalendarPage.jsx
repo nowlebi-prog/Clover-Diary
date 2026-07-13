@@ -1,15 +1,14 @@
+import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
 import AppTextarea from "../../components/common/AppTextarea";
 import MobileWorkCalendar from "../../components/calendar/MobileWorkCalendar";
 import Modal from "../../components/common/Modal";
-import DayDetailPanel from "../../components/dashboard/DayDetailPanel";
 import MonthCalendar from "../../components/dashboard/MonthCalendar";
 import PageHeader from "../../components/layout/PageHeader";
-import { createEvent, createMoodEntry, deleteEvent, getAllData, updateEvent, updateMoodEntry } from "../../lib/storage/localStorageAdapter";
+import { createEvent, createMoodEntry, getAllData, updateEvent, updateMoodEntry } from "../../lib/storage/localStorageAdapter";
 import { getMonthCalendarItems } from "../../lib/utils/dashboardSelectors";
 import { toDateKey } from "../../lib/utils/date";
 
@@ -100,8 +99,6 @@ function CalendarFilterPanel({ enabled, onToggle, onAddEvent }) {
 
 export default function CalendarPage() {
   const now = new Date();
-  const [params] = useSearchParams();
-  const navigate = useNavigate();
   const [data, setData] = useState(getAllData());
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const [selectedDate, setSelectedDate] = useState(toDateKey(now));
@@ -124,16 +121,6 @@ export default function CalendarPage() {
     };
   }, [selectedDate]);
 
-  useEffect(() => {
-    const date = params.get("date");
-    if (!date) return;
-    const parsed = new Date(`${date}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) return;
-    setSelectedDate(date);
-    setCursor({ year: parsed.getFullYear(), month: parsed.getMonth() });
-    if (params.get("new") === "event") setEditing(emptyEvent(date));
-  }, [params]);
-
   const rawItemsByDate = useMemo(() => getMonthCalendarItems(data, cursor.year, cursor.month), [data, cursor]);
   const itemsByDate = useMemo(() => filterItemsByCalendar(rawItemsByDate, enabledCalendars), [rawItemsByDate, enabledCalendars]);
   const selectedItems = itemsByDate[selectedDate] || [];
@@ -154,7 +141,6 @@ export default function CalendarPage() {
     if (editing.id) updateEvent(editing.id, editing);
     else createEvent(editing);
     setEditing(null);
-    if (params.get("new") || params.get("date")) navigate("/calendar", { replace: true });
     load();
   };
 
@@ -190,7 +176,21 @@ export default function CalendarPage() {
         <PageHeader eyebrow="Calendar" title="월간 캘린더">
           <AppButton onClick={() => setEditing(emptyEvent(selectedDate))}>+ 일정</AppButton>
         </PageHeader>
-        <div className="grid gap-4 xl:grid-cols-[260px_1fr_340px]">
+
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-white/70 bg-white/55 px-5 py-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-clover-sub">Selected Day</p>
+            <p className="text-lg font-black text-clover-ink">{selectedDate}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-bold text-clover-sub">항목 {selectedItems.length}개</span>
+            <Link to={`/life?tab=todos&date=${selectedDate}`}>
+              <AppButton variant="soft">전체 할일 보기</AppButton>
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[240px_1fr]">
           <CalendarFilterPanel
             enabled={enabledCalendars}
             onToggle={toggleCalendar}
@@ -204,13 +204,6 @@ export default function CalendarPage() {
             onSelectDate={setSelectedDate}
             onMoveMonth={moveMonth}
             onToday={goToday}
-          />
-          <DayDetailPanel
-            date={selectedDate}
-            items={selectedItems}
-            onAddEvent={() => setEditing(emptyEvent(selectedDate))}
-            onEditEvent={setEditing}
-            onDeleteEvent={(id) => deleteEvent(id)}
           />
         </div>
       </div>

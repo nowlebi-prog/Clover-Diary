@@ -1,16 +1,13 @@
 import { addDays, daysBetween, toDateKey } from "./date";
 
-const titleOf = (item) => item.title || item.name || item.project || item.service || "제목 없음";
+const titleOf = (item) => item.title || item.name || item.project || item.service || "Untitled";
 const compact = (item, type, date, meta = {}) => ({ ...item, type, date, displayTitle: titleOf(item), ...meta });
 const isImportant = (item) => item?.important || item?.isImportant || item?.priority === "high";
-const isPaid = (item) => ["입금 완료", "paid", "done", "완료"].includes(String(item.status || "").toLowerCase());
-
 const monthlyRecurringDate = (item, baseDate) => {
-  if (!item.dayOfMonth && !item.billingDay) return "";
-  const dayOfMonth = Number(item.dayOfMonth || item.billingDay);
+  if (!item.dayOfMonth) return "";
   const date = new Date(`${baseDate.slice(0, 8)}01T00:00:00`);
   const last = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  return `${baseDate.slice(0, 8)}${String(Math.min(dayOfMonth, last)).padStart(2, "0")}`;
+  return `${baseDate.slice(0, 8)}${String(Math.min(Number(item.dayOfMonth), last)).padStart(2, "0")}`;
 };
 
 export function getIncompleteTodos(data) {
@@ -32,60 +29,48 @@ export function getOverdueTodos(data, today = toDateKey()) {
 
 export function getTodayItems(data, today = toDateKey()) {
   const items = [];
-  (data.events || [])
-    .filter((item) => item.date === today)
-    .forEach((item) => items.push(compact(item, "event", item.date, { tone: "green", label: "일정" })));
-  (data.todos || [])
-    .filter((item) => !item.completed && item.dueDate === today)
-    .forEach((item) =>
-      items.push(compact(item, "todo", item.dueDate, {
-        tone: "red",
-        label: "할 일",
-        time: item.allDay ? "" : item.startTime || item.dueTime || "",
-        startTime: item.allDay ? "" : item.startTime || item.dueTime || "",
-        endTime: item.allDay ? "" : item.endTime || "",
-        allDay: Boolean(item.allDay || !(item.startTime || item.dueTime)),
-        travelNeeded: Boolean(item.travelNeeded)
-      }))
-    );
-  (data.contentPlans || [])
-    .filter((item) => item.publishDate === today)
-    .forEach((item) => items.push(compact(item, "content", item.publishDate, { tone: "blue", label: "콘텐츠" })));
-  (data.payments || [])
-    .filter((item) => item.expectedDate === today)
-    .forEach((item) => items.push(compact(item, "payment", item.expectedDate, { tone: "red", label: "결제" })));
-  (data.expenses || [])
-    .filter((item) => item.date === today)
-    .forEach((item) => items.push(compact(item, "expense", item.date, { tone: "red", label: "지출" })));
+  (data.events || []).filter((item) => item.date === today).forEach((item) => items.push(compact(item, "event", item.date, { tone: "green", label: "Event" })));
+  (data.todos || []).filter((item) => !item.completed && (item.dueDate === today || (item.endDate && item.dueDate <= today && today <= item.endDate))).forEach((item) => items.push(compact(item, "todo", item.dueDate, {
+    tone: "red",
+    label: "Todo",
+    time: item.allDay ? "" : (item.dueDate === today ? (item.startTime || item.dueTime || "") : "00:00"),
+    startTime: item.allDay ? "" : (item.dueDate === today ? (item.startTime || item.dueTime || "") : "00:00"),
+    endTime: item.allDay ? "" : (item.endDate && item.endDate !== today ? "" : (item.endTime || "")),
+    spansToNextDay: Boolean(item.endDate && item.endDate !== item.dueDate),
+    allDay: Boolean(item.allDay)
+  })));
+  (data.contentPlans || []).filter((item) => item.publishDate === today).forEach((item) => items.push(compact(item, "content", item.publishDate, { tone: "blue", label: "Content" })));
+  (data.payments || []).filter((item) => item.expectedDate === today).forEach((item) => items.push(compact(item, "payment", item.expectedDate, { tone: "red", label: "Payment" })));
+  (data.expenses || []).filter((item) => item.date === today).forEach((item) => items.push(compact(item, "expense", item.date, { tone: "red", label: "Expense" })));
   (data.subscriptions || []).forEach((item) => {
     const billingDate = item.billingDay ? `${today.slice(0, 8)}${String(item.billingDay).padStart(2, "0")}` : "";
-    if (billingDate === today) items.push(compact(item, "subscription", billingDate, { tone: "red", label: "구독" }));
+    if (billingDate === today) items.push(compact(item, "subscription", billingDate, { tone: "red", label: "Sub" }));
   });
   (data.recurringEvents || []).forEach((item) => {
     const date = monthlyRecurringDate(item, today);
-    if (date === today) items.push(compact(item, "recurring", date, { tone: "blue", label: item.kind || "반복" }));
+    if (date === today) items.push(compact(item, "recurring", date, { tone: "blue", label: item.kind || "Repeat" }));
   });
   (data.campaigns || []).forEach((item) => {
-    if (item.applyDueDate === today) items.push(compact(item, "campaign", item.applyDueDate, { tone: "mint", label: "신청" }));
-    if (item.uploadDueDate === today) items.push(compact(item, "campaign", item.uploadDueDate, { tone: "mint", label: "업로드" }));
+    if (item.applyDueDate === today) items.push(compact(item, "campaign", item.applyDueDate, { tone: "mint", label: "Apply" }));
+    if (item.uploadDueDate === today) items.push(compact(item, "campaign", item.uploadDueDate, { tone: "mint", label: "Upload" }));
   });
   return items.sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
 }
 
 export function getUpcomingDeadlines(data, today = toDateKey()) {
   const items = [];
-  getIncompleteTodos(data).forEach((item) => item.dueDate && items.push(compact(item, "todo", item.dueDate, { label: "할 일" })));
-  (data.events || []).forEach((item) => item.date && items.push(compact(item, "event", item.date, { label: "일정" })));
-  (data.contentPlans || []).forEach((item) => item.publishDate && items.push(compact(item, "content", item.publishDate, { label: "콘텐츠" })));
-  (data.payments || []).filter((item) => !isPaid(item)).forEach((item) => item.expectedDate && items.push(compact(item, "payment", item.expectedDate, { label: "결제" })));
+  getIncompleteTodos(data).forEach((item) => item.dueDate && items.push(compact(item, "todo", item.dueDate, { label: "Todo" })));
+  (data.events || []).forEach((item) => item.date && items.push(compact(item, "event", item.date, { label: "Event" })));
+  (data.contentPlans || []).forEach((item) => item.publishDate && items.push(compact(item, "content", item.publishDate, { label: "Content" })));
+  (data.payments || []).filter((item) => item.status !== "입금 완료").forEach((item) => item.expectedDate && items.push(compact(item, "payment", item.expectedDate, { label: "Payment" })));
   (data.campaigns || []).forEach((item) => {
-    if (item.applyDueDate) items.push(compact(item, "campaign", item.applyDueDate, { label: "신청" }));
-    if (item.uploadDueDate) items.push(compact(item, "campaign", item.uploadDueDate, { label: "업로드" }));
+    if (item.applyDueDate) items.push(compact(item, "campaign", item.applyDueDate, { label: "Apply" }));
+    if (item.uploadDueDate) items.push(compact(item, "campaign", item.uploadDueDate, { label: "Upload" }));
   });
-  (data.subscriptions || []).forEach((item) => item.billingDay && items.push(compact(item, "subscription", `${today.slice(0, 8)}${String(item.billingDay).padStart(2, "0")}`, { label: "구독" })));
+  (data.subscriptions || []).forEach((item) => item.billingDay && items.push(compact(item, "subscription", `${today.slice(0, 8)}${String(item.billingDay).padStart(2, "0")}`, { label: "Sub" })));
   (data.recurringEvents || []).forEach((item) => {
     const date = monthlyRecurringDate(item, today);
-    if (date) items.push(compact(item, "recurring", date, { label: item.kind || "반복" }));
+    if (date) items.push(compact(item, "recurring", date, { label: item.kind || "Repeat" }));
   });
   return items
     .filter((item) => item.date >= addDays(today, -30))
@@ -104,10 +89,10 @@ export function getMonthCalendarItems(data, year, month) {
   (data.todos || []).filter((item) => !item.completed).forEach((item) => push(item.dueDate, compact(item, "todo", item.dueDate, { badge: "T", tone: "red", isImportant: isImportant(item) })));
   (data.contentPlans || []).forEach((item) => push(item.publishDate, compact(item, "content", item.publishDate, { badge: "C", tone: "blue", isImportant: isImportant(item) })));
   (data.payments || []).forEach((item) => push(item.expectedDate, compact(item, "payment", item.expectedDate, { badge: "P", tone: "red", isImportant: true })));
-  (data.expenses || []).forEach((item) => push(item.date, compact(item, "expense", item.date, { badge: "E", tone: "red", isImportant: item.category === "고정 지출" })));
+  (data.expenses || []).forEach((item) => push(item.date, compact(item, "expense", item.date, { badge: "E", tone: "red", isImportant: item.category === "특별 지출" })));
   (data.subscriptions || []).forEach((item) => {
     const date = item.billingDay ? `${year}-${String(month + 1).padStart(2, "0")}-${String(item.billingDay).padStart(2, "0")}` : "";
-    push(date, compact(item, "subscription", date, { badge: "S", tone: "red", isImportant: true }));
+    push(date, compact(item, "subscription", date, { badge: "S", tone: "red", isImportant: item.status === "해지 고민" }));
   });
   (data.recurringEvents || []).forEach((item) => {
     if (item.frequency !== "monthly") return;
@@ -134,7 +119,7 @@ export function getMonthCalendarItems(data, year, month) {
 
 export function getUpcomingPayments(data, today = toDateKey()) {
   return (data.payments || [])
-    .filter((item) => item.expectedDate >= today && !isPaid(item))
+    .filter((item) => item.expectedDate >= today && item.status !== "입금 완료")
     .sort((a, b) => a.expectedDate.localeCompare(b.expectedDate));
 }
 

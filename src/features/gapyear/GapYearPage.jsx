@@ -1,85 +1,82 @@
-import { useEffect, useMemo, useState } from "react";
-import AppButton from "../../components/common/AppButton";
+import { useEffect, useState } from "react";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
 import PageHeader from "../../components/layout/PageHeader";
-import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
-import { addDays, toDateKey } from "../../lib/utils/date";
+import {
+  GAP_YEAR_TODO_TITLE,
+  getAllData,
+  getUnregisteredGapYearExpenses,
+  saveAllData
+} from "../../lib/storage/localStorageAdapter";
+import { toDateKey } from "../../lib/utils/date";
 
-const makeId = () => `gap-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const money = (value) => `${Number(value || 0).toLocaleString("ko-KR")}원`;
 
 export default function GapYearPage() {
   const [data, setData] = useState(getAllData());
   const today = toDateKey(new Date());
-  const monthStart = `${today.slice(0, 8)}01`;
-  const days = useMemo(() => {
-    const result = [];
-    let current = monthStart;
-    while (current <= today) {
-      result.push(current);
-      current = addDays(current, 1);
-    }
-    return result;
-  }, [monthStart, today]);
-
   const load = () => setData(getAllData());
+
   useEffect(() => {
     window.addEventListener("clover-data-change", load);
     return () => window.removeEventListener("clover-data-change", load);
   }, []);
 
-  const uploadedMap = new Map((data.gapYearBudgets || []).map((item) => [item.date, item]));
-  const missing = days.filter((date) => !uploadedMap.get(date)?.uploaded);
+  const unregistered = getUnregisteredGapYearExpenses();
+  const totalUnregistered = unregistered.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const todayTodo = (data.todos || []).find((item) => item.title === GAP_YEAR_TODO_TITLE && item.dueDate === today);
 
-  const markUploaded = (date) => {
-    const allData = getAllData();
-    allData.gapYearBudgets = [
-      { id: makeId(), date, uploaded: true, source: "manual", createdAt: today, updatedAt: today },
-      ...(allData.gapYearBudgets || []).filter((item) => item.date !== date)
-    ];
-    saveAllData(allData);
+  const register = (item) => {
+    const next = getAllData();
+    next.expenses = (next.expenses || []).map((expense) => expense.id === item.id ? { ...expense, gapYearRegistered: true } : expense);
+    saveAllData(next);
+    load();
+  };
+
+  const toggleTodayTodo = () => {
+    if (!todayTodo) return;
+    const next = getAllData();
+    next.todos = (next.todos || []).map((item) => item.id === todayTodo.id ? { ...item, completed: !item.completed, completedAt: !item.completed ? today : "" } : item);
+    saveAllData(next);
     load();
   };
 
   return (
     <>
-      <PageHeader eyebrow="GAP YEAR" title="갭이어 예산">
-        <AppButton onClick={() => markUploaded(today)}>오늘 예산 올림</AppButton>
-      </PageHeader>
+      <PageHeader eyebrow="GAP YEAR" title="갭이어 예산" />
 
-      <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <GlassCard>
-          <SectionTitle>이번 달 현황</SectionTitle>
-          <div className="grid grid-cols-7 gap-1">
-            {days.map((date) => {
-              const done = uploadedMap.get(date)?.uploaded;
-              return (
-                <button
-                  key={date}
-                  type="button"
-                  onClick={() => markUploaded(date)}
-                  className={`rounded-2xl px-2 py-3 text-xs font-black ${done ? "bg-emerald-100 text-emerald-700" : "bg-rose-50 text-rose-700"}`}
-                >
-                  {Number(date.slice(-2))}
-                </button>
-              );
-            })}
-          </div>
-        </GlassCard>
+      <GlassCard className="mb-4">
+        <SectionTitle>오늘의 체크</SectionTitle>
+        {todayTodo ? (
+          <label className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold ${todayTodo.completed ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+            {GAP_YEAR_TODO_TITLE}
+            <input type="checkbox" checked={Boolean(todayTodo.completed)} onChange={toggleTodayTodo} />
+          </label>
+        ) : (
+          <p className="rounded-2xl bg-white/45 p-4 text-sm font-bold text-clover-sub">오늘 항목을 불러오는 중이에요.</p>
+        )}
+      </GlassCard>
 
-        <GlassCard>
-          <SectionTitle>안 올린 예산</SectionTitle>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {missing.map((date) => (
-              <article key={date} className="flex items-center justify-between gap-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-                <span>{date}</span>
-                <button type="button" onClick={() => markUploaded(date)} className="rounded-full bg-white px-3 py-1.5 text-xs font-black">완료</button>
-              </article>
-            ))}
-            {!missing.length && <p className="rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-700">이번 달 예산 업로드가 모두 완료됐어요.</p>}
-          </div>
-        </GlassCard>
-      </div>
+      <GlassCard>
+        <SectionTitle action={<span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-600">미등록 {unregistered.length}건 · {money(totalUnregistered)}</span>}>
+          예산에 아직 안 올린 지출
+        </SectionTitle>
+        <div className="grid gap-2">
+          {unregistered.map((item) => (
+            <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/60 px-4 py-3 text-sm font-bold">
+              <div className="min-w-0">
+                <p className="truncate">{item.title || "지출"}</p>
+                <p className="text-xs font-bold text-clover-sub">{item.date} · {item.category}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-rose-600">{money(item.amount)}</span>
+                <button type="button" onClick={() => register(item)} className="rounded-full bg-clover-deep px-3 py-2 text-xs font-black text-white">등록 완료</button>
+              </div>
+            </div>
+          ))}
+          {!unregistered.length && <p className="rounded-2xl bg-white/45 p-4 text-sm font-bold text-clover-sub">모든 지출이 예산에 반영됐어요. 🎉</p>}
+        </div>
+      </GlassCard>
     </>
   );
 }
