@@ -26,6 +26,25 @@ const formatDateTime = (iso) => {
 const sortByLatest = (items) =>
   [...items].sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || ""));
 
+const searchableText = (post) => [
+  post.title,
+  post.body,
+  post.link,
+  ...(post.comments || []).flatMap((comment) => [comment.body, comment.link])
+].filter(Boolean).join(" ").toLowerCase();
+
+const matchesSearch = (post, query) => {
+  const keyword = query.trim().toLowerCase();
+  if (!keyword) return true;
+  return searchableText(post).includes(keyword);
+};
+
+const clipboardImages = (event) =>
+  Array.from(event.clipboardData?.items || [])
+    .filter((item) => item.type?.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter(Boolean);
+
 const fileToImage = (file) =>
   new Promise((resolve) => {
     const reader = new FileReader();
@@ -42,6 +61,13 @@ function PostComposer({ onCreate }) {
   const addImages = async (files) => {
     const nextImages = await Promise.all(Array.from(files || []).map(fileToImage));
     setImages((current) => [...current, ...nextImages]);
+  };
+
+  const pasteImages = (event) => {
+    const files = clipboardImages(event);
+    if (!files.length) return;
+    event.preventDefault();
+    addImages(files);
   };
 
   const submit = () => {
@@ -66,7 +92,7 @@ function PostComposer({ onCreate }) {
         <p className="text-xs font-black uppercase tracking-[0.16em] text-clover-deep">Memo Inbox</p>
         <h2 className="mt-1 text-xl font-black text-clover-ink">게시글 등록</h2>
       </div>
-      <div className="grid gap-2">
+      <div className="grid gap-2" onPaste={pasteImages}>
         <AppInput value={title} onChange={(event) => setTitle(event.target.value)} placeholder="예: 콘텐츠 아이디어" />
         <AppTextarea value={body} onChange={(event) => setBody(event.target.value)} placeholder="어 이거 좋은데? 싶은 걸 바로 적어두세요." className="min-h-[92px]" />
         <AppInput value={link} onChange={(event) => setLink(event.target.value)} placeholder="링크 붙여넣기" />
@@ -131,6 +157,13 @@ function CommentComposer({ onAdd }) {
     setImages((current) => [...current, ...nextImages]);
   };
 
+  const pasteImages = (event) => {
+    const files = clipboardImages(event);
+    if (!files.length) return;
+    event.preventDefault();
+    addImages(files);
+  };
+
   const submit = () => {
     if (!body.trim() && !link.trim() && !images.length) return;
     onAdd({ body: body.trim(), link: link.trim(), images });
@@ -141,7 +174,7 @@ function CommentComposer({ onAdd }) {
 
   return (
     <div className="sticky bottom-2 mt-4 rounded-[22px] border border-white/70 bg-white/90 p-3 shadow-glass backdrop-blur">
-      <div className="grid gap-2">
+      <div className="grid gap-2" onPaste={pasteImages}>
         <AppTextarea value={body} onChange={(event) => setBody(event.target.value)} placeholder="댓글처럼 계속 끄적끄적..." className="min-h-[76px]" />
         <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
           <AppInput value={link} onChange={(event) => setLink(event.target.value)} placeholder="링크" />
@@ -354,6 +387,15 @@ function PostDetailEditable({ post, onAddComment, onUpdateComment, onDeleteComme
                 </div>
                 <p className="whitespace-pre-wrap break-keep text-base font-bold leading-7 text-clover-text">{rootEntry.body}</p>
                 {rootEntry.link && <a href={rootEntry.link} target="_blank" rel="noreferrer" className="mt-2 block truncate rounded-xl bg-white/70 px-3 py-2 text-sm font-bold text-clover-deep underline decoration-dotted">{rootEntry.link}</a>}
+                {!!rootEntry.images?.length && (
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {rootEntry.images.map((image) => (
+                      <a key={image.id} href={image.src} target="_blank" rel="noreferrer" className="aspect-video overflow-hidden rounded-2xl bg-white/60">
+                        <img src={image.src} alt={image.name || "첨부 이미지"} className="h-full w-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </article>
@@ -372,6 +414,7 @@ export default function MemoPage() {
   const [data, setData] = useState(getAllData());
   const [selectedId, setSelectedId] = useState("");
   const [showDone, setShowDone] = useState(false);
+  const [query, setQuery] = useState("");
   const load = () => setData(getAllData());
 
   useEffect(() => {
@@ -380,8 +423,8 @@ export default function MemoPage() {
   }, []);
 
   const posts = useMemo(() => sortByLatest(data.memoPosts || []), [data.memoPosts]);
-  const visiblePosts = posts.filter((post) => Boolean(post.done) === showDone);
-  const selectedPost = posts.find((post) => post.id === selectedId) || visiblePosts[0] || null;
+  const visiblePosts = posts.filter((post) => Boolean(post.done) === showDone && matchesSearch(post, query));
+  const selectedPost = visiblePosts.find((post) => post.id === selectedId) || visiblePosts[0] || null;
 
   useEffect(() => {
     if (!selectedPost?.id) return;
@@ -473,6 +516,18 @@ export default function MemoPage() {
         </div>
       </PageHeader>
       <p className="-mt-3 mb-5 text-sm font-bold text-clover-sub">카톡 나에게 보내기처럼 게시글을 만들고, 댓글처럼 자료를 계속 쌓아두세요.</p>
+      <GlassCard className="mb-4 rounded-[18px] border border-clover-line bg-white/86 p-3">
+        <AppInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="검색어를 입력하세요. 예: 템플릿"
+        />
+        {query.trim() && (
+          <p className="mt-2 text-xs font-bold text-clover-sub">
+            검색 결과 {visiblePosts.length}개 · 제목, 내용, 댓글, 링크에서 찾아요.
+          </p>
+        )}
+      </GlassCard>
 
       <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
         <div className="grid content-start gap-4">
