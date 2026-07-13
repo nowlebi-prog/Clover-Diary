@@ -60,6 +60,7 @@ const normalize = (data) => {
       ...(next.todos || [])
     ];
   }
+  next.todos = (next.todos || []).filter((todo) => todo.id !== "todo-gapyear-budget");
   return next;
 };
 
