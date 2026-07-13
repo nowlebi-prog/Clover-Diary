@@ -482,7 +482,7 @@ export default function HomePage() {
   };
 
   const todayItems = useMemo(() => getTodayItems(data, today), [data, today]);
-  const deadlines = useMemo(() => getUpcomingDeadlines(data, today).filter((item) => item.dday <= 7), [data, today]);
+  const deadlines = useMemo(() => getUpcomingDeadlines(data, today).filter((item) => item.dday >= 0 && item.dday <= 1), [data, today]);
   const habitStatus = getTodayHabitStatus(data.habits, data.habitLogs, today);
   const workSessions = (data.workSessions || []).filter((item) => item.date === today);
   const todayFocusSec = workSessions.reduce((sum, item) => sum + Number(item.duration || 0), 0);
