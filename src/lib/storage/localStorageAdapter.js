@@ -330,6 +330,93 @@ export function saveTaskCategories(categories) {
   saveAllData(data, { silent: true });
 }
 
+export function getWorkCategories() {
+  return getTaskCategories().map((category, index) =>
+    typeof category === "string"
+      ? { id: `cat-${index}`, name: category, color: ["#8DDFA8", "#A9C9FF", "#F6C68D", "#F4B6D2"][index % 4] }
+      : category
+  );
+}
+
+export function getActiveSession() {
+  return getAllData().activeSession || null;
+}
+
+export function startActiveSession({ title, category }) {
+  const data = getAllData();
+  const now = Date.now();
+  data.activeSession = {
+    id: makeId("activeWork"),
+    title,
+    category,
+    date: today(),
+    startTime: now,
+    pauses: [],
+    pauseSec: 0,
+    memos: [],
+    createdAt: today(),
+    updatedAt: today()
+  };
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function updateActiveSession(updates) {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  data.activeSession = { ...data.activeSession, ...updates, updatedAt: today() };
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function pauseActiveSession() {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  const open = (data.activeSession.pauses || []).some((pause) => !pause.end);
+  if (!open) data.activeSession.pauses = [...(data.activeSession.pauses || []), { start: Date.now() }];
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function resumeActiveSession() {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  const now = Date.now();
+  data.activeSession.pauses = (data.activeSession.pauses || []).map((pause) => (!pause.end ? { ...pause, end: now } : pause));
+  data.activeSession.pauseSec = (data.activeSession.pauses || []).reduce((sum, pause) => sum + Math.max(0, Math.round(((pause.end || now) - pause.start) / 1000)), 0);
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function addActiveSessionMemo(text, phase = "working") {
+  const data = getAllData();
+  if (!data.activeSession) return null;
+  data.activeSession.memos = [...(data.activeSession.memos || []), { id: makeId("memo"), text, phase, time: Date.now() }];
+  saveAllData(data);
+  return data.activeSession;
+}
+
+export function endActiveSession() {
+  const data = getAllData();
+  const session = data.activeSession;
+  if (!session) return null;
+  const now = Date.now();
+  const pauses = (session.pauses || []).map((pause) => (!pause.end ? { ...pause, end: now } : pause));
+  const pauseSec = pauses.reduce((sum, pause) => sum + Math.max(0, Math.round((pause.end - pause.start) / 1000)), 0);
+  const duration = Math.max(0, Math.round((now - session.startTime) / 1000) - pauseSec);
+  const saved = { ...session, id: makeId("workSessions"), endTime: now, pauses, pauseSec, duration, updatedAt: today() };
+  data.workSessions = [saved, ...(data.workSessions || [])];
+  data.activeSession = null;
+  saveAllData(data);
+  return saved;
+}
+
+export function discardActiveSession() {
+  const data = getAllData();
+  data.activeSession = null;
+  saveAllData(data);
+}
+
 export function getActiveWorkTimer() {
   return getAllData().activeWorkTimer || null;
 }
