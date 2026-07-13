@@ -2,8 +2,11 @@ import { useMemo, useState } from "react";
 import AppButton from "../common/AppButton";
 import AppInput from "../common/AppInput";
 import AppSelect from "../common/AppSelect";
+import HabitMonthView from "./HabitMonthView";
+import HabitWeekView from "./HabitWeekView";
+import HabitYearHeatmap from "./HabitYearHeatmap";
 import { getAllData, saveAllData, toggleHabitLog } from "../../lib/storage/localStorageAdapter";
-import { getHabitCompletionRate, isHabitDoneOn, toDateKey } from "../../lib/utils/habitSelectors";
+import { addDays, getActiveHabits, getHabitCompletionRate, isHabitDoneOn, startOfWeek, toDateKey } from "../../lib/utils/habitSelectors";
 
 const emojiOptions = ["🏃", "💧", "💊", "🧘", "📚", "🧹", "🌿", "☕", "📝", "✨", "🍎", "💪"];
 
@@ -19,14 +22,25 @@ const monthLabel = (base = new Date()) => `${base.getFullYear()}년 ${base.getMo
 export default function LifeHabitTracker({ data, onChange }) {
   const [toast, setToast] = useState("");
   const [managerOpen, setManagerOpen] = useState(false);
-  const today = toDateKey(new Date());
-  const days = useMemo(() => makeMonthDays(), []);
+  const [view, setView] = useState("heatmap");
+  const now = new Date();
+  const today = toDateKey(now);
+  const days = useMemo(() => makeMonthDays(now), []);
+  const weekStart = startOfWeek(today);
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart]);
   const start = days[0];
   const end = days[days.length - 1];
   const habits = (data.habits || []).filter((habit) => habit.status !== "archived");
+  const activeHabits = getActiveHabits(data.habits || []);
   const monthRate = habits.length
     ? Math.round(habits.reduce((sum, habit) => sum + getHabitCompletionRate(habit.id, data.habitLogs || [], start, end), 0) / habits.length)
     : 0;
+  const views = [
+    ["heatmap", "히트맵"],
+    ["week", "주간"],
+    ["month", "월간"],
+    ["year", "연간"]
+  ];
 
   const toggle = (habit, date) => {
     const wasDone = isHabitDoneOn(habit.id, data.habitLogs || [], date);
@@ -54,10 +68,24 @@ export default function LifeHabitTracker({ data, onChange }) {
           </div>
           <p className="mt-1 text-xs font-bold text-clover-sub">{monthLabel()}</p>
         </div>
-        <AppButton onClick={() => setManagerOpen(true)}>편집</AppButton>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-full bg-white/60 p-1">
+            {views.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setView(key)}
+                className={`rounded-full px-3 py-2 text-xs font-black transition ${view === key ? "bg-clover-deep text-white shadow-sm" : "text-clover-sub hover:bg-white/70"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <AppButton onClick={() => setManagerOpen(true)}>편집</AppButton>
+        </div>
       </div>
 
-      <div className="overflow-x-auto pb-2">
+      {view === "heatmap" && <div className="overflow-x-auto pb-2">
         <div className="min-w-[780px]">
           <div className="grid grid-cols-[150px_1fr] gap-3">
             <div />
@@ -104,7 +132,25 @@ export default function LifeHabitTracker({ data, onChange }) {
             {!habits.length && <div className="rounded-2xl bg-white/55 p-5 text-sm font-bold text-clover-sub">아직 습관이 없어요. 편집을 눌러 하나 추가해보세요.</div>}
           </div>
         </div>
-      </div>
+      </div>}
+
+      {view === "week" && (
+        <div className="rounded-[20px] bg-white/35 p-3">
+          <HabitWeekView habits={activeHabits} logs={data.habitLogs || []} days={weekDays} today={now} />
+        </div>
+      )}
+
+      {view === "month" && (
+        <div className="rounded-[20px] bg-white/35 p-3">
+          <HabitMonthView habits={activeHabits} logs={data.habitLogs || []} days={days} today={now} />
+        </div>
+      )}
+
+      {view === "year" && (
+        <div className="rounded-[20px] bg-white/35 p-3">
+          <HabitYearHeatmap habits={activeHabits} logs={data.habitLogs || []} today={now} />
+        </div>
+      )}
 
       {managerOpen && <HabitManager data={data} today={today} onClose={() => setManagerOpen(false)} onChange={onChange} />}
     </section>
