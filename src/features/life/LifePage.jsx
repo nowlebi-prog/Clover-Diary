@@ -746,12 +746,11 @@ export default function LifePage() {
               <TodayRecordGraph entries={data.moodEntries || []} today={today} />
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
-              <TodayRoutineCard data={data} today={today} onChange={load} onManage={() => setTab("habits")} />
               <TodayChoreOverview chores={data.chores || []} today={today} onDone={completeChore} onPostpone={postponeChore} onManage={() => setTab("chores")} />
+              <ShoppingQuickAdd items={data.shoppingItems || []} draft={shoppingDraft} setDraft={setShoppingDraft} onAdd={addShopping} onToggle={toggleShopping} />
             </div>
             <LifeHabitTracker data={data} onChange={load} />
-            <div className="grid gap-4 xl:grid-cols-[.95fr_1.05fr]">
-              <ShoppingQuickAdd items={data.shoppingItems || []} draft={shoppingDraft} setDraft={setShoppingDraft} onAdd={addShopping} onToggle={toggleShopping} />
+            <div className="grid gap-4">
               <RecentLifeRecords data={data} today={today} onOpenJournal={() => setTab("journal")} />
             </div>
           </>

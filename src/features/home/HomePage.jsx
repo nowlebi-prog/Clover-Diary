@@ -164,6 +164,114 @@ function HomeFocusTimer({ activeSession, todayTodos, categories, todayFocusSec, 
   );
 }
 
+function HomeFocusTimerFixed({ activeSession, todayTodos, categories, todayFocusSec, onChange }) {
+  const fallbackCategories = [
+    { id: "work", name: "업무", color: "#8DDFA8" },
+    { id: "meeting", name: "회의", color: "#A9C9FF" },
+    { id: "plan", name: "기획", color: "#F6C68D" },
+    { id: "etc", name: "잡무", color: "#F4B6D2" }
+  ];
+  const categoryList = categories?.length ? categories : fallbackCategories;
+  const [tick, setTick] = useState(Date.now());
+  const [selectedTodoId, setSelectedTodoId] = useState(todayTodos[0]?.id || "");
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftCategory, setDraftCategory] = useState(categoryList[0]?.name || "업무");
+
+  useEffect(() => {
+    if (!activeSession) return undefined;
+    const timer = window.setInterval(() => setTick(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [activeSession?.id]);
+
+  useEffect(() => {
+    if (!selectedTodoId && todayTodos[0]?.id) setSelectedTodoId(todayTodos[0].id);
+  }, [selectedTodoId, todayTodos]);
+
+  useEffect(() => {
+    if (!categoryList.some((category) => category.name === draftCategory)) {
+      setDraftCategory(categoryList[0]?.name || "업무");
+    }
+  }, [categoryList, draftCategory]);
+
+  const selectedTodo = todayTodos.find((todo) => todo.id === selectedTodoId);
+  const elapsed = activeSession ? computeElapsed(activeSession, tick) : null;
+  const timerTitle = activeSession?.title || selectedTodo?.title || draftTitle || "바로 시작할 일을 적어주세요";
+
+  const start = () => {
+    const title = selectedTodo?.title || draftTitle.trim();
+    if (!title) return;
+    startActiveSession({
+      title,
+      category: selectedTodo?.category || selectedTodo?.project || draftCategory || "업무",
+      todoId: selectedTodo?.id || ""
+    });
+    setDraftTitle("");
+    setTick(Date.now());
+    onChange?.();
+  };
+
+  return (
+    <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <SectionTitle>Focus Timer</SectionTitle>
+        <Link to="/work" className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-black text-clover-deep">Work로 이동</Link>
+      </div>
+
+      {!activeSession && (
+        <div className="grid gap-3">
+          <AppSelect value={selectedTodoId} onChange={(event) => setSelectedTodoId(event.target.value)}>
+            <option value="">직접 입력해서 시작</option>
+            {todayTodos.map((todo) => <option key={todo.id} value={todo.id}>{todo.title}</option>)}
+          </AppSelect>
+          {!selectedTodoId && (
+            <>
+              <AppInput value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} placeholder="지금 시작할 일을 적어주세요" />
+              <div className="flex flex-wrap gap-2">
+                {categoryList.map((category) => (
+                  <button
+                    key={category.id || category.name}
+                    type="button"
+                    onClick={() => setDraftCategory(category.name)}
+                    className="rounded-full px-3 py-1.5 text-xs font-black transition"
+                    style={{
+                      background: draftCategory === category.name ? category.color : "#ffffff90",
+                      color: draftCategory === category.name ? "#1F2A24" : "#718077"
+                    }}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="my-5 text-center">
+        <p className="mx-auto mb-3 max-w-sm truncate text-base font-black text-clover-text">{timerTitle}</p>
+        <p className="font-mono text-5xl font-black tracking-tight text-clover-ink md:text-6xl">
+          {activeSession ? fmtHMS(elapsed.workSec) : "00:00:00"}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-2">
+        {!activeSession && <AppButton className="min-w-40" disabled={!selectedTodo && !draftTitle.trim()} onClick={start}>시작하기</AppButton>}
+        {activeSession && (
+          elapsed.isPaused
+            ? <AppButton onClick={() => { resumeActiveSession(); setTick(Date.now()); onChange?.(); }}>재개</AppButton>
+            : <AppButton variant="soft" onClick={() => { pauseActiveSession(); setTick(Date.now()); onChange?.(); }}>일시정지</AppButton>
+        )}
+        {activeSession && <AppButton variant="danger" onClick={() => { endActiveSession(); setTick(Date.now()); onChange?.(); }}>종료</AppButton>}
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-clover-line bg-white/55 px-4 py-3">
+        <p className="text-xs font-black text-clover-sub">오늘 집중 시간</p>
+        <p className="mt-1 text-xl font-black text-clover-ink">{fmtHM(todayFocusSec + (elapsed?.workSec || 0))}</p>
+      </div>
+    </GlassCard>
+  );
+}
+
 function PriorityCard({ topItems, deadlineItems, onToggleTodo, onStart, onSchedule }) {
   const seen = new Set();
   const cleanTop = topItems.filter((item) => {
@@ -430,7 +538,7 @@ export default function HomePage() {
       <SummaryChips todayItems={todayItems} deadlines={deadlines} habitStatus={habitStatus} todayFocusSec={todayFocusSec} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(320px,.82fr)_minmax(0,1.18fr)]">
-        <HomeFocusTimer activeSession={activeSession} todayTodos={todayTodos} categories={categories} todayFocusSec={todayFocusSec} onChange={load} />
+        <HomeFocusTimerFixed activeSession={activeSession} todayTodos={todayTodos} categories={categories} todayFocusSec={todayFocusSec} onChange={load} />
         <PriorityCard
           topItems={todayMustItems}
           deadlineItems={deadlines}

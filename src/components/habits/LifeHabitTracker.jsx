@@ -152,8 +152,83 @@ export default function LifeHabitTracker({ data, onChange }) {
         </div>
       )}
 
-      {managerOpen && <HabitManager data={data} today={today} onClose={() => setManagerOpen(false)} onChange={onChange} />}
+      {managerOpen && <HabitManagerFixed data={data} today={today} onClose={() => setManagerOpen(false)} onChange={onChange} />}
     </section>
+  );
+}
+
+function HabitManagerFixed({ data, today, onClose, onChange }) {
+  const cleanEmojiOptions = ["🌿", "💧", "🏃", "📚", "💊", "🧘", "🧹", "✨", "🍀", "☀️", "🌙", "✅"];
+  const [drafts, setDrafts] = useState(() => (data.habits || []).filter((habit) => habit.status !== "archived"));
+
+  const updateDraft = (id, updates) => setDrafts((current) => current.map((habit) => habit.id === id ? { ...habit, ...updates } : habit));
+  const addDraft = () => {
+    setDrafts((current) => [
+      {
+        id: `habit-${Date.now()}`,
+        name: "",
+        icon: "🌿",
+        color: "#14B8A6",
+        frequencyType: "daily",
+        targetCount: 7,
+        customDays: [],
+        reminderTime: "",
+        memo: "",
+        status: "active",
+        createdAt: today,
+        updatedAt: today
+      },
+      ...current
+    ]);
+  };
+  const archiveDraft = (id) => setDrafts((current) => current.map((habit) => habit.id === id ? { ...habit, status: "archived" } : habit));
+  const save = () => {
+    const next = getAllData();
+    const archived = (next.habits || []).filter((habit) => habit.status === "archived");
+    next.habits = [...drafts.filter((habit) => (habit.name || "").trim()), ...archived].map((habit) => ({ ...habit, updatedAt: today }));
+    saveAllData(next);
+    onChange?.();
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-clover-ink/30 px-4 py-6 backdrop-blur-md sm:grid sm:place-items-center">
+      <section className="mx-auto w-full max-w-3xl rounded-[28px] border border-white/80 bg-white/95 p-5 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-clover-deep">Habit</p>
+            <h3 className="text-xl font-black text-clover-ink">습관 추가/수정</h3>
+          </div>
+          <button type="button" className="rounded-full bg-slate-100 px-3 py-2 text-sm font-black text-clover-sub" onClick={onClose}>닫기</button>
+        </div>
+
+        <div className="max-h-[62vh] overflow-y-auto pr-1">
+          <div className="grid gap-3">
+            {drafts.filter((habit) => habit.status !== "archived").map((habit) => (
+              <div key={habit.id} className="grid gap-2 rounded-2xl bg-slate-50 p-3 sm:grid-cols-[92px_minmax(0,1fr)_140px_auto] sm:items-center">
+                <AppSelect value={habit.icon || "🌿"} onChange={(event) => updateDraft(habit.id, { icon: event.target.value })}>
+                  {cleanEmojiOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                </AppSelect>
+                <AppInput value={habit.name || ""} onChange={(event) => updateDraft(habit.id, { name: event.target.value })} placeholder="습관 이름" />
+                <AppInput type="time" value={habit.reminderTime || ""} onChange={(event) => updateDraft(habit.id, { reminderTime: event.target.value })} />
+                <button type="button" className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-black text-red-600" onClick={() => archiveDraft(habit.id)}>삭제</button>
+              </div>
+            ))}
+            {!drafts.filter((habit) => habit.status !== "archived").length && (
+              <p className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-clover-sub">아직 등록된 습관이 없어요. 아래 버튼으로 추가해보세요.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap justify-between gap-2">
+          <AppButton variant="soft" onClick={addDraft}>+ 습관 추가</AppButton>
+          <div className="flex gap-2">
+            <AppButton variant="ghost" onClick={onClose}>취소</AppButton>
+            <AppButton onClick={save}>저장</AppButton>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
