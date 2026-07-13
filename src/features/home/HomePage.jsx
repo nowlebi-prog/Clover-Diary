@@ -591,8 +591,8 @@ function WeeklyStrip({ data, today }) {
         </div>
         <div className="grid gap-1.5">
           {selectedItems.map((item, index) => (
-            <article key={`${item.type}-${item.id || index}`} className="grid grid-cols-[52px_1fr_auto] items-center gap-2 rounded-[10px] bg-white/65 px-2.5 py-2 text-xs">
-              <span className="font-black text-clover-sub">{formatTime(item)}</span>
+            <article key={`${item.type}-${item.id || index}`} className="grid grid-cols-[88px_1fr_auto] items-center gap-2 rounded-[10px] bg-white/65 px-2.5 py-2 text-xs">
+              <span className="whitespace-nowrap font-black text-clover-sub">{formatTime(item)}</span>
               <b className="min-w-0 truncate text-clover-ink">{item.displayTitle}</b>
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-clover-deep">{item.label || item.type}</span>
             </article>
@@ -607,18 +607,22 @@ function WeeklyStrip({ data, today }) {
 function StatusCards({ data, today, habitStatus, studyDue, workSessions }) {
   const todayMood = (data.moodEntries || []).some((item) => item.date === today);
   const todayPayments = (data.payments || []).filter((item) => item.expectedDate === today && item.status !== "입금 완료");
+  const lifeDone = Boolean(todayMood) && (habitStatus.total === 0 || habitStatus.doneCount >= habitStatus.total);
   const cards = [
-    { title: "Life", to: "/life", main: `루틴 ${habitStatus.doneCount}/${habitStatus.total} 완료`, note: todayMood ? "기분 기록 완료" : "기분 기록이 필요해요" },
-    { title: "Money", to: "/money", main: `확인할 결제 ${todayPayments.length}건`, note: "금액은 Money에서 확인" },
-    { title: "Study", to: "/study", main: `오늘 공부 ${studyDue.length ? "1개" : "0개"}`, note: studyDue[0]?.title || "오늘 복습 없음" },
-    { title: "Work Log", to: "/worklog", main: `오늘 업무 세션 ${workSessions.length}개`, note: "업무일지로 이동" }
+    { title: "Life", to: "/life", main: `루틴 ${habitStatus.doneCount}/${habitStatus.total} 완료`, note: todayMood ? "기분 기록 완료" : "기분 기록이 필요해요", done: lifeDone },
+    { title: "Money", to: "/money", main: `확인할 결제 ${todayPayments.length}건`, note: "금액은 Money에서 확인", done: todayPayments.length === 0 },
+    { title: "Study", to: "/study", main: `오늘 공부 ${studyDue.length ? "1개" : "0개"}`, note: studyDue[0]?.title || "오늘 복습 없음", done: studyDue.length === 0 },
+    { title: "Work Log", to: "/worklog", main: `오늘 업무 세션 ${workSessions.length}개`, note: "업무일지로 이동", done: workSessions.length > 0 }
   ];
 
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {cards.map((card) => (
-        <GlassCard key={card.title} className="rounded-[16px] border border-clover-line bg-white/84 p-4">
-          <p className="text-lg font-black text-clover-deep">{card.title}</p>
+        <GlassCard key={card.title} className={`relative rounded-[16px] border p-4 transition ${card.done ? "border-emerald-200 bg-emerald-50/72" : "border-clover-line bg-white/84"}`}>
+          {card.done && (
+            <span className="absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full bg-clover-deep text-sm font-black text-white">✓</span>
+          )}
+          <p className={`pr-8 text-lg font-black ${card.done ? "text-clover-deep" : "text-clover-deep"}`}>{card.title}</p>
           <p className="mt-4 text-sm font-black text-clover-ink">{card.main}</p>
           <p className="mt-2 line-clamp-1 text-xs font-bold text-clover-sub">{card.note}</p>
           <Link to={card.to} className="mt-5 inline-block text-sm font-black text-clover-deep">{card.title.replace(" Log", "")}로 이동</Link>
