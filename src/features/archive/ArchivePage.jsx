@@ -33,13 +33,13 @@ function ActionButton({ active, icon, title, sub, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center gap-4 rounded-[8px] border px-6 py-4 text-left transition ${
-        active ? "border-clover-deep bg-emerald-50/80 shadow-glass" : "border-clover-line bg-white/65 hover:bg-white"
+      className={`flex min-h-[58px] items-center justify-center gap-3 rounded-[8px] border px-5 py-3 text-left transition ${
+        active ? "border-clover-deep bg-emerald-50/85 text-clover-deep shadow-sm" : "border-clover-line bg-white/65 text-clover-text hover:bg-white"
       }`}
     >
-      <span className="grid h-12 w-12 place-items-center rounded-full bg-white text-2xl">{icon}</span>
+      <span className="text-2xl">{icon}</span>
       <span>
-        <span className="block font-black text-clover-text">{title}</span>
+        <span className="block font-black">{title}</span>
         <span className="text-sm font-bold text-clover-sub">{sub}</span>
       </span>
     </button>
@@ -134,34 +134,83 @@ function QuoteTable({ quotes, onAdd, onUpdate, onDelete }) {
   );
 }
 
+function statusTone(status) {
+  if (status === "실험 준비") return "bg-sky-100 text-sky-700";
+  if (status === "실험 중") return "bg-emerald-100 text-emerald-700";
+  if (status === "보류") return "bg-slate-100 text-slate-600";
+  if (status === "완료") return "bg-violet-100 text-violet-700";
+  return "bg-amber-100 text-amber-700";
+}
+
+function categoryTone(category) {
+  const tones = {
+    AI: "bg-emerald-100 text-emerald-700",
+    마케팅: "bg-violet-100 text-violet-700",
+    실무: "bg-sky-100 text-sky-700",
+    디자인: "bg-rose-100 text-rose-700",
+    뷰티: "bg-pink-100 text-pink-700",
+    집안일: "bg-teal-100 text-teal-700",
+    사업: "bg-orange-100 text-orange-700",
+    요리: "bg-yellow-100 text-yellow-700"
+  };
+  return tones[category] || "bg-slate-100 text-slate-600";
+}
+
 function IdeaManager({ ideas, selectedCategory, setSelectedCategory, onAdd, onUpdate, onDelete, onPromote }) {
   const [draft, setDraft] = useState("");
+  const [draftBody, setDraftBody] = useState("");
+  const [draftStatus, setDraftStatus] = useState("아이디어");
+  const [selectedId, setSelectedId] = useState("");
   const filtered = selectedCategory === "전체" ? ideas : ideas.filter((idea) => (idea.category || "기타") === selectedCategory);
+  const selectedIdea = ideas.find((idea) => idea.id === selectedId);
+
+  const clearSelection = () => {
+    setSelectedId("");
+    setDraft("");
+    setDraftBody("");
+    setDraftStatus("아이디어");
+  };
+
+  const selectIdea = (idea) => {
+    setSelectedId(idea.id);
+    setDraft(idea.title || "");
+    setDraftBody(idea.body || "");
+    setDraftStatus(idea.status || "아이디어");
+    setSelectedCategory(idea.category || "기타");
+  };
+
+  const saveCurrent = () => {
+    if (!draft.trim()) return;
+    const category = selectedCategory === "전체" ? "기타" : selectedCategory;
+    if (selectedId) {
+      onUpdate(selectedId, { title: draft.trim(), body: draftBody, category, status: draftStatus });
+    } else {
+      onAdd(draft, category, draftBody, draftStatus);
+    }
+    clearSelection();
+  };
 
   return (
-    <GlassCard>
+    <GlassCard className="rounded-[8px] border border-clover-line bg-white/55">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-black">아이디어 관리</h2>
-        <div className="flex gap-2">
-          <AppButton
-            variant="soft"
-            onClick={() => {
-              onAdd(draft, selectedCategory === "전체" ? "기타" : selectedCategory);
-              setDraft("");
-            }}
-          >
-            저장
-          </AppButton>
+      </div>
+      <div className="grid gap-2">
+        <AppInput value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="아이디어를 입력하세요" />
+        <AppTextarea value={draftBody} onChange={(event) => setDraftBody(event.target.value)} placeholder="세부 메모나 다음에 해볼 것을 적어두세요" className="min-h-20" />
+        <div className="max-w-48">
+          <AppSelect value={draftStatus} onChange={(event) => setDraftStatus(event.target.value)}>
+            {ideaStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+          </AppSelect>
         </div>
       </div>
-      <AppInput value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="아이디어를 입력하세요" />
       <div className="mt-3 flex flex-wrap gap-2">
         {["전체", ...ideaCategories].map((category) => (
           <button
             key={category}
             type="button"
             onClick={() => setSelectedCategory(category)}
-            className={`rounded-full px-3 py-2 text-xs font-black ${selectedCategory === category ? "bg-clover-deep text-white" : "bg-white/70 text-clover-sub"}`}
+            className={`rounded-full border px-4 py-2 text-xs font-black ${selectedCategory === category ? "border-clover-deep bg-clover-deep text-white" : "border-clover-line bg-white/70 text-clover-sub"}`}
           >
             {category}
           </button>
@@ -175,32 +224,25 @@ function IdeaManager({ ideas, selectedCategory, setSelectedCategory, onAdd, onUp
               <th className="px-4 py-3">제목</th>
               <th className="px-4 py-3">카테고리</th>
               <th className="px-4 py-3">상태</th>
-              <th className="px-4 py-3">등록일</th>
+              <th className="px-4 py-3">등록일 ↓</th>
               <th className="px-4 py-3">관리</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((idea) => (
-              <tr key={idea.id} className="border-t border-clover-line/70">
-                <td className="px-3 py-2">
-                  <AppInput value={idea.title || ""} onChange={(event) => onUpdate(idea.id, { title: event.target.value })} />
-                  <AppTextarea value={idea.body || ""} onChange={(event) => onUpdate(idea.id, { body: event.target.value })} placeholder="아이디어 메모" className="mt-2 min-h-16" />
+              <tr key={idea.id} className={`border-t border-clover-line/70 ${selectedId === idea.id ? "bg-emerald-50/60" : ""}`}>
+                <td className="px-4 py-3">
+                  <button type="button" onClick={() => selectIdea(idea)} className="max-w-[280px] truncate text-left font-bold text-clover-text">
+                    {idea.title || "제목 없음"}
+                  </button>
                 </td>
-                <td className="px-3 py-2">
-                  <AppSelect value={idea.category || "기타"} onChange={(event) => onUpdate(idea.id, { category: event.target.value })}>
-                    {ideaCategories.map((category) => <option key={category} value={category}>{category}</option>)}
-                  </AppSelect>
-                </td>
-                <td className="px-3 py-2">
-                  <AppSelect value={idea.status || "아이디어"} onChange={(event) => onUpdate(idea.id, { status: event.target.value })}>
-                    {ideaStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
-                  </AppSelect>
-                </td>
+                <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-xs font-black ${categoryTone(idea.category || "기타")}`}>{idea.category || "기타"}</span></td>
+                <td className="px-4 py-3"><span className={`rounded-full px-3 py-1 text-xs font-black ${statusTone(idea.status || "아이디어")}`}>{idea.status || "아이디어"}</span></td>
                 <td className="px-3 py-2 text-xs font-bold text-clover-sub">{idea.createdAt || "-"}</td>
                 <td className="px-3 py-2">
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => onPromote(idea)} className="rounded-full bg-clover-deep px-3 py-2 text-xs font-black text-white">실험</button>
-                    <button type="button" onClick={() => onDelete(idea)} className="rounded-full bg-red-50 px-3 py-2 text-xs font-black text-red-500">삭제</button>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button type="button" onClick={() => selectIdea(idea)} className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-clover-sub">수정</button>
+                    <button type="button" onClick={() => onDelete(idea)} className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-red-500">삭제</button>
                   </div>
                 </td>
               </tr>
@@ -208,6 +250,29 @@ function IdeaManager({ ideas, selectedCategory, setSelectedCategory, onAdd, onUp
           </tbody>
         </table>
         {!filtered.length && <p className="p-4 text-sm font-bold text-clover-sub">이 카테고리에는 아직 아이디어가 없어요.</p>}
+      </div>
+
+      <div className="mt-5 flex flex-wrap justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            if (selectedIdea) onDelete(selectedIdea);
+            clearSelection();
+          }}
+          className="rounded-[8px] border border-clover-line bg-white px-8 py-3 text-sm font-black text-clover-sub"
+        >
+          삭제
+        </button>
+        <button type="button" onClick={saveCurrent} className="rounded-[8px] border border-clover-deep bg-white px-8 py-3 text-sm font-black text-clover-deep">저장</button>
+        <button type="button" onClick={saveCurrent} className="rounded-[8px] border border-clover-deep bg-white px-8 py-3 text-sm font-black text-clover-deep">수정</button>
+        <button
+          type="button"
+          disabled={!selectedIdea}
+          onClick={() => selectedIdea && onPromote(selectedIdea)}
+          className="rounded-[8px] bg-clover-deep px-8 py-3 text-sm font-black text-white disabled:opacity-40"
+        >
+          실험 → Study 대기
+        </button>
       </div>
       <p className="mt-3 text-center text-xs font-bold text-clover-sub">실험 버튼을 누르면 해당 아이디어가 Study의 공부 대기로 이동됩니다.</p>
     </GlassCard>
@@ -304,11 +369,11 @@ export default function ArchivePage() {
   });
   const deleteQuote = (quote) => persist((next) => moveToTrash(next, "quotes", quote));
 
-  const addIdea = (title, category = "기타") => {
+  const addIdea = (title, category = "기타", body = "", status = "아이디어") => {
     const clean = title.trim();
     if (!clean) return;
     persist((next) => {
-      next.ideas = [{ id: makeId("idea"), title: clean, body: "", category, status: "아이디어", completed: false, createdAt: today, updatedAt: today }, ...(next.ideas || [])];
+      next.ideas = [{ id: makeId("idea"), title: clean, body, category, status, completed: false, createdAt: today, updatedAt: today }, ...(next.ideas || [])];
     });
   };
   const updateIdea = (id, updates) => persist((next) => {
@@ -366,8 +431,8 @@ export default function ArchivePage() {
         </div>
       </PageHeader>
 
-      <GlassCard className="mb-4">
-        <div className="grid gap-5 lg:grid-cols-[1fr_280px]">
+      <GlassCard className="mb-4 rounded-[8px] border border-clover-line bg-white/55 p-7">
+        <div className="grid gap-6 lg:grid-cols-[1fr_310px]">
           <div>
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <h2 className="text-2xl font-black">오늘의 질문</h2>
@@ -380,7 +445,7 @@ export default function ArchivePage() {
               value={answer}
               onChange={(event) => setAnswer(event.target.value)}
               placeholder="여기에 당신의 생각을 자유롭게 적어보세요..."
-              className="min-h-36"
+              className="min-h-36 rounded-[8px] border-clover-line bg-white/70"
               maxLength={1000}
               disabled={!dailyQuestion}
             />
@@ -390,10 +455,22 @@ export default function ArchivePage() {
             </div>
           </div>
 
-          <div className="grid content-center gap-4 border-clover-line/70 lg:border-l lg:pl-6">
-            <AppButton variant="soft" onClick={() => setMode("questions")}>질문 목록 관리</AppButton>
-            <AppButton variant="soft" onClick={() => setMode("answers")}>나 돌아보기</AppButton>
-            <AppButton onClick={saveAnswer} disabled={!dailyQuestion || !answer.trim()}>답변 저장</AppButton>
+          <div className="grid content-center gap-4 border-clover-line/80 lg:border-l lg:pl-8">
+            <button type="button" onClick={() => setMode("questions")} className="rounded-[8px] border border-clover-line bg-white/75 px-5 py-4 text-base font-black text-clover-text">
+              질문 목록 관리
+            </button>
+            <button type="button" onClick={() => setMode("answers")} className="rounded-[8px] border border-clover-line bg-white/75 px-5 py-4 text-base font-black text-clover-text">
+              나 돌아보기
+            </button>
+            <button
+              type="button"
+              onClick={saveAnswer}
+              disabled={!dailyQuestion || !answer.trim()}
+              className="rounded-[8px] bg-clover-deep px-5 py-4 text-base font-black text-white disabled:opacity-40"
+            >
+              답변 저장
+            </button>
+            <p className="text-center text-sm font-bold leading-6 text-clover-sub">답변한 질문은 자동으로 목록에서 제거됩니다.</p>
           </div>
         </div>
       </GlassCard>
