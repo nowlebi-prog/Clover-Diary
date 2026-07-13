@@ -55,6 +55,12 @@ export function getAllData() {
     }
     return normalize(JSON.parse(raw));
   } catch {
+    try {
+      const backup = JSON.parse(localStorage.getItem(STORAGE_KEYS.appDataBackup) || "null");
+      if (backup?.data) return normalize(backup.data);
+    } catch {
+      // Keep the app usable even if both the main data and backup are damaged.
+    }
     return normalize(initialData);
   }
 }
@@ -101,6 +107,11 @@ function scheduleCloudPush(data) {
 export function saveAllData(data, options = {}) {
   const normalized = normalize(data);
   localStorage.setItem(STORAGE_KEYS.appData, JSON.stringify(normalized));
+  try {
+    localStorage.setItem(STORAGE_KEYS.appDataBackup, JSON.stringify({ savedAt: new Date().toISOString(), data: normalized }));
+  } catch {
+    // Backup is best-effort so a full browser storage quota does not block normal saves.
+  }
   if (!options.silent) dispatchDataChange();
   if (!options.skipRemote) scheduleCloudPush(normalized);
 }
@@ -383,4 +394,3 @@ export function getUnregisteredGapYearExpenses() {
   const data = getAllData();
   return (data.expenses || []).filter((item) => !item.gapYearRegistered).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
-

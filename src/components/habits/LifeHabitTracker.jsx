@@ -5,7 +5,7 @@ import AppSelect from "../common/AppSelect";
 import { getAllData, saveAllData, toggleHabitLog } from "../../lib/storage/localStorageAdapter";
 import { getHabitCompletionRate, isHabitDoneOn, toDateKey } from "../../lib/utils/habitSelectors";
 
-const emojiOptions = ["🔥", "🏃", "💧", "🧘", "📚", "💊", "🍀", "💪", "✍️", "🧠", "🧹", "💗"];
+const emojiOptions = ["🏃", "💧", "💊", "🧘", "📚", "🧹", "🌿", "☕", "📝", "✨", "🍎", "💪"];
 
 const makeMonthDays = (base = new Date()) => {
   const year = base.getFullYear();
@@ -24,12 +24,14 @@ export default function LifeHabitTracker({ data, onChange }) {
   const start = days[0];
   const end = days[days.length - 1];
   const habits = (data.habits || []).filter((habit) => habit.status !== "archived");
+  const monthRate = habits.length
+    ? Math.round(habits.reduce((sum, habit) => sum + getHabitCompletionRate(habit.id, data.habitLogs || [], start, end), 0) / habits.length)
+    : 0;
 
   const toggle = (habit, date) => {
+    const wasDone = isHabitDoneOn(habit.id, data.habitLogs || [], date);
     toggleHabitLog(habit.id, date);
-    if (date === today && !isHabitDoneOn(habit.id, data.habitLogs || [], date)) {
-      setToast(`${habit.icon || "🙂"} 오늘도 해냈어요! 🙂`);
-    }
+    if (date === today && !wasDone) setToast(`${habit.icon || "✓"} 오늘도 해냈어요!`);
     onChange?.();
   };
 
@@ -44,17 +46,22 @@ export default function LifeHabitTracker({ data, onChange }) {
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-black text-clover-ink">🔥 습관 히트맵</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-black text-clover-ink">🔥 습관 히트맵</h2>
+            <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-800 shadow-sm">
+              {monthRate}% 달성 중!
+            </span>
+          </div>
           <p className="mt-1 text-xs font-bold text-clover-sub">{monthLabel()}</p>
         </div>
         <AppButton onClick={() => setManagerOpen(true)}>편집</AppButton>
       </div>
 
       <div className="overflow-x-auto pb-2">
-        <div className="min-w-[820px]">
+        <div className="min-w-[780px]">
           <div className="grid grid-cols-[150px_1fr] gap-3">
             <div />
-            <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(20px, 1fr))` }}>
+            <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(18px, 1fr))` }}>
               {days.map((date) => (
                 <span key={date} className={`text-center text-[10px] font-bold ${date === today ? "text-clover-deep" : "text-clover-sub/65"}`}>
                   {new Date(`${date}T00:00:00`).getDate()}
@@ -70,14 +77,14 @@ export default function LifeHabitTracker({ data, onChange }) {
               return (
                 <div key={habit.id} className="grid grid-cols-[150px_1fr] items-center gap-3">
                   <button onClick={() => toggle(habit, today)} className="flex min-w-0 items-center gap-2 rounded-xl px-1 py-1 text-left transition hover:bg-white/70">
-                    <span className="text-base">{habit.icon || "🍀"}</span>
+                    <span className="text-base">{habit.icon || "✓"}</span>
                     <span className="min-w-0">
-                      <span className="block truncate text-xs font-black text-clover-ink">{habit.name}</span>
+                      <span className="block truncate text-xs font-black text-clover-ink">{habit.name || "이름 없는 습관"}</span>
                       <span className="text-[10px] font-bold text-clover-sub">{rate}% · {doneToday ? "오늘 완료" : "오늘 미완료"}</span>
                     </span>
                   </button>
 
-                  <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(20px, 1fr))` }}>
+                  <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(18px, 1fr))` }}>
                     {days.map((date) => {
                       const done = isHabitDoneOn(habit.id, data.habitLogs || [], date);
                       const future = date > today;
@@ -113,7 +120,7 @@ function HabitManager({ data, today, onClose, onChange }) {
       {
         id: `habit-${Date.now()}`,
         name: "",
-        icon: "🔥",
+        icon: "🌿",
         color: "#14B8A6",
         frequencyType: "daily",
         targetCount: 7,
@@ -142,7 +149,7 @@ function HabitManager({ data, today, onClose, onChange }) {
       <section className="glass max-h-[86vh] w-full max-w-2xl overflow-auto rounded-[28px] bg-white p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-clover-deep">Habit editor</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-clover-deep">습관 편집</p>
             <h3 className="text-xl font-black">습관 추가/수정</h3>
           </div>
           <button className="rounded-full bg-slate-100 px-3 py-2 text-sm font-black" onClick={onClose}>닫기</button>
@@ -150,7 +157,7 @@ function HabitManager({ data, today, onClose, onChange }) {
         <div className="grid gap-3">
           {drafts.filter((habit) => habit.status !== "archived").map((habit) => (
             <div key={habit.id} className="grid gap-2 rounded-2xl bg-slate-50 p-3 md:grid-cols-[80px_1fr_120px_auto]">
-              <AppSelect value={habit.icon || "🔥"} onChange={(event) => updateDraft(habit.id, { icon: event.target.value })}>
+              <AppSelect value={habit.icon || "🌿"} onChange={(event) => updateDraft(habit.id, { icon: event.target.value })}>
                 {emojiOptions.map((item) => <option key={item} value={item}>{item}</option>)}
               </AppSelect>
               <AppInput value={habit.name || ""} onChange={(event) => updateDraft(habit.id, { name: event.target.value })} placeholder="습관 이름" />

@@ -249,6 +249,50 @@ function ShoppingQuickAdd({ items, draft, setDraft, onAdd, onToggle }) {
   );
 }
 
+function TodayRecordGraph({ entries, today }) {
+  const entryByDate = (entries || []).reduce((map, item) => ({ ...map, [item.date]: item }), {});
+  const days = Array.from({ length: 7 }, (_, index) => addDays(today, index - 6));
+  const hasRecord = days.some((date) => entryByDate[date]);
+
+  return (
+    <Link to="/journal" className="glass rounded-[24px] bg-sky-50/70 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-700">오늘의 기록</p>
+          <p className="mt-1 text-sm font-bold text-clover-sub">기분과 수면 흐름</p>
+        </div>
+        <span className="rounded-full bg-white/75 px-3 py-1 text-xs font-black text-sky-700">기록하기</span>
+      </div>
+      <div className="mt-4 h-28 rounded-2xl bg-white/55 p-3">
+        {hasRecord ? (
+          <div className="flex h-full items-end justify-between gap-2">
+            {days.map((date) => {
+              const entry = entryByDate[date] || {};
+              const mood = Math.max(0, Math.min(5, Number(entry.score || 0)));
+              const sleep = Math.max(0, Math.min(12, Number(entry.sleepHours || 0)));
+              return (
+                <div key={date} className="flex flex-1 flex-col items-center gap-1">
+                  <div className="flex h-20 w-full items-end justify-center gap-1">
+                    <span className="w-2 rounded-t-full bg-teal-400" style={{ height: mood ? `${Math.max(14, mood * 16)}%` : "8%" }} title={`기분 ${mood || "-"}점`} />
+                    <span className="w-2 rounded-t-full bg-sky-300" style={{ height: sleep ? `${Math.max(14, sleep * 7)}%` : "8%" }} title={`수면 ${sleep || "-"}시간`} />
+                  </div>
+                  <span className={`text-[10px] font-black ${date === today ? "text-clover-deep" : "text-clover-sub/70"}`}>{Number(date.slice(-2))}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid h-full place-items-center text-sm font-bold text-clover-sub">아직 기록이 없어요.</div>
+        )}
+      </div>
+      <div className="mt-3 flex items-center gap-4 text-[11px] font-black text-clover-sub">
+        <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-teal-400" />기분</span>
+        <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-sky-300" />수면</span>
+      </div>
+    </Link>
+  );
+}
+
 function ChoreSettings({ chores, shoppingItems, choreDraft, setChoreDraft, shoppingDraft, setShoppingDraft, today, onAddChore, onDeleteChore, onAddShopping, onToggleShopping, onUpdateShopping, onDeleteShopping }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
@@ -466,7 +510,10 @@ export default function LifePage() {
 
         {tab === "overview" && (
           <>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 lg:grid-cols-[.85fr_1.15fr]">
+              <TodayRecordGraph entries={data.moodEntries || []} today={today} />
+            </div>
+            <div className="hidden">
               <Link to="/habits" className="glass rounded-[24px] bg-emerald-50/70 p-4">
                 <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">Habit tracker</p>
                 <p className="mt-2 text-3xl font-black">{habitRate}%</p>

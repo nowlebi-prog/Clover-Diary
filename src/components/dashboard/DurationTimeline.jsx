@@ -5,7 +5,7 @@ import SectionTitle from "../common/SectionTitle";
 
 const hours = Array.from({ length: 24 }, (_, index) => index);
 
-const pad = (hour) => `${String(hour).padStart(2, "0")}:00`;
+const padHour = (hour) => `${String(hour).padStart(2, "0")}:00`;
 
 const hourOf = (item) => {
   const raw = item.time || item.startTime || item.startedAt;
@@ -22,11 +22,44 @@ const endHourOf = (item) => {
   return match ? Number(match[1]) : null;
 };
 
+const parseQuickTimeline = (text) => {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const entries = [];
+  const invalid = [];
+
+  lines.forEach((line) => {
+    const match = line.match(/^(\d{1,2}):?(\d{2})?\s*[~-]\s*(\d{1,2}):?(\d{2})?\s+(.+)$/);
+    if (!match) {
+      invalid.push(line);
+      return;
+    }
+
+    const startHour = Number(match[1]);
+    const startMinute = Number(match[2] || "00");
+    const endHour = Number(match[3]);
+    const endMinute = Number(match[4] || "00");
+    const title = match[5].trim();
+    const validTime = startHour >= 0 && startHour <= 23 && endHour >= 0 && endHour <= 24 && startMinute >= 0 && startMinute <= 59 && endMinute >= 0 && endMinute <= 59;
+
+    if (!validTime || !title) {
+      invalid.push(line);
+      return;
+    }
+
+    entries.push({ startHour, startMinute, endHour, endMinute, title });
+  });
+
+  return { entries, invalid };
+};
+
 export default function DurationTimeline({ items = [], date, onSaveEntries }) {
   const [drafts, setDrafts] = useState({});
   const [dragStart, setDragStart] = useState(null);
   const [dragEnd, setDragEnd] = useState(null);
   const [rangeTitle, setRangeTitle] = useState("");
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickText, setQuickText] = useState("");
+  const [quickError, setQuickError] = useState("");
   const dirtyEntries = useMemo(() => Object.entries(drafts).filter(([, value]) => value.trim()), [drafts]);
   const rangeMin = dragStart === null || dragEnd === null ? null : Math.min(dragStart, dragEnd);
   const rangeMax = dragStart === null || dragEnd === null ? null : Math.max(dragStart, dragEnd);
@@ -44,16 +77,22 @@ export default function DurationTimeline({ items = [], date, onSaveEntries }) {
   const saveDrafts = () => {
     const entries = dirtyEntries.map(([hour, title]) => ({
       startHour: Number(hour),
+      startMinute: 0,
       endHour: Number(hour) + 1,
+      endMinute: 0,
       title: title.trim()
     }));
+
     if (rangeMin !== null && rangeMax !== null && rangeTitle.trim()) {
       entries.push({
         startHour: rangeMin,
+        startMinute: 0,
         endHour: Math.min(24, rangeMax + 1),
+        endMinute: 0,
         title: rangeTitle.trim()
       });
     }
+
     if (!entries.length) return;
     onSaveEntries?.(entries);
     setDrafts({});
@@ -62,15 +101,60 @@ export default function DurationTimeline({ items = [], date, onSaveEntries }) {
     setRangeTitle("");
   };
 
+  const saveQuickTimeline = () => {
+    const { entries, invalid } = parseQuickTimeline(quickText);
+    if (invalid.length) {
+      setQuickError(`형식을 확인해주세요: ${invalid[0]}`);
+      return;
+    }
+    if (!entries.length) {
+      setQuickError("추가할 타임라인을 입력해주세요.");
+      return;
+    }
+    onSaveEntries?.(entries);
+    setQuickText("");
+    setQuickError("");
+    setQuickOpen(false);
+  };
+
   return (
     <section className="glass relative rounded-[28px] bg-[#FFFDF5]/75 p-5">
-      <SectionTitle action={<AppButton variant="soft" onClick={saveDrafts}>타임블록 저장</AppButton>}>오늘 일정 / 타임블록</SectionTitle>
+      <SectionTitle
+        action={
+          <div className="flex flex-wrap gap-2">
+            <AppButton variant="soft" onClick={() => setQuickOpen((value) => !value)}>빠른 타임라인 추가</AppButton>
+            <AppButton variant="soft" onClick={saveDrafts}>타임블록 저장</AppButton>
+          </div>
+        }
+      >
+        오늘 일정 / 타임블록
+      </SectionTitle>
+
+      {quickOpen && (
+        <div className="mb-4 rounded-[22px] bg-white/70 p-4">
+          <p className="mb-2 text-sm font-black text-clover-ink">한 줄에 하나씩 입력해주세요</p>
+          <textarea
+            value={quickText}
+            onChange={(event) => {
+              setQuickText(event.target.value);
+              setQuickError("");
+            }}
+            placeholder={"09:00~10:00 기상\n13:00~15:00 어쩌구"}
+            className="min-h-28 w-full resize-y rounded-2xl border border-transparent bg-white/80 px-4 py-3 text-sm font-bold text-clover-text outline-none transition placeholder:text-clover-sub/60 focus:border-clover-primary focus:ring-2 focus:ring-clover-primary/25"
+          />
+          {quickError && <p className="mt-2 text-xs font-black text-red-500">{quickError}</p>}
+          <div className="mt-3 flex justify-end gap-2">
+            <AppButton variant="soft" onClick={() => { setQuickOpen(false); setQuickError(""); }}>닫기</AppButton>
+            <AppButton onClick={saveQuickTimeline}>추가</AppButton>
+          </div>
+        </div>
+      )}
 
       {rangeMin !== null && rangeMax !== null && (
         <div className="mb-4 rounded-[22px] bg-emerald-50 p-4">
-          <p className="text-sm font-black text-emerald-700">{pad(rangeMin)} - {pad(Math.min(24, rangeMax + 1))}</p>
+          <p className="text-sm font-black text-emerald-700">{padHour(rangeMin)} - {padHour(Math.min(24, rangeMax + 1))}</p>
           <div className="mt-2 flex gap-2">
-            <AppInput value={rangeTitle} onChange={(event) => setRangeTitle(event.target.value)} placeholder="이 시간에 할 일을 적어주세요." />
+            <AppInput value={rangeTitle} onChange={(event) => setRangeTitle(event.target.value)} placeholder="선택한 시간에 할 일을 적어주세요" />
             <AppButton onClick={saveDrafts}>저장</AppButton>
           </div>
         </div>
@@ -96,7 +180,7 @@ export default function DurationTimeline({ items = [], date, onSaveEntries }) {
               }}
               className={`grid min-h-14 cursor-crosshair grid-cols-[48px_1fr] gap-3 border-b border-clover-line/70 ${inRange ? "bg-emerald-100/45" : ""}`}
             >
-              <div className="pt-2 text-right text-xs font-black text-clover-sub">{pad(hour)}</div>
+              <div className="pt-2 text-right text-xs font-black text-clover-sub">{padHour(hour)}</div>
               <div className="relative py-1">
                 <span className="absolute left-0 top-0 h-full w-px bg-clover-line" />
                 <div className="ml-4 grid gap-1">
@@ -122,7 +206,7 @@ export default function DurationTimeline({ items = [], date, onSaveEntries }) {
       </div>
 
       <p className="mt-3 text-xs font-bold text-clover-sub">
-        시간을 드래그해서 영역을 잡거나, 각 시간 줄에 바로 입력할 수 있어요. 예: 9시부터 12시까지 드래그하면 09:00-12:00 블록으로 저장됩니다.
+        시간 줄을 드래그하거나, 빠른 타임라인 추가에 여러 줄을 붙여넣으면 한 번에 저장돼요.
       </p>
     </section>
   );

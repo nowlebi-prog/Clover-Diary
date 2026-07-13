@@ -54,9 +54,9 @@ export default function WorkPage() {
       const newEntries = entries.map((entry) => ({
         id: makeId("timeline"),
         date: today,
-        time: pad(entry.startHour ?? entry.hour ?? 0),
-        startTime: pad(entry.startHour ?? entry.hour ?? 0),
-        endTime: pad(entry.endHour ?? (entry.startHour ?? entry.hour ?? 0) + 1),
+        time: `${String(entry.startHour ?? entry.hour ?? 0).padStart(2, "0")}:${String(entry.startMinute ?? 0).padStart(2, "0")}`,
+        startTime: `${String(entry.startHour ?? entry.hour ?? 0).padStart(2, "0")}:${String(entry.startMinute ?? 0).padStart(2, "0")}`,
+        endTime: `${String(entry.endHour ?? (entry.startHour ?? entry.hour ?? 0) + 1).padStart(2, "0")}:${String(entry.endMinute ?? 0).padStart(2, "0")}`,
         title: entry.title,
         memo: "",
         createdAt: savedAt,
