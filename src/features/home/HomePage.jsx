@@ -258,7 +258,7 @@ export default function HomePage() {
       <PageHeader eyebrow={today} title="오늘의 현황">
         <div className="flex flex-wrap items-center gap-2">
           <WeatherCard />
-          <Link to={`/life?tab=todos&date=${today}`}><AppButton variant="soft">전체 할일</AppButton></Link>
+          <Link to={`/schedule?date=${today}`}><AppButton variant="soft">전체 할일</AppButton></Link>
           <AppButton variant="soft" onClick={refreshNow}>새로고침</AppButton>
           <AppButton variant="soft" onClick={() => window.dispatchEvent(new CustomEvent("clover-open-quick-add", { detail: "memo" }))}>빠른 메모</AppButton>
           <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
@@ -288,14 +288,14 @@ export default function HomePage() {
         month={calendarMonth.month}
         itemsByDate={monthItems}
         selectedDate={today}
-        onSelectDate={(date) => navigate(`/life?tab=todos&date=${date}`)}
+        onSelectDate={(date) => navigate(`/schedule?date=${date}`)}
         onMoveMonth={(amount) => setCalendarMonth((current) => {
           const next = new Date(current.year, current.month + amount, 1);
           return { year: next.getFullYear(), month: next.getMonth() };
         })}
         onToday={() => {
           setCalendarMonth({ year: now.getFullYear(), month: now.getMonth() });
-          navigate(`/life?tab=todos&date=${today}`);
+          navigate(`/schedule?date=${today}`);
         }}
       />
 
