@@ -377,15 +377,15 @@ function Timeline({ selectedDate, items, quickText, onQuickText, onApplyQuick, o
         <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-sub">시간 있는 일정만 표시</span>
       </div>
 
-      <div className="mb-5 rounded-[16px] border border-clover-line bg-white/70 p-3">
-        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-          <label className="grid gap-2 text-sm font-black">
+      <div className="mb-3 rounded-[14px] border border-clover-line bg-white/70 p-2.5">
+        <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
+          <label className="grid gap-1.5 text-sm font-black">
             빠른 입력
             <AppTextarea
               value={quickText}
               onChange={(event) => onQuickText(event.target.value)}
               placeholder={"09:00~12:00 밥\n12:00~13:00 술"}
-              className="min-h-[88px] bg-white/80 text-sm"
+              className="min-h-[54px] bg-white/80 py-2 text-sm leading-5"
             />
           </label>
           <AppButton onClick={onApplyQuick}>자동 반영</AppButton>
@@ -408,6 +408,70 @@ function Timeline({ selectedDate, items, quickText, onQuickText, onApplyQuick, o
               <div className="grid content-start gap-2 py-2">
                 {hourItems.map((item) => (
                   <article key={`${item.collection}-${item.id}`} className={`grid grid-cols-[130px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-4 py-2.5 text-sm shadow-sm max-sm:grid-cols-[1fr_auto] ${categoryMeta[item.category]?.block || categoryMeta["기타"].block}`}>
+                    <span className="text-xs font-black max-sm:hidden">{timeText(item)}</span>
+                    <b className="min-w-0 truncate">{item.title}</b>
+                    <div className="flex gap-1">
+                      <button type="button" onClick={() => onEdit(item)} className="rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-black">수정</button>
+                      <button type="button" onClick={() => onDelete(item)} className="rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-black">삭제</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {!timedItems.length && <p className="mt-3 rounded-[14px] bg-white/55 p-4 text-sm font-bold text-clover-sub">시간이 정해진 일정이 아직 없어요.</p>}
+      </div>
+    </GlassCard>
+  );
+}
+
+function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQuick, onEdit, onDelete }) {
+  const timedItems = items.filter((item) => item.startTime && item.endTime && !item.isAllDay && !item.isUnscheduled);
+  const current = new Date();
+  const isToday = selectedDate === toDateKey(current);
+  const currentTop = ((current.getHours() - 8) * 60 + current.getMinutes()) * 0.9;
+
+  return (
+    <GlassCard className="rounded-[22px] border border-clover-line bg-white/88 p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-end gap-3">
+          <SectionTitle>타임라인</SectionTitle>
+          <span className="text-sm font-black text-clover-sub">{Number(selectedDate.slice(5, 7))}월 {Number(selectedDate.slice(8))}일</span>
+        </div>
+        <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-sub">시간 있는 일정만 표시</span>
+      </div>
+
+      <div className="mb-3 rounded-[14px] border border-clover-line bg-white/70 p-2.5">
+        <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
+          <label className="grid gap-1.5 text-sm font-black">
+            빠른 입력
+            <AppTextarea
+              value={quickText}
+              onChange={(event) => onQuickText(event.target.value)}
+              placeholder={"예시: 09:00~10:00 회의\n13:00~15:00 자료 정리"}
+              className="min-h-[54px] bg-white/80 py-2 text-sm leading-5"
+            />
+          </label>
+          <AppButton className="min-h-10 px-4 py-2" onClick={onApplyQuick}>자동 반영</AppButton>
+        </div>
+      </div>
+
+      <div className="relative">
+        {isToday && current.getHours() >= 8 && current.getHours() <= 23 && (
+          <div className="pointer-events-none absolute left-[58px] right-0 z-20 flex items-center" style={{ top: `${Math.max(0, currentTop)}px` }}>
+            <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{formatTime(`${current.getHours()}:${current.getMinutes()}`)}</span>
+            <span className="h-px flex-1 bg-red-400" />
+          </div>
+        )}
+        {hours.map((hour) => {
+          const hourItems = timedItems.filter((item) => Number((item.startTime || "99").slice(0, 2)) === hour);
+          return (
+            <div key={hour} className="grid min-h-[54px] grid-cols-[52px_1fr] gap-4 border-b border-dashed border-slate-200">
+              <div className="pt-3 text-right text-xs font-black text-clover-sub">{String(hour).padStart(2, "0")}:00</div>
+              <div className="grid content-start gap-2 py-2">
+                {hourItems.map((item) => (
+                  <article key={`${item.collection}-${item.id}`} className={`grid grid-cols-[130px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-4 py-2.5 text-sm shadow-sm max-sm:grid-cols-[1fr_auto] ${categoryMeta[item.category]?.block || categoryMeta["湲고?"].block}`}>
                     <span className="text-xs font-black max-sm:hidden">{timeText(item)}</span>
                     <b className="min-w-0 truncate">{item.title}</b>
                     <div className="flex gap-1">
@@ -686,7 +750,7 @@ export default function SchedulePage() {
   });
   const [filter, setFilter] = useState("전체");
   const [editing, setEditing] = useState(null);
-  const [quickText, setQuickText] = useState("09:00~10:30 클라이언트 수정본 전달\n14:00~15:00 콘텐츠 발행 점검");
+  const [quickText, setQuickText] = useState("");
 
   const load = () => setData(getAllData());
   useEffect(() => {
@@ -876,7 +940,7 @@ export default function SchedulePage() {
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(340px,.8fr)]">
-        <Timeline
+        <TimelineCompact
           selectedDate={selectedDate}
           items={selectedItems}
           quickText={quickText}
