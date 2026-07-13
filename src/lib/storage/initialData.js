@@ -8,7 +8,7 @@ export const collections = [
   "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
   "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
   "moodEntries", "monthlyArchives", "studyCaptures", "studyCategories", "studyNotes", "studyCards", "studyExperiments", "studyWorkflows",
-  "workSessions", "savings", "gapYearBudgets", "deletedItems"
+  "workSessions", "savings", "deletedItems"
 ];
 
 export const DEFAULT_WORK_CATEGORIES = ["업무", "회의", "기획", "잡무"];
@@ -17,8 +17,7 @@ export const initialData = {
   todos: [
     { id: "todo-1", title: "클라이언트 수정본 전달", category: "업무", priority: "high", dueDate: today, completed: false, project: "A안 제안서", assignee: "", tagColor: "mint", memo: "", createdAt: today, updatedAt: today },
     { id: "todo-2", title: "인스타 카드뉴스 가격표 수정", category: "콘텐츠", priority: "normal", dueDate: today, completed: false, project: "개인 브랜딩", assignee: "", tagColor: "lavender", memo: "", createdAt: today, updatedAt: today },
-    { id: "todo-3", title: "비닐래 버리기", category: "집안일", priority: "low", dueDate: tomorrow, completed: false, project: "", assignee: "", tagColor: "cream", memo: "", createdAt: today, updatedAt: today },
-    { id: "todo-gapyear-budget", title: "갭이어 예산 올리기", category: "돈관리", priority: "high", dueDate: today, recurring: "daily", completed: false, project: "갭이어", assignee: "", tagColor: "rose", memo: "매일 지출 입력 후 예산 업로드 체크", createdAt: today, updatedAt: today }
+    { id: "todo-3", title: "비닐래 버리기", category: "집안일", priority: "low", dueDate: tomorrow, completed: false, project: "", assignee: "", tagColor: "cream", memo: "", createdAt: today, updatedAt: today }
   ],
   top3: [
     { id: "top-1", title: "클라이언트 수정본 전달", completed: false, date: today, createdAt: today, updatedAt: today },
@@ -66,7 +65,6 @@ export const initialData = {
   campaignParticipants: [{ id: "part-1", campaignId: "camp-1", name: "eunbibi", instagram: "@eunbibi", blogUrl: "", contact: "", appliedDate: today, selectedStatus: "미확정", shippingStatus: "미발송", uploadStatus: "미업로드", contentUrl: "", memo: "", createdAt: today, updatedAt: today }],
   importantFiles: [{ id: "file-1", name: "A안 계약서", category: "계약서", url: "https://example.com", project: "A안 제안서", important: true, memo: "원본 링크", createdAt: today, updatedAt: today }]
 };
-initialData.gapYearBudgets = [];
 
 initialData.studyCategories = [
   { id: "study-cat-1", name: "AI 기초", icon: "AI", order: 1, isDefault: true },

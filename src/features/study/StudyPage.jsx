@@ -8,7 +8,6 @@ import Modal from "../../components/common/Modal";
 import PageHeader from "../../components/layout/PageHeader";
 import SectionTitle from "../../components/common/SectionTitle";
 import StatusBadge from "../../components/common/StatusBadge";
-import SubPageTabs from "../../components/common/SubPageTabs";
 import {
   createCapture,
   createExperimentFromCapture,
@@ -892,16 +891,9 @@ export default function StudyPage() {
 
       <p className="mb-4 max-w-2xl text-sm font-bold text-clover-sub">저장한 자료를 다시 보고, 실험하고, 내 일에 쓰는 방식으로 바꾸는 공간이에요.</p>
 
-      <SubPageTabs
-        items={[
-          { key: "home", label: "개요", active: tab === "home", onClick: () => setTab("home") },
-          { key: "inbox", label: "캡처", active: tab === "inbox", onClick: () => setTab("inbox") },
-          { key: "notes", label: "노트", active: tab === "notes", onClick: () => setTab("notes") },
-          { key: "archive", label: "아카이브", active: tab === "archive", onClick: () => setTab("archive") },
-          { key: "experiments", label: "실험", active: tab === "experiments", onClick: () => setTab("experiments") },
-          { key: "workflows", label: "워크플로우", active: tab === "workflows", onClick: () => setTab("workflows") }
-        ]}
-      />
+      <div className="mb-4 flex gap-2 overflow-x-auto pb-1 thin-scroll">
+        {tabs.map(([value, label]) => <Chip key={value} active={tab === value} onClick={() => setTab(value)}>{label}</Chip>)}
+      </div>
 
       {content}
 
