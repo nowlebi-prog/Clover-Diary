@@ -6,9 +6,10 @@ const items = [
   { to: "/", label: "Home", paths: ["/"] },
   { to: "/schedule", label: "Schedule", paths: ["/schedule"] },
   { to: "/work", label: "Work", paths: ["/work", "/tasks", "/daily", "/campaigns", "/files", "/worklog"] },
-  { to: "/life", label: "Life", paths: ["/life", "/habits", "/journal", "/mandalart", "/calendar", "/memo"] },
+  { to: "/life", label: "Life", paths: ["/life", "/habits", "/journal", "/mandalart", "/calendar"] },
   { to: "/study", label: "Study", paths: ["/study"] },
   { to: "/money", label: "Money", paths: ["/money"] },
+  { to: "/memo", label: "Memo", paths: ["/memo"] },
   { to: "/archive", label: "Archive", paths: ["/archive"] }
 ];
 

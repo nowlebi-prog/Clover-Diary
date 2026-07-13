@@ -4,7 +4,7 @@ const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 export const collections = [
   "todos", "top3", "delayedTasks", "habits", "habitLogs", "events", "timelineEntries",
   "chores", "shoppingItems", "supplies", "expenses", "subscriptions", "payments",
-  "reflections", "quotes", "ideas", "links", "inboxMemos", "contentPlans",
+  "reflections", "quotes", "ideas", "links", "inboxMemos", "memoPosts", "contentPlans",
   "campaigns", "campaignParticipants", "importantFiles", "goals", "gratitudeEntries",
   "questionPrompts", "questionAnswers", "timeSessions", "recurringEvents", "beautyItems", "digitalCareLogs",
   "moodEntries", "dailyRecords", "monthlyArchives", "studyCaptures", "studyCategories", "studyNotes", "studyCards", "studyExperiments", "studyWorkflows",

@@ -327,7 +327,7 @@ function RecentActivity({ data, today }) {
     ...(data.todos || []).map((item) => ({ ...item, kind: "Work" })),
     ...(data.events || []).map((item) => ({ ...item, kind: "Schedule" })),
     ...(data.habitLogs || []).map((item) => ({ ...item, kind: "Life", title: "습관 체크" })),
-    ...(data.inboxMemos || []).map((item) => ({ ...item, kind: "Memo", title: item.body })),
+    ...(data.memoPosts || data.inboxMemos || []).map((item) => ({ ...item, kind: "Memo", title: item.title || item.body })),
     ...(data.payments || []).map((item) => ({ ...item, kind: "Money" })),
     ...(data.reflections || []).map((item) => ({ ...item, kind: "Journal", title: item.body || item.memo })),
     ...(data.studyCaptures || []).map((item) => ({ ...item, kind: "Study" }))
@@ -451,7 +451,7 @@ export default function HomePage() {
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(320px,.85fr)_minmax(0,1.15fr)]">
         <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
-          <QuickMemoPad memos={data.inboxMemos || []} />
+          <QuickMemoPad memos={data.memoPosts || data.inboxMemos || []} />
           <Link to="/memo" className="mt-2 inline-block text-xs font-black text-clover-deep underline decoration-dotted">메모장 전체 보기</Link>
         </GlassCard>
         <RecentActivity data={data} today={today} />

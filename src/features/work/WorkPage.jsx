@@ -184,8 +184,7 @@ function WorkMemoPad({ today, onChange }) {
 
 function WorkTabs() {
   const tabs = [
-    { label: "근무일지", href: "#worklog" },
-    { label: "메모장", href: "#memo" }
+    { label: "근무일지", href: "#worklog" }
   ];
   return (
     <nav className="mb-4 flex gap-2 overflow-x-auto rounded-[18px] border border-clover-line bg-white/55 p-2 shadow-sm">
@@ -356,7 +355,7 @@ export default function WorkPage() {
         <WorkStats sessions={sessions} categories={categories} today={today} weeklyGoalHours={weeklyGoalHours} onWeeklyGoalHoursChange={saveWeeklyGoal} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(320px,0.85fr)]">
+      <div className="grid gap-4 xl:grid-cols-2">
         <WorkCalendarCard
           year={calendarMonth.year}
           month={calendarMonth.month}
@@ -376,9 +375,6 @@ export default function WorkPage() {
           </div>
           <TodayTimeline items={todayItems} onToggleNeedMove={toggleTodoNeedMove} />
         </GlassCard>
-        <div id="memo" className="xl:col-span-2 2xl:col-span-1">
-          <WorkMemoPad today={today} onChange={load} />
-        </div>
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
