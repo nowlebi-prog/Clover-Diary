@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import AppButton from "../common/AppButton";
+import AppInput from "../common/AppInput";
+import AppSelect from "../common/AppSelect";
 import AppTextarea from "../common/AppTextarea";
 import GlassCard from "../common/GlassCard";
 import SessionCard from "./SessionCard";
-import { getWorkLogNote, saveWorkLogNote } from "../../lib/storage/localStorageAdapter";
+import { createWorkSession, getWorkLogNote, saveWorkLogNote } from "../../lib/storage/localStorageAdapter";
 import { addDays } from "../../lib/utils/date";
 import { fmtDateLabel, fmtHM } from "../../lib/utils/workUtils";
 
@@ -17,11 +19,29 @@ const FILTERS = [
 export default function WorkLog({ sessions = [], categories = [], today, onChange }) {
   const [filter, setFilter] = useState("today");
   const [note, setNote] = useState("");
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manual, setManual] = useState(() => ({
+    date: today,
+    title: "",
+    category: categories[0]?.name || "업무",
+    start: "09:00",
+    end: "10:00",
+    memo: ""
+  }));
+  const [manualError, setManualError] = useState("");
 
   useEffect(() => {
     const saved = getWorkLogNote(today);
     setNote(saved.body || saved.nextTodo || "");
   }, [today]);
+
+  useEffect(() => {
+    setManual((current) => ({
+      ...current,
+      date: current.date || today,
+      category: current.category || categories[0]?.name || "업무"
+    }));
+  }, [categories, today]);
 
   const todaySessions = useMemo(() => sessions.filter((session) => session.date === today), [sessions, today]);
   const todayTotal = todaySessions.reduce((sum, session) => sum + (session.duration || 0), 0);
@@ -51,6 +71,45 @@ export default function WorkLog({ sessions = [], categories = [], today, onChang
       nextTodo: note,
       updatedAt: new Date().toISOString()
     });
+    onChange?.();
+  };
+
+  const timeToMs = (dateKey, timeValue) => {
+    const [hour = 0, minute = 0] = String(timeValue || "00:00").split(":").map(Number);
+    const date = new Date(`${dateKey}T00:00:00`);
+    date.setHours(hour, minute, 0, 0);
+    return date.getTime();
+  };
+
+  const saveManualSession = () => {
+    const title = manual.title.trim();
+    if (!title) {
+      setManualError("업무명을 적어주세요.");
+      return;
+    }
+    const startTime = timeToMs(manual.date, manual.start);
+    let endTime = timeToMs(manual.date, manual.end);
+    if (endTime <= startTime) endTime += 24 * 3600 * 1000;
+    const duration = Math.max(0, Math.round((endTime - startTime) / 1000));
+    createWorkSession({
+      title,
+      actualWork: title,
+      category: manual.category || categories[0]?.name || "업무",
+      date: manual.date,
+      startTime,
+      endTime,
+      duration,
+      pauseSec: 0,
+      pauses: [],
+      memos: manual.memo.trim() ? [{ id: `memo-${Date.now()}`, text: manual.memo.trim(), phase: "note" }] : [],
+      categoryLog: [{ category: manual.category || categories[0]?.name || "업무", start: startTime, end: endTime }],
+      manual: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    setManual((current) => ({ ...current, title: "", memo: "" }));
+    setManualError("");
+    setFilter("today");
     onChange?.();
   };
 
@@ -87,6 +146,43 @@ export default function WorkLog({ sessions = [], categories = [], today, onChang
           placeholder="오늘 업무 흐름, 막힌 점, 내일 이어갈 일을 따로 적어두세요."
           className="min-h-[120px]"
         />
+      </div>
+
+      <div className="mt-4 rounded-[22px] border border-clover-line bg-white/55 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-black text-clover-ink">타이머 깜빡했을 때</h3>
+            <p className="text-xs font-bold text-clover-sub">이미 한 업무 시간을 직접 추가할 수 있어요.</p>
+          </div>
+          <AppButton variant="soft" onClick={() => setManualOpen((value) => !value)}>
+            {manualOpen ? "닫기" : "+ 수동 기록 추가"}
+          </AppButton>
+        </div>
+        {manualOpen && (
+          <div className="mt-4 grid gap-3">
+            <div className="grid gap-3 md:grid-cols-[1fr_1.4fr_1fr]">
+              <label className="grid gap-1 text-sm font-bold">날짜<AppInput type="date" value={manual.date} onChange={(event) => setManual((current) => ({ ...current, date: event.target.value }))} /></label>
+              <label className="grid gap-1 text-sm font-bold">업무명<AppInput value={manual.title} onChange={(event) => setManual((current) => ({ ...current, title: event.target.value }))} placeholder="예: 클라이언트 수정본 전달" /></label>
+              <label className="grid gap-1 text-sm font-bold">
+                카테고리
+                <AppSelect value={manual.category} onChange={(event) => setManual((current) => ({ ...current, category: event.target.value }))}>
+                  {(categories.length ? categories : [{ name: "업무" }, { name: "회의" }, { name: "기획" }, { name: "잡무" }]).map((category) => (
+                    <option key={category.name} value={category.name}>{category.name}</option>
+                  ))}
+                </AppSelect>
+              </label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm font-bold">시작<AppInput type="time" value={manual.start} onChange={(event) => setManual((current) => ({ ...current, start: event.target.value }))} /></label>
+              <label className="grid gap-1 text-sm font-bold">종료<AppInput type="time" value={manual.end} onChange={(event) => setManual((current) => ({ ...current, end: event.target.value }))} /></label>
+            </div>
+            <label className="grid gap-1 text-sm font-bold">메모<AppTextarea value={manual.memo} onChange={(event) => setManual((current) => ({ ...current, memo: event.target.value }))} placeholder="선택 사항" className="min-h-[74px]" /></label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {manualError ? <p className="text-xs font-black text-clover-danger">{manualError}</p> : <span />}
+              <AppButton onClick={saveManualSession}>기록 저장</AppButton>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="my-5 border-t border-dashed border-clover-sub/20" />
