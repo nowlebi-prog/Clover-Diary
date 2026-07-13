@@ -1,186 +1,40 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import AppButton from "../../components/common/AppButton";
+import AppSelect from "../../components/common/AppSelect";
+import CustomCheckbox from "../../components/common/CustomCheckbox";
 import GlassCard from "../../components/common/GlassCard";
 import SectionTitle from "../../components/common/SectionTitle";
+import StatusBadge from "../../components/common/StatusBadge";
 import WeatherCard from "../../components/dashboard/WeatherCard";
 import QuickMemoPad from "../../components/dashboard/QuickMemoPad";
 import PageHeader from "../../components/layout/PageHeader";
-import { getAllData, syncAllDataFromCloud, updateTop3 } from "../../lib/storage/localStorageAdapter";
+import {
+  endActiveSession,
+  getActiveSession,
+  getAllData,
+  getWorkCategories,
+  pauseActiveSession,
+  resumeActiveSession,
+  saveAllData,
+  startActiveSession,
+  syncAllDataFromCloud,
+  updateTodo,
+  updateTop3
+} from "../../lib/storage/localStorageAdapter";
 import { getTodayHabitStatus } from "../../lib/utils/habitSelectors";
-import { addDays, toDateKey } from "../../lib/utils/date";
-import { getMonthCalendarItems, getTodayItems, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
-import HomeMonthCalendar from "./components/HomeMonthCalendar";
-import TodayTopThree from "./components/TodayTopThree";
+import { addDays, daysBetween, toDateKey } from "../../lib/utils/date";
+import { getTodayItems, getUpcomingDeadlines } from "../../lib/utils/dashboardSelectors";
+import { computeElapsed, fmtHM, fmtHMS } from "../../lib/utils/workUtils";
 
 const titleOf = (item) => item.title || item.name || item.project || item.body || item.text || item.displayTitle || "기록";
 const dateOf = (item) => item.updatedAt || item.createdAt || item.date || item.dueDate || item.expectedDate || "";
 
-const money = (value) => `${Number(value || 0).toLocaleString("ko-KR")}원`;
-
-const mergeCalendarItems = (data, dates) => {
-  const months = [...new Set(dates.map((date) => date.slice(0, 7)))];
-  return months.reduce((merged, monthKey) => {
-    const [year, month] = monthKey.split("-").map(Number);
-    return { ...merged, ...getMonthCalendarItems(data, year, month - 1) };
-  }, {});
-};
-
-const scheduleCategoryOf = (item) => {
-  const raw = `${item.category || item.project || item.kind || item.type || ""}`.toLowerCase();
-  if (item.type === "payment" || item.type === "expense" || raw.includes("money") || raw.includes("돈")) return "결제";
-  if (raw.includes("업무") || raw.includes("work") || raw.includes("콘텐츠") || raw.includes("캠페인")) return "업무";
-  return "개인";
-};
-
-function TodaySummary({ todayItems, deadlines, payments, chores, habitStatus, studyDue }) {
-  const scheduleCounts = todayItems.reduce((map, item) => {
-    const key = scheduleCategoryOf(item);
-    return { ...map, [key]: (map[key] || 0) + 1 };
-  }, {});
-  const summary = [
-    {
-      to: "/calendar",
-      label: "오늘의 일정",
-      value: `${todayItems.length}개`,
-      note: `개인 ${scheduleCounts["개인"] || 0} · 업무 ${scheduleCounts["업무"] || 0} · 결제 ${scheduleCounts["결제"] || 0}`,
-      tone: "bg-emerald-50/85 text-emerald-700",
-      wide: true
-    },
-    { to: "/tasks", label: "마감", value: `${deadlines.length}건`, note: deadlines[0]?.displayTitle || "급한 마감 없음", tone: "bg-sky-50/85 text-sky-700" },
-    { to: "/money", label: "결제", value: `${payments.length}건`, note: payments[0]?.project || "확인할 결제 없음", tone: "bg-rose-50/85 text-rose-700" },
-    { to: "/life", label: "집안일", value: `${chores.length}건`, note: chores[0]?.title || "오늘 집안일 없음", tone: "bg-violet-50/85 text-violet-700" },
-    {
-      to: "/life",
-      label: "루틴",
-      value: `${habitStatus.rate || 0}%`,
-      note: `${habitStatus.doneCount}/${habitStatus.total}개 완료`,
-      tone: "bg-emerald-50/85 text-emerald-700"
-    },
-    { to: "/study", label: "스터디", value: `${studyDue.length}개`, note: studyDue[0]?.title || "오늘 복습 없음", tone: "bg-amber-50/85 text-amber-700" }
-  ];
-
-  return (
-    <GlassCard className="mb-4">
-      <SectionTitle>오늘의 요약!</SectionTitle>
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {summary.map((item) => (
-          <Link key={item.label} to={item.to} className={`rounded-[22px] p-4 transition hover:-translate-y-0.5 ${item.tone} ${item.wide ? "md:col-span-3 xl:col-span-2" : ""}`}>
-            <p className="text-xs font-black">{item.label}</p>
-            <p className="mt-2 text-xl font-black text-clover-text">{item.value}</p>
-            <p className="mt-1 line-clamp-2 text-xs font-bold opacity-75">{item.note}</p>
-          </Link>
-        ))}
-      </div>
-    </GlassCard>
-  );
-}
-
-function MonthlyRecordCard({ data, today, habitStatus }) {
-  const monthKey = today.slice(0, 7);
-  const monthMoods = (data.moodEntries || []).filter((item) => item.date && item.date.startsWith(monthKey));
-  const moodDays = monthMoods.filter((item) => item.mood).length;
-  const sleepDays = monthMoods.filter((item) => Number(item.sleepHours) > 0).length;
-  return (
-    <GlassCard>
-      <SectionTitle>이번 달 나의 기록</SectionTitle>
-      <div className="grid grid-cols-3 gap-3 text-center">
-        <div>
-          <p className="text-2xl">😊</p>
-          <p className="mt-2 text-2xl font-black text-clover-ink">{moodDays}일</p>
-          <p className="mt-1 text-xs font-bold text-clover-sub">기분 기록</p>
-        </div>
-        <div>
-          <p className="text-2xl">🌙</p>
-          <p className="mt-2 text-2xl font-black text-clover-ink">{sleepDays}일</p>
-          <p className="mt-1 text-xs font-bold text-clover-sub">수면 기록</p>
-        </div>
-        <div>
-          <div className="relative mx-auto grid h-12 w-12 place-items-center rounded-full" style={{ background: `conic-gradient(#2F8A5B ${habitStatus.rate || 0}%, #E9F1EA 0)` }}>
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-white text-xs font-black text-clover-deep">{habitStatus.rate || 0}%</div>
-          </div>
-          <p className="mt-1 text-xs font-bold text-clover-sub">루틴 완료</p>
-        </div>
-      </div>
-      <Link to="/journal">
-        <AppButton className="mt-4 w-full" variant="soft">✎ 오늘 기록하기</AppButton>
-      </Link>
-    </GlassCard>
-  );
-}
-
-function MoneyMosaicCard({ data, today }) {
-  const monthKey = today.slice(0, 7);
-  const income = (data.payments || []).filter((item) => (item.expectedDate || item.paidDate || "").startsWith(monthKey) && item.status === "입금 완료").reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const expense = (data.expenses || []).filter((item) => (item.date || "").startsWith(monthKey)).reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const remain = income - expense;
-  const upcoming = (data.payments || []).filter((item) => item.expectedDate >= today && item.status !== "입금 완료").length;
-  return (
-    <GlassCard>
-      <SectionTitle>이번 달 돈관리</SectionTitle>
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl bg-emerald-50 p-4 text-center">
-          <p className="text-xs font-black text-emerald-700">수입</p>
-          <p className="mt-1 select-none text-base font-black text-clover-ink blur-[7px]">{money(income)}</p>
-        </div>
-        <div className="rounded-2xl bg-rose-50 p-4 text-center">
-          <p className="text-xs font-black text-rose-700">지출</p>
-          <p className="mt-1 select-none text-base font-black text-clover-ink blur-[7px]">{money(expense)}</p>
-        </div>
-        <div className="rounded-2xl bg-sky-50 p-4 text-center">
-          <p className="text-xs font-black text-sky-700">남은 돈</p>
-          <p className="mt-1 select-none text-base font-black text-clover-ink blur-[7px]">{money(remain)}</p>
-        </div>
-      </div>
-      {!!upcoming && <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-2 text-center text-xs font-black text-amber-700">확인할 결제 {upcoming}건</p>}
-      <Link to="/money">
-        <AppButton className="mt-3 w-full" variant="soft">💳 Money로 이동</AppButton>
-      </Link>
-    </GlassCard>
-  );
-}
-
-function TodayStudyCard({ data, today, studyDue }) {
-  const item = studyDue[0];
-  return (
-    <GlassCard>
-      <SectionTitle>오늘의 공부</SectionTitle>
-      {item ? (
-        <div className="flex flex-wrap items-center gap-4 rounded-[22px] bg-emerald-50/60 p-4">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-2xl">🎓</div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-black text-clover-ink">{item.title}</p>
-            <p className="mt-1 text-xs font-bold text-clover-sub">오늘 다시 볼 과제</p>
-            <span className="mt-2 inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">진행 중</span>
-          </div>
-          <div className="grid shrink-0 gap-2">
-            <Link to="/study"><AppButton variant="soft">✎ Study로 이동</AppButton></Link>
-            <AppButton onClick={() => window.dispatchEvent(new CustomEvent("clover-study-complete", { detail: item.id }))}>✓ 완료</AppButton>
-          </div>
-        </div>
-      ) : (
-        <p className="rounded-2xl bg-white/45 p-4 text-sm font-bold text-clover-sub">오늘 다시 볼 캡처는 없어요.</p>
-      )}
-    </GlassCard>
-  );
-}
-
-const kindTone = {
-  Work: "bg-sky-50 text-sky-700",
-  Plan: "bg-blue-50 text-blue-700",
-  Life: "bg-emerald-50 text-emerald-700",
-  Memo: "bg-violet-50 text-violet-700",
-  Money: "bg-amber-50 text-amber-700",
-  Journal: "bg-rose-50 text-rose-700"
-};
-
-const kindIcon = {
-  Work: "📋",
-  Plan: "🗂️",
-  Life: "✅",
-  Memo: "📱",
-  Money: "💳",
-  Journal: "📝"
+const formatTime = (item) => {
+  if (item.allDay) return "종일";
+  const start = item.startTime || item.time || item.dueTime || "";
+  const end = item.endTime || "";
+  return end ? `${start} - ${end}` : start || "시간 미정";
 };
 
 const relativeDate = (dateStr, today) => {
@@ -193,24 +47,240 @@ const relativeDate = (dateStr, today) => {
   return date;
 };
 
+const ddayLabel = (dday) => {
+  if (dday === 0) return "D-0";
+  if (dday > 0) return `D-${dday}`;
+  return `D+${Math.abs(dday)}`;
+};
+
+function SummaryChips({ todayItems, deadlines, habitStatus, todayFocusSec }) {
+  const chips = [
+    { label: "오늘 일정", value: `${todayItems.length}개`, tone: "bg-emerald-50 text-emerald-700" },
+    { label: "마감", value: `${deadlines.length}건`, tone: "bg-rose-50 text-rose-700" },
+    { label: "루틴", value: `${habitStatus.rate || 0}%`, tone: "bg-emerald-50 text-emerald-700" },
+    { label: "오늘 집중", value: fmtHM(todayFocusSec), tone: "bg-sky-50 text-sky-700" }
+  ];
+
+  return (
+    <div className="mb-5 grid gap-2 rounded-[18px] border border-clover-line bg-white/78 p-3 shadow-sm md:grid-cols-4">
+      {chips.map((chip, index) => (
+        <div key={chip.label} className={`flex items-center gap-3 px-3 py-2 ${index ? "md:border-l md:border-clover-line" : ""}`}>
+          <span className={`grid h-10 w-10 place-items-center rounded-full text-xs font-black ${chip.tone}`}>{index + 1}</span>
+          <div>
+            <p className="text-xs font-black text-clover-sub">{chip.label}</p>
+            <p className="mt-0.5 text-xl font-black text-clover-ink">{chip.value}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HomeFocusTimer({ activeSession, todayTodos, todayFocusSec, onChange }) {
+  const [tick, setTick] = useState(Date.now());
+  const [selectedTodoId, setSelectedTodoId] = useState(todayTodos[0]?.id || "");
+
+  useEffect(() => {
+    if (!activeSession) return undefined;
+    const timer = window.setInterval(() => setTick(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [activeSession?.id]);
+
+  useEffect(() => {
+    if (!selectedTodoId && todayTodos[0]?.id) setSelectedTodoId(todayTodos[0].id);
+  }, [selectedTodoId, todayTodos]);
+
+  const selectedTodo = todayTodos.find((todo) => todo.id === selectedTodoId);
+  const elapsed = activeSession ? computeElapsed(activeSession, tick) : null;
+  const timerTitle = activeSession?.title || selectedTodo?.title || "시작할 일을 골라주세요";
+
+  const start = () => {
+    const target = selectedTodo || todayTodos[0];
+    if (!target) return;
+    startActiveSession({ title: target.title, category: target.category || target.project || "업무", todoId: target.id });
+    onChange();
+  };
+
+  return (
+    <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <SectionTitle>Focus Timer</SectionTitle>
+        <Link to="/work" className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-black text-clover-deep">Work로 이동</Link>
+      </div>
+
+      {!activeSession && (
+        <AppSelect value={selectedTodoId} onChange={(event) => setSelectedTodoId(event.target.value)}>
+          {todayTodos.length ? todayTodos.map((todo) => <option key={todo.id} value={todo.id}>{todo.title}</option>) : <option value="">오늘 할 일이 없어요</option>}
+        </AppSelect>
+      )}
+
+      <div className="my-5 text-center">
+        <p className="mx-auto mb-3 max-w-sm truncate text-base font-black text-clover-text">{timerTitle}</p>
+        <p className="font-mono text-6xl font-black tracking-tight text-clover-ink">{activeSession ? fmtHMS(elapsed.workSec) : "25:00"}</p>
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-2">
+        {!activeSession && <AppButton className="min-w-40" disabled={!todayTodos.length} onClick={start}>시작하기</AppButton>}
+        {activeSession && (
+          elapsed.isPaused
+            ? <AppButton onClick={() => { resumeActiveSession(); onChange(); }}>재개</AppButton>
+            : <AppButton variant="soft" onClick={() => { pauseActiveSession(); onChange(); }}>일시정지</AppButton>
+        )}
+        {activeSession && <AppButton variant="danger" onClick={() => { endActiveSession(); onChange(); }}>종료</AppButton>}
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-clover-line bg-white/55 px-4 py-3">
+        <p className="text-xs font-black text-clover-sub">오늘 집중 시간</p>
+        <p className="mt-1 text-xl font-black text-clover-ink">{fmtHM(todayFocusSec + (elapsed?.workSec || 0))}</p>
+      </div>
+    </GlassCard>
+  );
+}
+
+function PriorityCard({ topItems, deadlineItems, onToggleTodo, onToggleTop3, onStart, onSchedule }) {
+  const seen = new Set();
+  const cleanTop = topItems.filter((item) => {
+    const key = item.todoId || item.title;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 3);
+  const cleanDeadlines = deadlineItems.filter((item) => !seen.has(item.id) && !seen.has(item.displayTitle)).slice(0, 3);
+
+  return (
+    <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
+      <SectionTitle>오늘 우선순위</SectionTitle>
+      <div className="grid gap-4 md:grid-cols-[1.05fr_.95fr]">
+        <div className="rounded-[16px] border border-clover-line bg-white/55 p-3">
+          <p className="mb-3 text-xs font-black text-clover-deep">오늘 꼭 할 3가지</p>
+          <div className="grid gap-2">
+            {cleanTop.map((item) => (
+              <article key={item.id || item.title} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-[12px] border border-clover-line bg-white/75 px-3 py-2">
+                <CustomCheckbox checked={Boolean(item.completed)} onChange={(checked) => item.source === "top3" ? onToggleTop3(item.id, checked) : onToggleTodo(item.id, checked)} label={item.title} />
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => onStart(item)} className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-clover-deep">시작</button>
+                  <button type="button" onClick={() => onSchedule(item)} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-clover-sub">일정</button>
+                </div>
+              </article>
+            ))}
+            {!cleanTop.length && <p className="rounded-[12px] bg-white/55 p-3 text-sm font-bold text-clover-sub">오늘 우선순위가 비어 있어요.</p>}
+          </div>
+        </div>
+
+        <div className="rounded-[16px] border border-rose-100 bg-rose-50/35 p-3">
+          <p className="mb-3 text-xs font-black text-rose-600">마감 주의</p>
+          <div className="grid gap-2">
+            {cleanDeadlines.map((item, index) => (
+              <Link key={`${item.type}-${item.id || index}`} to={item.type === "payment" ? "/money" : `/schedule?date=${item.date}`} className="flex items-center justify-between gap-3 rounded-[12px] bg-white/70 px-3 py-3 text-sm font-bold">
+                <span className="min-w-0 truncate">{item.displayTitle}</span>
+                <span className="shrink-0 rounded-full bg-rose-100 px-2 py-1 text-xs font-black text-rose-600">{ddayLabel(item.dday)}</span>
+              </Link>
+            ))}
+            {!cleanDeadlines.length && <p className="rounded-[12px] bg-white/55 p-3 text-sm font-bold text-clover-sub">급한 마감은 없어요.</p>}
+          </div>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+function TodayScheduleCard({ items, today }) {
+  const navigate = useNavigate();
+  const visible = items.filter((item) => !item.allDay).slice(0, 6);
+  return (
+    <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
+      <SectionTitle action={<button type="button" onClick={() => navigate(`/schedule?date=${today}`)} className="rounded-full bg-white/75 px-3 py-1 text-xs font-black text-clover-deep">수정</button>}>오늘 일정</SectionTitle>
+      <div className="grid gap-2">
+        {visible.map((item, index) => (
+          <article key={`${item.type}-${item.id || index}`} className="grid grid-cols-[72px_auto_1fr] items-center gap-3 border-b border-clover-line/60 py-2 text-sm last:border-0">
+            <span className="text-xs font-black text-clover-sub">{formatTime(item)}</span>
+            <span className="h-2.5 w-2.5 rounded-full bg-clover-deep" />
+            <b className="min-w-0 truncate">{item.displayTitle}</b>
+          </article>
+        ))}
+        {!visible.length && <p className="rounded-[12px] bg-white/45 p-4 text-sm font-bold text-clover-sub">오늘 시간 일정은 없어요.</p>}
+      </div>
+      <button type="button" onClick={() => navigate(`/schedule?date=${today}`)} className="mt-3 w-full rounded-full bg-white/75 px-4 py-2 text-sm font-black text-clover-deep">전체 일정 보기</button>
+    </GlassCard>
+  );
+}
+
+function WeeklyStrip({ data, today }) {
+  const navigate = useNavigate();
+  const days = Array.from({ length: 7 }, (_, index) => addDays(today, index));
+  return (
+    <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
+      <SectionTitle>이번주 한눈에 보기</SectionTitle>
+      <div className="grid grid-cols-7 gap-2 rounded-[16px] border border-clover-line bg-white/55 p-3 text-center">
+        {days.map((date) => {
+          const count = getTodayItems(data, date).length;
+          const day = new Date(`${date}T00:00:00`).toLocaleDateString("ko-KR", { weekday: "short" });
+          return (
+            <button key={date} type="button" onClick={() => navigate(`/schedule?date=${date}`)} className={`rounded-[12px] px-1 py-3 ${date === today ? "bg-emerald-50 text-clover-deep" : "hover:bg-white/70"}`}>
+              <p className="text-xs font-black text-clover-sub">{day}</p>
+              <p className="mt-1 text-lg font-black">{Number(date.slice(-2))}</p>
+              <p className="mt-2 text-xs font-bold text-clover-sub">{count}개</p>
+            </button>
+          );
+        })}
+      </div>
+      <Link to={`/schedule?date=${today}`} className="mt-3 block text-center text-sm font-black text-clover-deep">Schedule로 이동</Link>
+    </GlassCard>
+  );
+}
+
+function StatusCards({ data, today, habitStatus, studyDue, workSessions }) {
+  const todayMood = (data.moodEntries || []).some((item) => item.date === today);
+  const todayPayments = (data.payments || []).filter((item) => item.expectedDate === today && item.status !== "입금 완료");
+  const cards = [
+    { title: "Life", to: "/life", main: `루틴 ${habitStatus.doneCount}/${habitStatus.total} 완료`, note: todayMood ? "기분 기록 완료" : "기분 기록이 필요해요" },
+    { title: "Money", to: "/money", main: `확인할 결제 ${todayPayments.length}건`, note: "금액은 Money에서 확인" },
+    { title: "Study", to: "/study", main: `오늘 공부 ${studyDue.length ? "1개" : "0개"}`, note: studyDue[0]?.title || "오늘 복습 없음" },
+    { title: "Work Log", to: "/worklog", main: `오늘 업무 세션 ${workSessions.length}개`, note: "업무일지로 이동" }
+  ];
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {cards.map((card) => (
+        <GlassCard key={card.title} className="rounded-[16px] border border-clover-line bg-white/84 p-4">
+          <p className="text-lg font-black text-clover-deep">{card.title}</p>
+          <p className="mt-4 text-sm font-black text-clover-ink">{card.main}</p>
+          <p className="mt-2 line-clamp-1 text-xs font-bold text-clover-sub">{card.note}</p>
+          <Link to={card.to} className="mt-5 inline-block text-sm font-black text-clover-deep">{card.title.replace(" Log", "")}로 이동</Link>
+        </GlassCard>
+      ))}
+    </div>
+  );
+}
+
+const kindTone = {
+  Work: "bg-sky-50 text-sky-700",
+  Schedule: "bg-emerald-50 text-emerald-700",
+  Life: "bg-emerald-50 text-emerald-700",
+  Memo: "bg-violet-50 text-violet-700",
+  Money: "bg-amber-50 text-amber-700",
+  Journal: "bg-rose-50 text-rose-700",
+  Study: "bg-indigo-50 text-indigo-700"
+};
+
 function RecentActivity({ data, today }) {
   const items = [
     ...(data.todos || []).map((item) => ({ ...item, kind: "Work" })),
-    ...(data.events || []).map((item) => ({ ...item, kind: "Plan" })),
+    ...(data.events || []).map((item) => ({ ...item, kind: "Schedule" })),
     ...(data.habitLogs || []).map((item) => ({ ...item, kind: "Life", title: "습관 체크" })),
     ...(data.inboxMemos || []).map((item) => ({ ...item, kind: "Memo", title: item.body })),
     ...(data.payments || []).map((item) => ({ ...item, kind: "Money" })),
-    ...(data.reflections || []).map((item) => ({ ...item, kind: "Journal", title: item.body || item.memo }))
-  ].filter((item) => dateOf(item)).sort((a, b) => dateOf(b).localeCompare(dateOf(a))).slice(0, 8);
+    ...(data.reflections || []).map((item) => ({ ...item, kind: "Journal", title: item.body || item.memo })),
+    ...(data.studyCaptures || []).map((item) => ({ ...item, kind: "Study" }))
+  ].filter((item) => dateOf(item)).sort((a, b) => dateOf(b).localeCompare(dateOf(a))).slice(0, 5);
 
   return (
-    <GlassCard>
-      <SectionTitle action={<Link to="/archive" className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">전체 보기 ›</Link>}>최근 활동</SectionTitle>
+    <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
+      <SectionTitle action={<Link to="/archive" className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">전체 보기</Link>}>최근 활동</SectionTitle>
       <div className="grid">
         {items.map((item, index) => (
           <div key={`${item.kind}-${item.id || index}`} className={`flex items-center justify-between gap-3 py-3 ${index !== items.length - 1 ? "border-b border-clover-line/60" : ""}`}>
             <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/80 text-sm">{kindIcon[item.kind] || "•"}</span>
               <p className="truncate text-sm font-bold text-clover-ink">{titleOf(item)}</p>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${kindTone[item.kind] || "bg-slate-50 text-slate-600"}`}>{item.kind}</span>
             </div>
@@ -225,12 +295,14 @@ function RecentActivity({ data, today }) {
 
 export default function HomePage() {
   const [data, setData] = useState(getAllData());
+  const [activeSession, setActiveSessionState] = useState(getActiveSession());
   const today = toDateKey(new Date());
-  const now = new Date(`${today}T00:00:00`);
   const navigate = useNavigate();
-  const [calendarMonth, setCalendarMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
 
-  const load = () => setData(getAllData());
+  const load = () => {
+    setData(getAllData());
+    setActiveSessionState(getActiveSession());
+  };
 
   useEffect(() => {
     window.addEventListener("clover-data-change", load);
@@ -242,85 +314,78 @@ export default function HomePage() {
     load();
   };
 
-  const todayItems = getTodayItems(data, today);
-  const deadlines = getUpcomingDeadlines(data, today);
+  const todayItems = useMemo(() => getTodayItems(data, today), [data, today]);
+  const deadlines = useMemo(() => getUpcomingDeadlines(data, today).filter((item) => item.dday <= 7), [data, today]);
   const habitStatus = getTodayHabitStatus(data.habits, data.habitLogs, today);
-  const calendarDates = useMemo(() => Array.from({ length: 21 }, (_, index) => addDays(today, index - 7)), [today]);
-  const monthItems = useMemo(() => mergeCalendarItems(data, calendarDates), [data, calendarDates]);
-  const closeDeadlines = deadlines.filter((item) => item.dday <= 7).slice(0, 5);
-  const todayDeadlines = deadlines.filter((item) => item.dday === 0);
-  const todayPayments = (data.payments || []).filter((item) => item.expectedDate === today && item.status !== "입금 완료");
-  const todayChores = (data.chores || []).filter((item) => item.lastDoneAt !== today && (!item.nextDueDate || item.nextDueDate <= today));
+  const workSessions = (data.workSessions || []).filter((item) => item.date === today);
+  const todayFocusSec = workSessions.reduce((sum, item) => sum + Number(item.duration || 0), 0);
   const studyDue = (data.studyCaptures || []).filter((item) => !item.isReviewed || item.reviewSchedule?.nextReviewAt <= today || item.status === "waiting");
+  const todayTodos = (data.todos || []).filter((todo) => !todo.completed && (!todo.dueDate || todo.dueDate <= today));
+  const topPriority = [
+    ...(data.top3 || []).filter((item) => !item.completed).map((item) => ({ ...item, source: "top3" })),
+    ...todayTodos
+      .filter((todo) => todo.priority === "high")
+      .map((todo) => ({ ...todo, source: "todo" })),
+    ...todayTodos.map((todo) => ({ ...todo, source: "todo" }))
+  ];
+
+  const toggleTodo = (id, completed) => {
+    updateTodo(id, { completed, completedAt: completed ? today : "" });
+    load();
+  };
+
+  const toggleTop3 = (id, completed) => {
+    updateTop3(id, { completed });
+    load();
+  };
+
+  const startTodo = (todo) => {
+    startActiveSession({ title: todo.title, category: todo.category || todo.project || "업무", todoId: todo.source === "todo" ? todo.id : "" });
+    load();
+  };
+
+  const scheduleTodo = (item) => {
+    navigate(`/schedule?date=${item.dueDate || today}`);
+  };
 
   return (
     <>
-      <PageHeader eyebrow={today} title="오늘의 현황">
+      <PageHeader eyebrow={today} title="좋은 하루 보내세요!">
         <div className="flex flex-wrap items-center gap-2">
           <WeatherCard />
-          <Link to={`/schedule?date=${today}`}><AppButton variant="soft">전체 할일</AppButton></Link>
           <AppButton variant="soft" onClick={refreshNow}>새로고침</AppButton>
-          <AppButton variant="soft" onClick={() => window.dispatchEvent(new CustomEvent("clover-open-quick-add", { detail: "memo" }))}>빠른 메모</AppButton>
           <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
         </div>
       </PageHeader>
 
-      <TodaySummary todayItems={todayItems} deadlines={todayDeadlines} payments={todayPayments} chores={todayChores} habitStatus={habitStatus} studyDue={studyDue} />
+      <SummaryChips todayItems={todayItems} deadlines={deadlines} habitStatus={habitStatus} todayFocusSec={todayFocusSec} />
 
-      <div className="mb-4 grid gap-4 xl:grid-cols-2">
-        <TodayTopThree items={data.top3} todos={data.todos || []} onToggle={(id, completed) => updateTop3(id, { completed })} />
-        <GlassCard>
-          <SectionTitle>마감 임박</SectionTitle>
-          <div className="grid gap-2">
-            {closeDeadlines.map((item, index) => (
-              <Link key={`${item.type}-${item.id || index}`} to={item.type === "payment" ? "/money" : item.type === "content" ? "/content" : "/tasks"} className="flex items-center justify-between rounded-2xl bg-rose-50/70 px-4 py-3 text-sm font-bold">
-                <span className="truncate">{item.displayTitle}</span>
-                <span className="rounded-full bg-white px-2 py-1 text-xs text-rose-600">D{item.dday >= 0 ? `-${item.dday}` : `+${Math.abs(item.dday)}`}</span>
-              </Link>
-            ))}
-            {!closeDeadlines.length && <p className="rounded-2xl bg-white/45 p-4 text-sm font-bold text-clover-sub">급한 마감은 없어요.</p>}
-          </div>
-        </GlassCard>
+      <div className="grid gap-4 xl:grid-cols-[minmax(320px,.82fr)_minmax(0,1.18fr)]">
+        <HomeFocusTimer activeSession={activeSession} todayTodos={todayTodos} todayFocusSec={todayFocusSec} onChange={load} />
+        <PriorityCard
+          topItems={topPriority}
+          deadlineItems={deadlines}
+          onToggleTodo={toggleTodo}
+          onToggleTop3={toggleTop3}
+          onStart={startTodo}
+          onSchedule={scheduleTodo}
+        />
       </div>
 
-      <HomeMonthCalendar
-        year={calendarMonth.year}
-        month={calendarMonth.month}
-        itemsByDate={monthItems}
-        selectedDate={today}
-        onSelectDate={(date) => navigate(`/schedule?date=${date}`)}
-        onMoveMonth={(amount) => setCalendarMonth((current) => {
-          const next = new Date(current.year, current.month + amount, 1);
-          return { year: next.getFullYear(), month: next.getMonth() };
-        })}
-        onToday={() => {
-          setCalendarMonth({ year: now.getFullYear(), month: now.getMonth() });
-          navigate(`/schedule?date=${today}`);
-        }}
-      />
-
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <MonthlyRecordCard data={data} today={today} habitStatus={habitStatus} />
-        <MoneyMosaicCard data={data} today={today} />
+        <TodayScheduleCard items={todayItems} today={today} />
+        <WeeklyStrip data={data} today={today} />
       </div>
 
       <div className="mt-4">
-        <TodayStudyCard data={data} today={today} studyDue={studyDue} />
+        <StatusCards data={data} today={today} habitStatus={habitStatus} studyDue={studyDue} workSessions={workSessions} />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <GlassCard>
-          <SectionTitle action={<Link to="/worklog" className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-clover-deep">전체 보기</Link>}>오늘의 근무일지</SectionTitle>
-          <p className="mb-3 text-sm font-bold text-clover-sub">오늘 세션 {(data.workSessions || []).filter((item) => item.date === today).length}건 기록됨</p>
-          <Link to="/worklog"><AppButton className="w-full" variant="soft">업무일지 열기 / 작성</AppButton></Link>
-        </GlassCard>
-        <GlassCard>
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(320px,.85fr)_minmax(0,1.15fr)]">
+        <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
           <QuickMemoPad memos={data.inboxMemos || []} />
           <Link to="/memo" className="mt-2 inline-block text-xs font-black text-clover-deep underline decoration-dotted">메모장 전체 보기</Link>
         </GlassCard>
-      </div>
-
-      <div className="mt-4">
         <RecentActivity data={data} today={today} />
       </div>
     </>
