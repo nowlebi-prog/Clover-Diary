@@ -9,7 +9,7 @@ import SectionTitle from "../../components/common/SectionTitle";
 import StarRating from "../../components/common/StarRating";
 import PageHeader from "../../components/layout/PageHeader";
 import LifeHabitTracker from "../../components/habits/LifeHabitTracker";
-import { addDays, toDateKey } from "../../lib/utils/habitSelectors";
+import { addDays, getHabitCompletionRate, getTodayHabitStatus, isHabitDoneOn, toDateKey } from "../../lib/utils/habitSelectors";
 import { shoppingCategories } from "../../lib/utils/shoppingConstants";
 import {
   createChore,
@@ -20,6 +20,7 @@ import {
   getAllData,
   getShoppingItems,
   saveAllData,
+  toggleHabitLog as toggleHabit,
   updateChore,
   updateShoppingItem
 } from "../../lib/storage/localStorageAdapter";
@@ -27,7 +28,14 @@ import {
 const choreIcons = ["🧺", "🗑️", "🍳", "🧽", "🧹", "⭐"];
 const weekDays = ["월", "화", "수", "목", "금", "토", "일"];
 const emptyChore = (today) => ({ title: "", icon: "🧺", cycle: "매주", nextDueDate: today, days: [], completed: false });
-const emptyShopping = () => ({ title: "", category: "생활용품", completed: false, memo: "", importance: 0 });
+const emptyShopping = () => ({ title: "", category: "생활용품", completed: false, memo: "", importance: 0, price: "" });
+const moodOptions = [
+  { score: 1, label: "매우 나쁨", face: "☹" },
+  { score: 2, label: "나쁨", face: "🙁" },
+  { score: 3, label: "보통", face: "😐" },
+  { score: 4, label: "좋음", face: "🙂" },
+  { score: 5, label: "매우 좋음", face: "😄" }
+];
 
 const nextDueDate = (chore, today) => {
   if (chore.cycle === "매일") return addDays(today, 1);
@@ -58,7 +66,7 @@ function LifeTabs({ value, onChange }) {
   );
 }
 
-function TodayChoreOverview({ chores, today, onDone, onPostpone }) {
+function TodayChoreOverview({ chores, today, onDone, onPostpone, onManage }) {
   const dueChores = chores
     .filter((item) => !item.archived && item.lastDoneAt !== today && (!item.nextDueDate || item.nextDueDate <= today))
     .slice(0, 5);
@@ -68,7 +76,7 @@ function TodayChoreOverview({ chores, today, onDone, onPostpone }) {
       <SectionTitle>오늘 할 집안일</SectionTitle>
       <div className="grid gap-2">
         {dueChores.map((chore) => (
-          <article key={chore.id} className="flex items-center gap-3 rounded-[22px] bg-white/60 p-3">
+          <article key={chore.id} className="flex items-center gap-3 rounded-[18px] bg-white/60 p-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-violet-100 text-xl">{chore.icon || "🧺"}</span>
             <div className="min-w-0 flex-1">
               <p className="truncate font-black text-clover-text">{chore.title}</p>
@@ -80,7 +88,138 @@ function TodayChoreOverview({ chores, today, onDone, onPostpone }) {
             </div>
           </article>
         ))}
-        {!dueChores.length && <p className="rounded-[22px] bg-white/45 p-4 text-sm font-bold text-clover-sub">오늘 꼭 처리할 집안일은 없어요.</p>}
+        {!dueChores.length && (
+          <div className="rounded-[18px] bg-white/45 p-4">
+            <p className="text-sm font-bold text-clover-sub">오늘은 정해진 집안일이 없어요. 집안일을 추가해볼까요?</p>
+            <AppButton className="mt-3" variant="soft" onClick={onManage}>집안일 추가</AppButton>
+          </div>
+        )}
+      </div>
+    </GlassCard>
+  );
+}
+
+function ConditionSummaryCard({ data, today, onOpenJournal }) {
+  const mood = (data.moodEntries || []).find((item) => item.date === today);
+  const reflection = (data.reflections || []).find((item) => item.date === today);
+  const gratitude = (data.gratitudeEntries || []).find((item) => item.date === today);
+  const moodOption = moodOptions.find((item) => item.score === Number(mood?.score)) || moodOptions[2];
+  const gratitudeCount = (gratitude?.items || []).filter(Boolean).length;
+
+  return (
+    <GlassCard className="rounded-[22px] bg-white/84 p-5">
+      <SectionTitle action={<button type="button" onClick={onOpenJournal} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-clover-deep">하루 기록 열기</button>}>
+        오늘 컨디션 기록
+      </SectionTitle>
+      <div className="grid gap-3">
+        <div>
+          <p className="text-xs font-black text-clover-sub">기분 점수</p>
+          <div className="mt-2 grid grid-cols-5 gap-2">
+            {moodOptions.map((option) => {
+              const selected = Number(mood?.score || 0) === option.score;
+              return (
+                <button
+                  key={option.score}
+                  type="button"
+                  onClick={onOpenJournal}
+                  className={`rounded-2xl border px-2 py-3 text-center transition ${selected ? "border-clover-deep bg-emerald-50" : "border-clover-line bg-white/60 hover:bg-white"}`}
+                >
+                  <span className="block text-xl">{option.face}</span>
+                  <span className="mt-1 block text-xs font-black text-clover-ink">{option.score}</span>
+                  <span className="block truncate text-[10px] font-bold text-clover-sub">{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <button type="button" onClick={onOpenJournal} className="rounded-2xl bg-white/60 p-3 text-left">
+            <p className="text-xs font-black text-clover-sub">수면 시간</p>
+            <p className="mt-1 text-lg font-black text-clover-ink">{mood?.sleepHours ? `${mood.sleepHours} 시간` : "미기록"}</p>
+          </button>
+          <button type="button" onClick={onOpenJournal} className="rounded-2xl bg-white/60 p-3 text-left">
+            <p className="text-xs font-black text-clover-sub">날씨</p>
+            <p className="mt-1 truncate text-lg font-black text-clover-ink">{mood?.weather || "미기록"}</p>
+          </button>
+          <button type="button" onClick={onOpenJournal} className="rounded-2xl bg-white/60 p-3 text-left">
+            <p className="text-xs font-black text-clover-sub">감사일기</p>
+            <p className="mt-1 text-lg font-black text-clover-ink">{gratitudeCount}/3개</p>
+          </button>
+        </div>
+        <button type="button" onClick={onOpenJournal} className="rounded-2xl bg-white/60 p-4 text-left">
+          <p className="text-xs font-black text-clover-deep">오늘 요약</p>
+          <p className="mt-2 line-clamp-2 text-sm font-bold text-clover-text">{reflection?.body || reflection?.memo || `${moodOption.label} 컨디션이에요. 오늘 요약을 남겨보세요.`}</p>
+        </button>
+        <AppButton onClick={onOpenJournal}>오늘 기록 저장/수정</AppButton>
+      </div>
+    </GlassCard>
+  );
+}
+
+function TodayRoutineCard({ data, today, onChange, onManage }) {
+  const status = getTodayHabitStatus(data.habits || [], data.habitLogs || [], today);
+  const items = status.items || [];
+  const toggle = (habitId) => {
+    toggleHabit(habitId, today);
+    onChange?.();
+  };
+
+  return (
+    <GlassCard>
+      <SectionTitle action={<span className="text-sm font-black text-clover-deep">{status.doneCount || 0}/{status.total || 0} 완료</span>}>오늘 루틴</SectionTitle>
+      <div className="grid gap-2">
+        {items.slice(0, 6).map((item) => (
+          <article key={item.id} className="flex items-center gap-3 rounded-[16px] bg-white/60 px-3 py-2.5">
+            <button
+              type="button"
+              onClick={() => toggle(item.id)}
+              className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-xs font-black ${item.done ? "border-clover-deep bg-clover-deep text-white" : "border-clover-line bg-white"}`}
+            >
+              {item.done ? "✓" : ""}
+            </button>
+            <span className="text-lg">{item.icon || "✓"}</span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-black text-clover-text">{item.name}</p>
+              <p className="text-[11px] font-bold text-clover-sub">{item.done ? "완료" : "오늘 체크 필요"}</p>
+            </div>
+            <button type="button" onClick={onManage} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-clover-sub">수정</button>
+            <button type="button" onClick={() => toggle(item.id)} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-clover-sub">건너뛰기</button>
+          </article>
+        ))}
+        {!items.length && (
+          <div className="rounded-[16px] bg-white/45 p-4">
+            <p className="text-sm font-bold text-clover-sub">오늘 체크할 루틴이 없어요.</p>
+            <AppButton className="mt-3" variant="soft" onClick={onManage}>루틴 추가</AppButton>
+          </div>
+        )}
+      </div>
+      <button type="button" onClick={onManage} className="mt-3 text-sm font-black text-clover-deep">+ 루틴 관리</button>
+    </GlassCard>
+  );
+}
+
+function RecentLifeRecords({ data, today, onOpenJournal }) {
+  const entries = [...(data.moodEntries || [])]
+    .filter((item) => item.date <= today)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 5);
+
+  return (
+    <GlassCard>
+      <SectionTitle action={<button type="button" onClick={onOpenJournal} className="text-xs font-black text-clover-deep">전체 보기</button>}>최근 생활 기록</SectionTitle>
+      <div className="grid gap-1">
+        {entries.map((entry) => {
+          const reflection = (data.reflections || []).find((item) => item.date === entry.date);
+          const mood = moodOptions.find((item) => item.score === Number(entry.score)) || moodOptions[2];
+          return (
+            <article key={entry.id} className="grid grid-cols-[38px_92px_1fr] items-center gap-3 border-b border-clover-line/60 py-3 last:border-0">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-50 text-lg">{entry.emoji || mood.face}</span>
+              <b className="text-sm text-clover-ink">{entry.date.slice(5).replace("-", "월 ")}일</b>
+              <p className="min-w-0 truncate text-sm font-bold text-clover-sub">기분 {entry.score || "-"}점 · 수면 {entry.sleepHours || 0}시간 · {reflection?.body || reflection?.memo || entry.weather || "요약 없음"}</p>
+            </article>
+          );
+        })}
+        {!entries.length && <p className="rounded-[16px] bg-white/45 p-4 text-sm font-bold text-clover-sub">아직 생활 기록이 없어요. 오늘 기록부터 남겨보세요.</p>}
       </div>
     </GlassCard>
   );
@@ -91,18 +230,22 @@ function ShoppingQuickAdd({ items, draft, setDraft, onAdd, onToggle }) {
   return (
     <GlassCard>
       <SectionTitle>구매 항목</SectionTitle>
-      <div className="grid gap-2 sm:grid-cols-[1fr_130px_auto]">
+      <div className="grid gap-2 sm:grid-cols-[1fr_110px_110px_auto]">
         <AppInput value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="예: 세탁세제" />
         <AppSelect value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>
           {shoppingCategories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
         </AppSelect>
+        <AppInput type="number" value={draft.price || ""} onChange={(event) => setDraft({ ...draft, price: event.target.value })} placeholder="가격" />
         <AppButton onClick={onAdd}>추가</AppButton>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 grid gap-2">
         {openItems.map((item) => (
-          <button key={item.id} type="button" onClick={() => onToggle(item)} className="rounded-full bg-white/70 px-3 py-2 text-sm font-bold text-clover-text">
-            {item.title}
-          </button>
+          <article key={item.id} className="flex items-center gap-2 rounded-[14px] bg-white/70 px-3 py-2 text-sm font-bold text-clover-text">
+            <button type="button" onClick={() => onToggle(item)} className="h-4 w-4 shrink-0 rounded-full border border-clover-deep" aria-label="구매 완료" />
+            <span className="min-w-0 flex-1 truncate">{item.title}</span>
+            <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-black text-clover-deep">{item.category}</span>
+            {!!Number(item.price) && <span className="text-xs font-black text-clover-sub">{Number(item.price).toLocaleString()}원</span>}
+          </article>
         ))}
         {!openItems.length && <p className="text-sm font-bold text-clover-sub">필요한 구매 항목을 바로 적어둘 수 있어요.</p>}
       </div>
@@ -112,45 +255,65 @@ function ShoppingQuickAdd({ items, draft, setDraft, onAdd, onToggle }) {
 
 function TodayRecordGraph({ entries, today }) {
   const entryByDate = (entries || []).reduce((map, item) => ({ ...map, [item.date]: item }), {});
-  const days = Array.from({ length: 7 }, (_, index) => addDays(today, index - 6));
+  const days = Array.from({ length: 14 }, (_, index) => addDays(today, index - 13));
   const hasRecord = days.some((date) => entryByDate[date]);
+  const points = days.map((date, index) => {
+    const entry = entryByDate[date] || {};
+    const mood = Math.max(0, Math.min(5, Number(entry.score || 0)));
+    const sleep = Math.max(0, Math.min(12, Number(entry.sleepHours || 0)));
+    const x = 36 + index * (428 / 13);
+    return {
+      date,
+      mood,
+      sleep,
+      x,
+      moodY: mood ? 172 - mood * 28 : null,
+      sleepY: sleep ? 172 - sleep * 11 : null
+    };
+  });
+  const recent = days.slice(-3).map((date) => entryByDate[date]).filter(Boolean);
+  const avgMood = recent.length ? (recent.reduce((sum, item) => sum + Number(item.score || 0), 0) / recent.length).toFixed(1) : "-";
+  const avgSleep = recent.length ? (recent.reduce((sum, item) => sum + Number(item.sleepHours || 0), 0) / recent.length).toFixed(1) : "-";
+  const moodPath = points.filter((point) => point.moodY !== null).map((point, index) => `${index ? "L" : "M"}${point.x} ${point.moodY}`).join(" ");
+  const sleepPath = points.filter((point) => point.sleepY !== null).map((point, index) => `${index ? "L" : "M"}${point.x} ${point.sleepY}`).join(" ");
 
   return (
-    <div className="glass rounded-[24px] bg-sky-50/70 p-4">
+    <GlassCard className="rounded-[22px] bg-white/82 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-700">오늘의 기록</p>
-          <p className="mt-1 text-sm font-bold text-clover-sub">기분과 수면 흐름</p>
+          <SectionTitle>기분 & 수면 흐름 14일</SectionTitle>
+          <p className="text-sm font-bold text-clover-sub">최근 평균 수면 {avgSleep}시간 · 기분 평균 {avgMood}점</p>
         </div>
-        <span className="rounded-full bg-white/75 px-3 py-1 text-xs font-black text-sky-700">오늘 흐름</span>
+        <div className="flex shrink-0 gap-3 text-xs font-black text-clover-sub">
+          <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-emerald-600" />기분</span>
+          <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-sky-400" />수면</span>
+        </div>
       </div>
-      <div className="mt-4 h-28 rounded-2xl bg-white/55 p-3">
+      <div className="mt-4 overflow-hidden rounded-2xl bg-white/60 p-3">
         {hasRecord ? (
-          <div className="flex h-full items-end justify-between gap-2">
-            {days.map((date) => {
-              const entry = entryByDate[date] || {};
-              const mood = Math.max(0, Math.min(5, Number(entry.score || 0)));
-              const sleep = Math.max(0, Math.min(12, Number(entry.sleepHours || 0)));
-              return (
-                <div key={date} className="flex flex-1 flex-col items-center gap-1">
-                  <div className="flex h-20 w-full items-end justify-center gap-1">
-                    <span className="w-2 rounded-t-full bg-teal-400" style={{ height: mood ? `${Math.max(14, mood * 16)}%` : "8%" }} title={`기분 ${mood || "-"}점`} />
-                    <span className="w-2 rounded-t-full bg-sky-300" style={{ height: sleep ? `${Math.max(14, sleep * 7)}%` : "8%" }} title={`수면 ${sleep || "-"}시간`} />
-                  </div>
-                  <span className={`text-[10px] font-black ${date === today ? "text-clover-deep" : "text-clover-sub/70"}`}>{Number(date.slice(-2))}</span>
-                </div>
-              );
-            })}
-          </div>
+          <svg viewBox="0 0 500 220" className="h-56 w-full">
+            {[1, 2, 3, 4, 5].map((value) => (
+              <g key={value}>
+                <line x1="28" x2="476" y1={172 - value * 28} y2={172 - value * 28} stroke="#E7F0EA" strokeWidth="1" />
+                <text x="10" y={176 - value * 28} fontSize="10" fill="#7A8A81">{value}</text>
+              </g>
+            ))}
+            <path d={moodPath} fill="none" stroke="#23845C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={sleepPath} fill="none" stroke="#5B9BE8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            {points.map((point) => (
+              <g key={point.date}>
+                {point.date === today && <rect x={point.x - 13} y="20" width="26" height="166" rx="13" fill="#DFF7EA" />}
+                {point.moodY !== null && <circle cx={point.x} cy={point.moodY} r="4.5" fill="#23845C" />}
+                {point.sleepY !== null && <circle cx={point.x} cy={point.sleepY} r="4.5" fill="#5B9BE8" />}
+                <text x={point.x} y="202" textAnchor="middle" fontSize="10" fontWeight="700" fill={point.date === today ? "#23845C" : "#7A8A81"}>{Number(point.date.slice(-2))}</text>
+              </g>
+            ))}
+          </svg>
         ) : (
-          <div className="grid h-full place-items-center text-sm font-bold text-clover-sub">아직 기록이 없어요.</div>
+          <div className="grid h-48 place-items-center text-sm font-bold text-clover-sub">아직 기록이 없어요. 하루 기록 탭에서 첫 기록을 남겨보세요.</div>
         )}
       </div>
-      <div className="mt-3 flex items-center gap-4 text-[11px] font-black text-clover-sub">
-        <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-teal-400" />기분</span>
-        <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-sky-300" />수면</span>
-      </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -161,33 +324,65 @@ function LifeJournalDetails({ data, today, onChange }) {
   const reflection = (data.reflections || []).find((item) => item.date === today);
   const gratitudeEntry = (data.gratitudeEntries || []).find((item) => item.date === today);
   const [score, setScore] = useState(mood?.score || 3);
+  const [moodLabel, setMoodLabel] = useState(mood?.label || moodOptions.find((item) => item.score === Number(mood?.score))?.label || "보통");
   const [sleepHours, setSleepHours] = useState(mood?.sleepHours || "");
   const [weather, setWeather] = useState(mood?.weather || "");
   const [summary, setSummary] = useState(reflection?.body || reflection?.memo || "");
   const [gratitude, setGratitude] = useState([0, 1, 2].map((index) => gratitudeEntry?.items?.[index] || ""));
+  const [photos, setPhotos] = useState(mood?.photos || []);
 
   useEffect(() => {
     setScore(mood?.score || 3);
+    setMoodLabel(mood?.label || moodOptions.find((item) => item.score === Number(mood?.score))?.label || "보통");
     setSleepHours(mood?.sleepHours || "");
     setWeather(mood?.weather || "");
     setSummary(reflection?.body || reflection?.memo || "");
     setGratitude([0, 1, 2].map((index) => gratitudeEntry?.items?.[index] || ""));
+    setPhotos(mood?.photos || []);
   }, [mood?.id, reflection?.id, gratitudeEntry?.id]);
+
+  const handlePhotoUpload = (files) => {
+    Array.from(files || []).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPhotos((current) => [
+          ...current,
+          { id: makeId("photo"), name: file.name, src: reader.result, createdAt: today }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
 
   const save = () => {
     const next = getAllData();
+    const selectedMood = moodOptions.find((item) => item.score === Number(score)) || moodOptions[2];
+    const record = {
+      id: mood?.id || makeId("dailyRecord"),
+      date: today,
+      mood: moodLabel,
+      moodScore: Number(score) || 3,
+      sleepHours: Number(sleepHours) || 0,
+      weather: weather.trim(),
+      summary: summary.trim(),
+      gratitudeList: gratitude,
+      photoUrl: photos[0]?.src || "",
+      photos,
+      createdAt: mood?.createdAt || today,
+      updatedAt: today
+    };
     next.moodEntries = [
       {
         id: mood?.id || makeId("mood"),
         date: today,
-        mood: "normal",
-        emoji: "•",
-        label: "오늘 기록",
+        mood: moodLabel,
+        emoji: selectedMood.face,
+        label: moodLabel,
         color: "#E7F0EA",
         score: Number(score) || 3,
         sleepHours: Number(sleepHours) || 0,
         weather: weather.trim(),
-        photos: mood?.photos || [],
+        photos,
         createdAt: mood?.createdAt || today,
         updatedAt: today
       },
@@ -215,6 +410,7 @@ function LifeJournalDetails({ data, today, onChange }) {
       },
       ...(next.gratitudeEntries || []).filter((item) => item.date !== today)
     ];
+    next.dailyRecords = [record, ...(next.dailyRecords || []).filter((item) => item.date !== today)];
     saveAllData(next);
     onChange?.();
   };
@@ -227,9 +423,27 @@ function LifeJournalDetails({ data, today, onChange }) {
       </GlassCard>
       <GlassCard>
         <SectionTitle action={<AppButton onClick={save}>저장</AppButton>}>기록 작성</SectionTitle>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3">
+          <div>
+            <p className="mb-2 text-sm font-bold">기분 선택</p>
+            <div className="grid grid-cols-5 gap-2">
+              {moodOptions.map((option) => (
+                <button
+                  key={option.score}
+                  type="button"
+                  onClick={() => { setScore(option.score); setMoodLabel(option.label); }}
+                  className={`rounded-2xl border px-2 py-3 ${Number(score) === option.score ? "border-clover-deep bg-emerald-50" : "border-clover-line bg-white/60"}`}
+                >
+                  <span className="block text-xl">{option.face}</span>
+                  <span className="block text-[11px] font-black">{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
           <label className="grid gap-1 text-sm font-bold">
-            기분 점수
+            기분 점수 1-5
             <AppInput type="number" min="1" max="5" step="0.5" value={score} onChange={(event) => setScore(event.target.value)} />
           </label>
           <label className="grid gap-1 text-sm font-bold">
@@ -246,6 +460,19 @@ function LifeJournalDetails({ data, today, onChange }) {
           {gratitude.map((item, index) => (
             <AppInput key={index} value={item} onChange={(event) => setGratitude((current) => current.map((value, i) => (i === index ? event.target.value : value)))} placeholder={`${index + 1}. 오늘 감사한 일`} />
           ))}
+          <label className="grid gap-2 rounded-2xl border border-dashed border-clover-line bg-white/45 p-4 text-sm font-bold text-clover-deep">
+            사진 업로드
+            <input type="file" accept="image/*" multiple onChange={(event) => handlePhotoUpload(event.target.files)} className="text-sm text-clover-sub" />
+          </label>
+          {!!photos.length && (
+            <div className="grid grid-cols-4 gap-2">
+              {photos.map((photo) => (
+                <button key={photo.id} type="button" onClick={() => setPhotos((current) => current.filter((item) => item.id !== photo.id))} className="aspect-square overflow-hidden rounded-2xl bg-white/60">
+                  <img src={photo.src} alt={photo.name || "오늘 사진"} className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </GlassCard>
     </div>
@@ -378,9 +605,12 @@ function ChoreSettings({ chores, shoppingItems, choreDraft, setChoreDraft, shopp
         </SectionTitle>
         <div className="grid gap-2">
           <AppInput value={shoppingDraft.title} onChange={(event) => setShoppingDraft({ ...shoppingDraft, title: event.target.value })} placeholder="예: 쓰레기봉투" />
-          <AppSelect value={shoppingDraft.category} onChange={(event) => setShoppingDraft({ ...shoppingDraft, category: event.target.value })}>
-            {shoppingCategories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-          </AppSelect>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <AppSelect value={shoppingDraft.category} onChange={(event) => setShoppingDraft({ ...shoppingDraft, category: event.target.value })}>
+              {shoppingCategories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+            </AppSelect>
+            <AppInput type="number" value={shoppingDraft.price || ""} onChange={(event) => setShoppingDraft({ ...shoppingDraft, price: event.target.value })} placeholder="예상 가격" />
+          </div>
           <div className="flex items-center gap-2 rounded-2xl bg-white/55 px-3 py-2">
             <span className="text-xs font-bold text-clover-sub">중요도</span>
             <StarRating value={shoppingDraft.importance || 0} onChange={(value) => setShoppingDraft({ ...shoppingDraft, importance: value })} />
@@ -393,7 +623,7 @@ function ChoreSettings({ chores, shoppingItems, choreDraft, setChoreDraft, shopp
                 <input type="checkbox" checked={Boolean(item.completed)} onChange={() => onToggleShopping(item)} className="h-4 w-4 accent-clover-deep" />
                 <button type="button" onClick={() => setShoppingDraft({ ...emptyShopping(), ...item })} className="min-w-0 flex-1 text-left">
                   <p className="truncate font-bold">{item.title}</p>
-                  <p className="text-xs font-bold text-clover-sub">{item.category}</p>
+                  <p className="text-xs font-bold text-clover-sub">{item.category} · {Number(item.price || 0) ? `${Number(item.price).toLocaleString()}원` : "가격 미정"}</p>
                 </button>
                 <button type="button" onClick={() => onDeleteShopping(item.id)} className="shrink-0 rounded-full px-3 py-2 text-xs font-black text-clover-sub hover:bg-white/70">삭제</button>
               </div>
@@ -469,7 +699,36 @@ export default function LifePage() {
   };
 
   const toggleShopping = (item) => {
-    updateShoppingItem(item.id, { completed: !item.completed });
+    if (item.completed) {
+      updateShoppingItem(item.id, { completed: false, completedAt: "", linkedMoneyItemId: "" });
+      load();
+      return;
+    }
+    const amount = Number(item.price || item.amount || 0);
+    if (amount > 0 && !item.linkedMoneyItemId) {
+      const next = getAllData();
+      const expenseId = makeId("expense");
+      next.expenses = [
+        {
+          id: expenseId,
+          title: item.title,
+          amount,
+          date: today,
+          category: item.category || "생활용품",
+          memo: "Life 구매 항목에서 완료 처리",
+          createdAt: today,
+          updatedAt: today
+        },
+        ...(next.expenses || [])
+      ];
+      next.shoppingItems = (next.shoppingItems || []).map((shopping) =>
+        shopping.id === item.id ? { ...shopping, completed: true, completedAt: today, linkedMoneyItemId: expenseId, updatedAt: today } : shopping
+      );
+      saveAllData(next);
+      load();
+      return;
+    }
+    updateShoppingItem(item.id, { completed: true, completedAt: today });
     load();
   };
 
@@ -480,16 +739,20 @@ export default function LifePage() {
       <LifeTabs value={tab} onChange={setTab} />
 
       <div className="grid gap-4">
-        {tab === "overview" && <LifeHabitTracker data={data} onChange={load} />}
-
         {tab === "overview" && (
           <>
-            <div className="grid gap-4 lg:grid-cols-[.85fr_1.15fr]">
+            <div className="grid gap-4 xl:grid-cols-[.82fr_1.18fr]">
+              <ConditionSummaryCard data={data} today={today} onOpenJournal={() => setTab("journal")} />
               <TodayRecordGraph entries={data.moodEntries || []} today={today} />
             </div>
-            <div className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
-              <TodayChoreOverview chores={data.chores || []} today={today} onDone={completeChore} onPostpone={postponeChore} />
+            <div className="grid gap-4 xl:grid-cols-2">
+              <TodayRoutineCard data={data} today={today} onChange={load} onManage={() => setTab("habits")} />
+              <TodayChoreOverview chores={data.chores || []} today={today} onDone={completeChore} onPostpone={postponeChore} onManage={() => setTab("chores")} />
+            </div>
+            <LifeHabitTracker data={data} onChange={load} />
+            <div className="grid gap-4 xl:grid-cols-[.95fr_1.05fr]">
               <ShoppingQuickAdd items={data.shoppingItems || []} draft={shoppingDraft} setDraft={setShoppingDraft} onAdd={addShopping} onToggle={toggleShopping} />
+              <RecentLifeRecords data={data} today={today} onOpenJournal={() => setTab("journal")} />
             </div>
           </>
         )}
