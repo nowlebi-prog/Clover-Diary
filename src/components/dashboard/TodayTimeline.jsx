@@ -29,6 +29,16 @@ const timeLabel = (item) => {
   return start || "시간 미정";
 };
 
+const focusLabel = (seconds) => {
+  const total = Number(seconds || 0);
+  if (!total) return "";
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.round((total % 3600) / 60);
+  if (hours && minutes) return `집중 ${hours}시간 ${minutes}분`;
+  if (hours) return `집중 ${hours}시간`;
+  return `집중 ${minutes}분`;
+};
+
 const labelOf = (item) => {
   if (item.label) return item.label;
   if (item.type === "todo") return "Todo";
@@ -101,6 +111,7 @@ export default function TodayTimeline({ items = [], onToggleNeedMove, fullDay = 
                             <div className="min-w-0">
                               <p className="text-xs font-black text-clover-deep">{timeLabel(item)}</p>
                               <h3 className="truncate text-sm font-bold">{item.displayTitle}</h3>
+                              {!!item.focusSeconds && <p className="mt-1 text-xs font-black text-clover-deep">{focusLabel(item.focusSeconds)}</p>}
                               {item.memo && <p className="mt-1 line-clamp-2 text-xs text-clover-sub">{item.memo}</p>}
                             </div>
                             <div className="flex shrink-0 items-center gap-2">

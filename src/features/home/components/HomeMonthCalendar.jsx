@@ -40,15 +40,15 @@ function CalendarItem({ item }) {
   );
 }
 
-export default function HomeMonthCalendar({ year, month, itemsByDate, selectedDate, onSelectDate, onMoveMonth, onToday, children }) {
+export default function HomeMonthCalendar({ year, month, itemsByDate, selectedDate, onSelectDate, onMoveMonth, onToday, title = "개인", subtitle = "월간 일정과 선택한 날짜", children }) {
   const cells = monthMatrixSunday(year, month);
 
   return (
     <section className="overflow-hidden rounded-[30px] border border-slate-100 bg-white shadow-[0_22px_70px_rgba(70,95,80,0.08)]">
       <div className="flex items-center justify-between gap-3 px-5 py-4">
         <div>
-          <p className="text-lg font-black text-slate-900">개인</p>
-          <p className="text-xs font-bold text-slate-400">월간 일정과 선택한 날짜</p>
+          <p className="text-lg font-black text-slate-900">{title}</p>
+          <p className="text-xs font-bold text-slate-400">{subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={onToday} className="grid h-10 w-10 place-items-center rounded-full bg-slate-50 text-sm font-black text-slate-700" aria-label="오늘">

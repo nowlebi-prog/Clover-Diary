@@ -1,9 +1,10 @@
 import { useMemo } from "react";
+import AppInput from "../common/AppInput";
 import GlassCard from "../common/GlassCard";
 import { addDays } from "../../lib/utils/date";
 import { fmtHM } from "../../lib/utils/workUtils";
 
-export default function WorkStats({ sessions = [], categories = [], today, weeklyGoalHours = 40 }) {
+export default function WorkStats({ sessions = [], categories = [], today, weeklyGoalHours = 40, onWeeklyGoalHoursChange }) {
   const stats = useMemo(() => {
     const weekStart = addDays(today, -6);
     const monthKey = today.slice(0, 7);
@@ -40,7 +41,7 @@ export default function WorkStats({ sessions = [], categories = [], today, weekl
   const maxDaySec = Math.max(...stats.monthByDay.map((item) => item.sec), 1);
 
   return (
-    <GlassCard className="p-5">
+    <GlassCard className="rounded-[18px] border border-clover-line bg-white/82 p-5">
       <div className="mb-4 grid gap-2 sm:grid-cols-2">
         <div className="rounded-2xl bg-emerald-50 px-4 py-4">
           <p className="text-sm font-black text-emerald-700">오늘 집중</p>
@@ -53,8 +54,19 @@ export default function WorkStats({ sessions = [], categories = [], today, weekl
       </div>
 
       <div className="rounded-2xl bg-white/55 p-4">
-        <div className="mb-2 flex items-center justify-between text-xs font-black text-clover-sub">
-          <span>주간 목표 {weeklyGoalHours}시간</span>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-black text-clover-sub">
+          <label className="flex items-center gap-2">
+            <span>주간 목표</span>
+            <AppInput
+              type="number"
+              min="1"
+              max="120"
+              value={weeklyGoalHours}
+              onChange={(event) => onWeeklyGoalHoursChange?.(Math.max(1, Number(event.target.value || 1)))}
+              className="min-h-8 w-20 rounded-xl px-3 text-xs"
+            />
+            <span>시간</span>
+          </label>
           <span>{stats.goalRate}%</span>
         </div>
         <div className="h-2 rounded-full bg-white">

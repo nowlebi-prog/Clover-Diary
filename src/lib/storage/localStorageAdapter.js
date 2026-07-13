@@ -343,13 +343,14 @@ export function getActiveSession() {
   return getAllData().activeSession || null;
 }
 
-export function startActiveSession({ title, category }) {
+export function startActiveSession({ title, category, todoId = "" }) {
   const data = getAllData();
   const now = Date.now();
   data.activeSession = {
     id: makeId("activeWork"),
     title,
     category,
+    todoId,
     date: today(),
     startTime: now,
     pauses: [],
@@ -407,6 +408,17 @@ export function endActiveSession() {
   const duration = Math.max(0, Math.round((now - session.startTime) / 1000) - pauseSec);
   const saved = { ...session, id: makeId("workSessions"), endTime: now, pauses, pauseSec, duration, updatedAt: today() };
   data.workSessions = [saved, ...(data.workSessions || [])];
+  if (session.todoId) {
+    data.todos = (data.todos || []).map((todo) => {
+      if (todo.id !== session.todoId) return todo;
+      return {
+        ...todo,
+        focusSeconds: Number(todo.focusSeconds || 0) + duration,
+        workSessionIds: [saved.id, ...(todo.workSessionIds || [])],
+        updatedAt: today()
+      };
+    });
+  }
   data.activeSession = null;
   saveAllData(data);
   return saved;
