@@ -2,8 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AppShell from "./components/layout/AppShell";
 import { getSession } from "./lib/auth/localAuthAdapter";
 import { useEffect, useState } from "react";
-import { ensureGapYearDailyTodo, startCloudSync } from "./lib/storage/localStorageAdapter";
-import GapYearReminder from "./components/dashboard/GapYearReminder";
+import { startCloudSync } from "./lib/storage/localStorageAdapter";
 import LoginPage from "./features/auth/LoginPage";
 import HomePage from "./features/home/HomePage";
 import MandalartPage from "./features/mandalart/MandalartPage";
@@ -21,7 +20,6 @@ import ArchivePage from "./features/archive/ArchivePage";
 import CampaignsPage from "./features/campaigns/CampaignsPage";
 import FilesPage from "./features/files/FilesPage";
 import SettingsPage from "./features/settings/SettingsPage";
-import GapYearPage from "./features/gapyear/GapYearPage";
 import SchedulePage from "./features/schedule/SchedulePage";
 import WorkLogPage from "./features/worklog/WorkLogPage";
 import MemoPage from "./features/memo/MemoPage";
@@ -31,7 +29,6 @@ function Protected({ session }) {
   return (
     <>
       <AppShell />
-      <GapYearReminder />
     </>
   );
 }
@@ -41,7 +38,6 @@ export default function App() {
 
   useEffect(() => {
     startCloudSync();
-    ensureGapYearDailyTodo();
   }, []);
 
   return (
@@ -65,7 +61,6 @@ export default function App() {
         <Route path="/archive" element={<ArchivePage />} />
         <Route path="/campaigns" element={<CampaignsPage />} />
         <Route path="/files" element={<FilesPage />} />
-        <Route path="/gapyear" element={<GapYearPage />} />
         <Route path="/worklog" element={<WorkLogPage />} />
         <Route path="/memo" element={<MemoPage />} />
         <Route path="/settings" element={<SettingsPage onLogout={setSession} />} />

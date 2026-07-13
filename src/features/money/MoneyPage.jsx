@@ -237,6 +237,65 @@ function MoneySection({ title, action, onAction, children }) {
   );
 }
 
+function GapYearProofSection({ expenses, onOpenExpense, onToggleDone, onAddExpense }) {
+  const targets = expenses.filter((item) => item.gapYearUploadRequired || item.gapYearRegistered);
+  const needUpload = targets.filter((item) => !item.gapYearRegistered);
+  const done = targets.filter((item) => item.gapYearRegistered);
+
+  return (
+    <MoneySection title="갭이어 증빙" action="+ 지출 추가" onAction={onAddExpense}>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-2xl bg-rose-50 px-4 py-3">
+          <p className="text-xs font-black text-rose-600">업로드 필요</p>
+          <p className="mt-1 text-xl font-black text-rose-700">{needUpload.length}건</p>
+        </div>
+        <div className="rounded-2xl bg-emerald-50 px-4 py-3">
+          <p className="text-xs font-black text-emerald-700">업로드 완료</p>
+          <p className="mt-1 text-xl font-black text-emerald-800">{done.length}건</p>
+        </div>
+      </div>
+
+      <div className="mt-2 grid gap-2">
+        {needUpload.slice(0, 8).map((item) => (
+          <div key={item.id} className="rounded-2xl bg-white/60 p-3">
+            <button type="button" onClick={() => onOpenExpense(item)} className="w-full text-left">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black">{item.title}</p>
+                  <p className="mt-1 text-xs font-bold text-clover-sub">{item.date || "날짜 없음"} · {item.category || "기타"}</p>
+                </div>
+                <span className="shrink-0 text-sm font-black text-rose-600">{money(item.amount)}</span>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleDone(item.id, true)}
+              className="mt-3 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-700"
+            >
+              업로드 완료
+            </button>
+          </div>
+        ))}
+        {!needUpload.length && <p className="rounded-2xl bg-white/40 p-4 text-sm font-bold text-clover-sub">업로드 필요한 지출이 없어요.</p>}
+      </div>
+
+      {!!done.length && (
+        <details className="mt-2 rounded-2xl bg-white/45 p-3">
+          <summary className="cursor-pointer text-xs font-black text-clover-sub">완료된 증빙 {done.length}건 보기</summary>
+          <div className="mt-2 grid gap-1.5">
+            {done.slice(0, 10).map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/55 px-3 py-2 text-xs font-bold">
+                <button type="button" onClick={() => onOpenExpense(item)} className="min-w-0 truncate text-left">{item.title}</button>
+                <button type="button" onClick={() => onToggleDone(item.id, false)} className="shrink-0 text-rose-500">필요로 변경</button>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </MoneySection>
+  );
+}
+
 export default function MoneyPage() {
   const [unlocked, setUnlocked] = useState(sessionStorage.getItem("clover-money-unlocked") === "true");
   if (!unlocked) return <MoneyGate onUnlock={() => setUnlocked(true)} />;
@@ -301,6 +360,16 @@ function MoneyPageContent() {
     moveToTrash(next, collection, id);
     persist(next);
     setEditor(null);
+  };
+
+  const updateGapYearUpload = (expenseId, done) => {
+    const next = getAllData();
+    next.expenses = (next.expenses || []).map((item) =>
+      item.id === expenseId
+        ? { ...item, gapYearUploadRequired: true, gapYearRegistered: done, updatedAt: today }
+        : item
+    );
+    persist(next);
   };
 
   const importCsv = (file, mode) => {
@@ -369,6 +438,13 @@ function MoneyPageContent() {
           <TaxSavingsBanner taxReserve={taxReserve} saving={saving} />
 
           <CategoryPie segments={categorySegments} total={spending} />
+
+          <GapYearProofSection
+            expenses={monthExpenses}
+            onOpenExpense={(item) => setEditor({ type: "expense", item })}
+            onToggleDone={updateGapYearUpload}
+            onAddExpense={() => setEditor({ type: "expense", item: { date: today, category: "생활비", gapYearUploadRequired: true, gapYearRegistered: false } })}
+          />
 
           <MoneySection title="구독·결제 관리" action="+ 구독" onAction={() => setEditor({ type: "subscription", item: { active: true, billingDay: "1", status: "유지" } })}>
             {subscriptions.slice(0, 8).map((item) => (
@@ -446,8 +522,26 @@ function MoneyEditor({ editor, onClose, onSave, onDelete }) {
               <AppInput type="number" value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} placeholder="금액" />
               <AppInput type="date" value={form.date || ""} onChange={(e) => set("date", e.target.value)} />
               <label className="flex items-center justify-between rounded-2xl bg-rose-50/70 px-4 py-3 text-sm font-bold text-rose-700">
-                갭이어 예산 등록 완료
-                <input type="checkbox" checked={Boolean(form.gapYearRegistered)} onChange={(e) => set("gapYearRegistered", e.target.checked)} />
+                갭이어 업로드 필요
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.gapYearUploadRequired || form.gapYearRegistered)}
+                  onChange={(e) => {
+                    set("gapYearUploadRequired", e.target.checked);
+                    if (!e.target.checked) set("gapYearRegistered", false);
+                  }}
+                />
+              </label>
+              <label className="flex items-center justify-between rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm font-bold text-emerald-700">
+                갭이어 업로드 완료
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.gapYearRegistered)}
+                  onChange={(e) => {
+                    set("gapYearRegistered", e.target.checked);
+                    if (e.target.checked) set("gapYearUploadRequired", true);
+                  }}
+                />
               </label>
             </>
           )}

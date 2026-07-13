@@ -179,8 +179,26 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
               <label className="grid gap-1 text-sm font-bold">날짜<AppInput type="date" value={form.date || ""} onChange={(event) => set("date", event.target.value)} /></label>
             </div>
             <label className="flex items-center justify-between rounded-2xl bg-rose-50/70 px-4 py-3 text-sm font-bold text-rose-700">
-              갭이어 예산 등록 완료
-              <input type="checkbox" checked={Boolean(form.gapYearRegistered)} onChange={(event) => set("gapYearRegistered", event.target.checked)} />
+              갭이어 업로드 필요
+              <input
+                type="checkbox"
+                checked={Boolean(form.gapYearUploadRequired || form.gapYearRegistered)}
+                onChange={(event) => {
+                  set("gapYearUploadRequired", event.target.checked);
+                  if (!event.target.checked) set("gapYearRegistered", false);
+                }}
+              />
+            </label>
+            <label className="flex items-center justify-between rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm font-bold text-emerald-700">
+              갭이어 업로드 완료
+              <input
+                type="checkbox"
+                checked={Boolean(form.gapYearRegistered)}
+                onChange={(event) => {
+                  set("gapYearRegistered", event.target.checked);
+                  if (event.target.checked) set("gapYearUploadRequired", true);
+                }}
+              />
             </label>
             <label className="grid gap-1 text-sm font-bold">메모<AppTextarea value={form.memo || ""} onChange={(event) => set("memo", event.target.value)} /></label>
           </>

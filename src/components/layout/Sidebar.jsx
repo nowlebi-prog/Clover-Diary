@@ -9,7 +9,6 @@ const items = [
   { to: "/life", label: "Life", paths: ["/life", "/habits", "/journal", "/mandalart", "/calendar", "/memo"] },
   { to: "/study", label: "Study", paths: ["/study"] },
   { to: "/money", label: "Money", paths: ["/money"] },
-  { to: "/gapyear", label: "GapYear", paths: ["/gapyear"] },
   { to: "/archive", label: "Archive", paths: ["/archive"] }
 ];
 
