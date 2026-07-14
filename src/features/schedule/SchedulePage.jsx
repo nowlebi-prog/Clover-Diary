@@ -11,12 +11,17 @@ import PageHeader from "../../components/layout/PageHeader";
 import { getAllData, moveToTrash, saveAllData } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
 
-const categories = ["PPT", "신사업", "개인", "갭이어", "기타"];
+const defaultScheduleCategories = ["PPT", "위스티아", "신사업", "유튜브", "갭이어", "공부", "자기개발", "기타"];
+let categories = defaultScheduleCategories;
 const categoryMeta = {
   PPT: { dot: "bg-sky-500", chip: "bg-sky-50 text-sky-700 border-sky-100", block: "border-sky-200 bg-sky-50/80 text-sky-950" },
+  위스티아: { dot: "bg-blue-500", chip: "bg-blue-50 text-blue-700 border-blue-100", block: "border-blue-200 bg-blue-50/80 text-blue-950" },
   신사업: { dot: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700 border-emerald-100", block: "border-emerald-200 bg-emerald-50/80 text-emerald-950" },
+  유튜브: { dot: "bg-red-500", chip: "bg-red-50 text-red-700 border-red-100", block: "border-red-200 bg-red-50/80 text-red-950" },
   개인: { dot: "bg-violet-500", chip: "bg-violet-50 text-violet-700 border-violet-100", block: "border-violet-200 bg-violet-50/80 text-violet-950" },
   갭이어: { dot: "bg-teal-500", chip: "bg-teal-50 text-teal-700 border-teal-100", block: "border-teal-200 bg-teal-50/80 text-teal-950" },
+  공부: { dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 border-amber-100", block: "border-amber-200 bg-amber-50/80 text-amber-950" },
+  자기개발: { dot: "bg-fuchsia-500", chip: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100", block: "border-fuchsia-200 bg-fuchsia-50/80 text-fuchsia-950" },
   기타: { dot: "bg-slate-400", chip: "bg-slate-50 text-slate-700 border-slate-100", block: "border-slate-200 bg-slate-50/90 text-slate-950" }
 };
 const dayLabels = ["일", "월", "화", "수", "목", "금", "토"];
@@ -28,10 +33,16 @@ const dateFields = {
   expenses: "date",
   contentPlans: "publishDate"
 };
+const categoryCollections = ["events", "todos", "payments", "expenses", "contentPlans", "campaigns", "chores"];
 
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const titleOf = (item) => item.title || item.project || item.name || item.service || "이름 없는 일정";
 const clampCategory = (value) => categories.includes(value) ? value : "기타";
+const getStoredCategories = (data) => {
+  const saved = Array.isArray(data.scheduleCategories) ? data.scheduleCategories.filter(Boolean) : [];
+  return saved.length ? saved : defaultScheduleCategories;
+};
+const uniqueCategories = (list) => Array.from(new Set((list || []).map((item) => String(item || "").trim()).filter(Boolean)));
 const formatTime = (value) => {
   if (!value) return "";
   const [hour = "", minute = "00"] = String(value).split(":");
@@ -240,6 +251,71 @@ function FilterChips({ value, counts, unscheduledCount, onChange }) {
         날짜 미정 {unscheduledCount}개
       </button>
     </div>
+  );
+}
+
+function ScheduleCategoryManager({ items, onAdd, onRename, onDelete }) {
+  const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState("");
+  const [editingValue, setEditingValue] = useState("");
+
+  const submit = () => {
+    const name = draft.trim();
+    if (!name) return;
+    onAdd(name);
+    setDraft("");
+  };
+
+  return (
+    <GlassCard className="mb-4 rounded-[18px] border border-clover-line bg-white/82 p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <SectionTitle>스케줄 구분 관리</SectionTitle>
+          <p className="mt-1 text-xs font-bold text-clover-sub">노션처럼 필요한 구분을 직접 추가하고 이름을 바꿀 수 있어요.</p>
+        </div>
+      </div>
+      <div className="mb-3 flex gap-2">
+        <AppInput
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") submit();
+          }}
+          placeholder="예: 위스티아, 유튜브, 자기개발"
+        />
+        <AppButton className="shrink-0 px-4" onClick={submit}>추가</AppButton>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <div key={item} className="flex items-center gap-1 rounded-full border border-clover-line bg-white px-2 py-1">
+            {editing === item ? (
+              <>
+                <input
+                  value={editingValue}
+                  onChange={(event) => setEditingValue(event.target.value)}
+                  className="w-28 bg-transparent px-2 text-xs font-black outline-none"
+                  autoFocus
+                />
+                <button type="button" className="rounded-full bg-clover-deep px-2 py-1 text-[10px] font-black text-white" onClick={() => {
+                  const nextName = editingValue.trim();
+                  if (nextName) onRename(item, nextName);
+                  setEditing("");
+                }}>
+                  저장
+                </button>
+              </>
+            ) : (
+              <>
+                <span className={`h-2 w-2 rounded-full ${categoryMeta[item]?.dot || "bg-slate-300"}`} />
+                <span className="px-1 text-xs font-black text-clover-ink">{item}</span>
+                <button type="button" className="px-1 text-[10px] font-black text-clover-deep" onClick={() => { setEditing(item); setEditingValue(item); }}>수정</button>
+                {item !== "기타" && <button type="button" className="px-1 text-[10px] font-black text-clover-danger" onClick={() => onDelete(item)}>삭제</button>}
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </GlassCard>
   );
 }
 
@@ -821,6 +897,7 @@ export default function SchedulePage() {
   const [filter, setFilter] = useState("전체");
   const [editing, setEditing] = useState(null);
   const [quickText, setQuickText] = useState("");
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
   const load = () => setData(getAllData());
   useEffect(() => {
@@ -835,7 +912,16 @@ export default function SchedulePage() {
     setSearchParams(next, { replace: true });
   };
 
-  const allItems = useMemo(() => getScheduleItems(data), [data]);
+  const scheduleCategories = useMemo(() => getStoredCategories(data), [data.scheduleCategories]);
+  categories = scheduleCategories;
+
+  useEffect(() => {
+    if (filter !== "전체" && filter !== "날짜 미정" && !scheduleCategories.includes(filter)) {
+      setFilter("전체");
+    }
+  }, [filter, scheduleCategories]);
+
+  const allItems = useMemo(() => getScheduleItems(data), [data, scheduleCategories]);
   const filteredItems = filter === "전체" ? allItems : filter === "날짜 미정" ? allItems.filter((item) => item.isUnscheduled) : allItems.filter((item) => item.category === filter);
   const selectedItems = filteredItems.filter((item) => isDateInRange(item, selectedDate));
   const groups = {
@@ -851,6 +937,42 @@ export default function SchedulePage() {
     updater(next);
     saveAllData(next);
     load();
+  };
+
+  const saveCategories = (nextCategories, renameFrom = "", renameTo = "") => {
+    persist((next) => {
+      next.scheduleCategories = uniqueCategories(nextCategories);
+      if (renameFrom && renameTo && renameFrom !== renameTo) {
+        categoryCollections.forEach((collection) => {
+          next[collection] = (next[collection] || []).map((item) => {
+            const updates = {};
+            if (item.category === renameFrom) updates.category = renameTo;
+            if (item.scheduleCategory === renameFrom) updates.scheduleCategory = renameTo;
+            if (item.project === renameFrom) updates.project = renameTo;
+            if (item.projectName === renameFrom) updates.projectName = renameTo;
+            return Object.keys(updates).length ? { ...item, ...updates } : item;
+          });
+        });
+      }
+    });
+  };
+
+  const addCategory = (name) => {
+    saveCategories([...scheduleCategories, name]);
+  };
+
+  const renameCategory = (oldName, newName) => {
+    const clean = newName.trim();
+    if (!clean) return;
+    const nextCategories = scheduleCategories.map((item) => item === oldName ? clean : item);
+    saveCategories(nextCategories, oldName, clean);
+    if (filter === oldName) setFilter(clean);
+  };
+
+  const deleteCategory = (name) => {
+    const nextCategories = scheduleCategories.filter((item) => item !== name);
+    saveCategories(nextCategories.length ? nextCategories : ["기타"], name, "기타");
+    if (filter === name) setFilter("전체");
   };
 
   const saveItem = (form) => {
@@ -984,7 +1106,20 @@ export default function SchedulePage() {
       </PageHeader>
       <p className="-mt-3 mb-5 text-sm font-bold text-clover-sub">월간 일정과 선택한 날짜 일정을 한눈에 관리해요.</p>
 
-      <FilterChips value={filter} counts={counts} unscheduledCount={unscheduledItems.length} onChange={setFilter} />
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <FilterChips value={filter} counts={counts} unscheduledCount={unscheduledItems.length} onChange={setFilter} />
+        <AppButton variant="ghost" onClick={() => setCategoryManagerOpen((value) => !value)}>
+          {categoryManagerOpen ? "구분 관리 닫기" : "구분 관리"}
+        </AppButton>
+      </div>
+      {categoryManagerOpen && (
+        <ScheduleCategoryManager
+          items={scheduleCategories}
+          onAdd={addCategory}
+          onRename={renameCategory}
+          onDelete={deleteCategory}
+        />
+      )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(420px,1fr)_minmax(420px,1fr)]">
         <MonthCalendar
