@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
 import AppSelect from "../../components/common/AppSelect";
@@ -45,6 +45,16 @@ const timeText = (item) => {
   if (start && end) return `${start} - ${end}`;
   if (start) return start;
   return "시간 미정";
+};
+const timeHour = (value) => {
+  const hour = Number(String(value || "").slice(0, 2));
+  return Number.isFinite(hour) ? hour : null;
+};
+const spansHour = (item, hour) => {
+  const start = timeHour(item.startTime || item.time || item.dueTime);
+  const end = timeHour(item.endTime);
+  if (start === null || end === null) return false;
+  return hour >= start && hour <= end;
 };
 const addDays = (dateKey, amount) => {
   const date = new Date(`${dateKey}T00:00:00`);
@@ -423,13 +433,13 @@ function Timeline({ selectedDate, items, quickText, onQuickText, onApplyQuick, o
           </div>
         )}
         {hours.map((hour) => {
-          const hourItems = timedItems.filter((item) => Number((item.startTime || "99").slice(0, 2)) === hour);
+          const hourItems = timedItems.filter((item) => spansHour(item, hour));
           return (
             <div key={hour} className="grid min-h-[54px] grid-cols-[52px_1fr] gap-4 border-b border-dashed border-slate-200">
               <div className="pt-3 text-right text-xs font-black text-clover-sub">{String(hour).padStart(2, "0")}:00</div>
               <div className="grid content-start gap-2 py-2">
                 {hourItems.map((item) => (
-                  <article key={`${item.collection}-${item.id}`} className={`grid grid-cols-[130px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-4 py-2.5 text-sm shadow-sm max-sm:grid-cols-[1fr_auto] ${categoryMeta[item.category]?.block || categoryMeta["기타"].block}`}>
+                  <article key={`${item.collection}-${item.id}-${hour}`} className={`grid grid-cols-[130px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-4 py-2.5 text-sm shadow-sm max-sm:grid-cols-[1fr_auto] ${categoryMeta[item.category]?.block || categoryMeta["기타"].block}`}>
                     <span className="text-xs font-black max-sm:hidden">{timeText(item)}</span>
                     <b className="min-w-0 truncate">{item.title}</b>
                     <div className="flex gap-1">
@@ -500,13 +510,13 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
           </div>
         )}
         {hours.map((hour) => {
-          const hourItems = timedItems.filter((item) => Number((item.startTime || "99").slice(0, 2)) === hour);
+          const hourItems = timedItems.filter((item) => spansHour(item, hour));
           return (
             <div key={hour} className="grid min-h-[54px] grid-cols-[52px_1fr] gap-4 border-b border-dashed border-slate-200">
               <div className="pt-3 text-right text-xs font-black text-clover-sub">{String(hour).padStart(2, "0")}:00</div>
               <div className="grid content-start gap-2 py-2">
                 {hourItems.map((item) => (
-                  <article key={`${item.collection}-${item.id}`} className={`grid grid-cols-[130px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-4 py-2.5 text-sm shadow-sm max-sm:grid-cols-[1fr_auto] ${categoryMeta[item.category]?.block || categoryMeta["湲고?"].block}`}>
+                  <article key={`${item.collection}-${item.id}-${hour}`} className={`grid grid-cols-[130px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-4 py-2.5 text-sm shadow-sm max-sm:grid-cols-[1fr_auto] ${categoryMeta[item.category]?.block || categoryMeta["湲고?"].block}`}>
                     <span className="text-xs font-black max-sm:hidden">{timeText(item)}</span>
                     <button type="button" onClick={() => onEdit(item)} className="min-w-0 truncate text-left font-black">
                       {item.title}
@@ -735,6 +745,26 @@ function ScheduleEditorV2({ item, selectedDate, onClose, onSave, onDelete }) {
             </label>
           </div>
         )}
+        {timeMode === "unscheduled" && (
+          <div className="rounded-[16px] border border-amber-100 bg-amber-50/60 p-3">
+            <p className="mb-2 text-xs font-bold text-amber-800">아직 날짜가 없는 일정이에요. 날짜를 정하면 월간/오늘 일정에 바로 반영돼요.</p>
+            <AppButton
+              variant="soft"
+              onClick={() => setForm((current) => ({
+                ...current,
+                timeMode: "noTime",
+                date: selectedDate,
+                scheduleDate: selectedDate,
+                endDate: selectedDate,
+                startTime: "",
+                endTime: "",
+                isUnscheduled: false
+              }))}
+            >
+              선택한 날짜로 지정
+            </AppButton>
+          </div>
+        )}
 
         {timeMode === "timed" && (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -777,6 +807,7 @@ function ScheduleEditorV2({ item, selectedDate, onClose, onSave, onDelete }) {
 }
 
 export default function SchedulePage() {
+  const navigate = useNavigate();
   const today = toDateKey(new Date());
   const [searchParams, setSearchParams] = useSearchParams();
   const queryDate = searchParams.get("date");
@@ -946,7 +977,10 @@ export default function SchedulePage() {
   return (
     <>
       <PageHeader eyebrow="SCHEDULE" title="스케줄">
-        <AppButton variant="soft" onClick={() => setEditing(emptySchedule(selectedDate))}>+ 빠른 추가</AppButton>
+        <div className="flex flex-wrap gap-2">
+          <AppButton variant="ghost" onClick={() => navigate(-1)}>← 뒤로</AppButton>
+          <AppButton variant="soft" onClick={() => setEditing(emptySchedule(selectedDate))}>+ 빠른 추가</AppButton>
+        </div>
       </PageHeader>
       <p className="-mt-3 mb-5 text-sm font-bold text-clover-sub">월간 일정과 선택한 날짜 일정을 한눈에 관리해요.</p>
 

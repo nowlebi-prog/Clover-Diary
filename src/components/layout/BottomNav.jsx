@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 
 const items = [
   { to: "/", label: "Home", paths: ["/"] },
+  { to: "/schedule", label: "Schedule", paths: ["/schedule"] },
   { to: "/life", label: "Life", paths: ["/life", "/habits", "/journal", "/mandalart"] },
   { to: "/work", label: "Work", paths: ["/work", "/tasks", "/calendar", "/daily", "/content", "/campaigns", "/files"] },
   { to: "/study", label: "Study", paths: ["/study"] },

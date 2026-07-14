@@ -5,7 +5,7 @@ import AppSelect from "../common/AppSelect";
 import AppTextarea from "../common/AppTextarea";
 import GlassCard from "../common/GlassCard";
 import SessionCard from "./SessionCard";
-import { createWorkSession, getWorkLogNote, saveWorkLogNote } from "../../lib/storage/localStorageAdapter";
+import { createStudyCapture, createWorkSession, getWorkLogNote, saveWorkLogNote } from "../../lib/storage/localStorageAdapter";
 import { addDays } from "../../lib/utils/date";
 import { fmtDateLabel, fmtHM } from "../../lib/utils/workUtils";
 
@@ -19,6 +19,7 @@ const FILTERS = [
 export default function WorkLog({ sessions = [], categories = [], today, onChange }) {
   const [filter, setFilter] = useState("today");
   const [note, setNote] = useState("");
+  const [studyNeeded, setStudyNeeded] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manual, setManual] = useState(() => ({
     date: today,
@@ -29,11 +30,13 @@ export default function WorkLog({ sessions = [], categories = [], today, onChang
     memo: ""
   }));
   const [manualError, setManualError] = useState("");
+  const summaryKey = filter === "today" ? today : filter === "week" ? `${today}-week` : filter === "month" ? `${today.slice(0, 7)}-month` : "all";
 
   useEffect(() => {
-    const saved = getWorkLogNote(today);
+    const saved = getWorkLogNote(summaryKey);
     setNote(saved.body || saved.nextTodo || "");
-  }, [today]);
+    setStudyNeeded(Boolean(saved.studyNeeded));
+  }, [summaryKey]);
 
   useEffect(() => {
     setManual((current) => ({
@@ -64,13 +67,28 @@ export default function WorkLog({ sessions = [], categories = [], today, onChang
     });
     return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
+  const filteredTotal = filtered.reduce((sum, session) => sum + (session.duration || 0), 0);
+  const periodLabel = FILTERS.find((item) => item.key === filter)?.label || "선택 기간";
 
   const saveNote = () => {
-    saveWorkLogNote(today, {
+    saveWorkLogNote(summaryKey, {
       body: note,
       nextTodo: note,
+      period: filter,
+      studyNeeded,
       updatedAt: new Date().toISOString()
     });
+    if (studyNeeded && note.trim()) {
+      createStudyCapture({
+        title: `업무 회고 공부 필요 - ${periodLabel}`,
+        summary: note.trim(),
+        status: "waiting",
+        source: "worklog",
+        category: "업무 회고",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
     onChange?.();
   };
 
@@ -135,6 +153,21 @@ export default function WorkLog({ sessions = [], categories = [], today, onChang
         </div>
       </div>
 
+      <div className="mb-4 grid gap-3 rounded-[20px] border border-clover-line bg-white/60 p-4 sm:grid-cols-3">
+        <div>
+          <p className="text-xs font-black text-clover-sub">기간</p>
+          <p className="mt-1 text-lg font-black text-clover-ink">{periodLabel}</p>
+        </div>
+        <div>
+          <p className="text-xs font-black text-clover-sub">총 근무시간</p>
+          <p className="mt-1 text-lg font-black text-clover-deep">{fmtHM(filteredTotal)}</p>
+        </div>
+        <div>
+          <p className="text-xs font-black text-clover-sub">기록</p>
+          <p className="mt-1 text-lg font-black text-clover-ink">{filtered.length}건</p>
+        </div>
+      </div>
+
       <div className="rounded-[26px] border border-amber-200 bg-amber-50/45 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h3 className="text-base font-black text-amber-800">오늘의 근무 일지</h3>
@@ -146,6 +179,10 @@ export default function WorkLog({ sessions = [], categories = [], today, onChang
           placeholder="오늘 업무 흐름, 막힌 점, 내일 이어갈 일을 따로 적어두세요."
           className="min-h-[120px]"
         />
+        <label className="mt-3 flex items-center gap-2 text-sm font-black text-clover-deep">
+          <input type="checkbox" checked={studyNeeded} onChange={(event) => setStudyNeeded(event.target.checked)} />
+          공부 필요로 Study에 보내기
+        </label>
       </div>
 
       <div className="mt-4 rounded-[22px] border border-clover-line bg-white/55 p-4">

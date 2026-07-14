@@ -321,6 +321,30 @@ export default function WorkPage() {
     () => (data.todos || []).filter((todo) => !todo.completed && (!todo.dueDate || todo.dueDate <= today)).slice(0, 12),
     [data.todos, today]
   );
+  const focusItems = useMemo(() => {
+    const seen = new Set();
+    const items = [];
+    const push = (item) => {
+      const title = item.title || item.displayTitle;
+      if (!title) return;
+      const source = item.type || item.source || item.collection || "schedule";
+      const focusId = `${source}-${item.id || title}`;
+      if (seen.has(focusId)) return;
+      seen.add(focusId);
+      items.push({
+        focusId,
+        id: item.id,
+        source,
+        type: source,
+        title,
+        category: item.category || item.project || item.projectName || "업무",
+        timeLabel: item.allDay || item.isAllDay ? "종일" : (item.startTime || item.time || item.dueTime || "")
+      });
+    };
+    todayTodos.forEach((todo) => push({ ...todo, source: "todo", type: "todo" }));
+    todayItems.forEach(push);
+    return items.slice(0, 30);
+  }, [todayItems, todayTodos]);
   const monthItems = useMemo(() => getMonthCalendarItems(data, calendarMonth.year, calendarMonth.month), [data, calendarMonth]);
 
   const saveWeeklyGoal = (value) => {
@@ -351,7 +375,7 @@ export default function WorkPage() {
       <WorkTodayBrief items={todayItems} onOpenSchedule={() => navigate(`/schedule?date=${today}`)} />
 
       <div className="mb-4 grid gap-4 xl:grid-cols-[minmax(420px,1fr)_minmax(360px,0.85fr)]">
-        <TimeTracker activeSession={activeSession} categories={categories} todos={todayTodos} onChange={load} />
+        <TimeTracker activeSession={activeSession} categories={categories} todos={focusItems} onChange={load} />
         <WorkStats sessions={sessions} categories={categories} today={today} weeklyGoalHours={weeklyGoalHours} onWeeklyGoalHoursChange={saveWeeklyGoal} />
       </div>
 

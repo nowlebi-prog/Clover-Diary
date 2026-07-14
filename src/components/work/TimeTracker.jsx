@@ -13,6 +13,16 @@ import {
 } from "../../lib/storage/localStorageAdapter";
 import { computeElapsed, fmtHM, fmtHMS } from "../../lib/utils/workUtils";
 
+const focusValue = (item) => item.focusId || item.id;
+
+const formatMemoTime = (value) => {
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return "";
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${hour}시 ${minute}분`;
+};
+
 export default function TimeTracker({ activeSession, categories = [], todos = [], onChange }) {
   const [tick, setTick] = useState(Date.now());
   const [draftTitle, setDraftTitle] = useState("");
@@ -35,7 +45,7 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
   }, [categories, draftCategory]);
 
   useEffect(() => {
-    const selected = todos.find((todo) => todo.id === draftTodoId);
+    const selected = todos.find((todo) => focusValue(todo) === draftTodoId);
     if (!selected) return;
     setDraftTitle(selected.title || "");
     setDraftCategory(selected.category || selected.project || "업무");
@@ -63,8 +73,8 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
           <AppSelect value={draftTodoId} onChange={(event) => setDraftTodoId(event.target.value)}>
             <option value="">직접 입력해서 시작</option>
             {todos.map((todo) => (
-              <option key={todo.id} value={todo.id}>
-                {todo.title}
+              <option key={focusValue(todo)} value={focusValue(todo)}>
+                {todo.timeLabel ? `${todo.timeLabel} · ${todo.title}` : todo.title}
               </option>
             ))}
           </AppSelect>
@@ -93,7 +103,12 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
             className="mx-auto w-full max-w-sm"
             disabled={!draftTitle.trim()}
             onClick={() => {
-              startActiveSession({ title: draftTitle.trim(), category: draftCategory, todoId: draftTodoId });
+              const selected = todos.find((todo) => focusValue(todo) === draftTodoId);
+              startActiveSession({
+                title: draftTitle.trim(),
+                category: draftCategory,
+                todoId: selected?.source === "todo" || selected?.type === "todo" ? selected.id : ""
+              });
               setDraftTitle("");
               setDraftTodoId("");
               onChange?.();
@@ -184,6 +199,7 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
         <div className="mt-3 grid gap-1.5">
           {activeSession.memos.map((memo) => (
             <p key={memo.id} className="rounded-xl bg-white/60 px-3 py-2 text-xs text-clover-sub">
+              <span className="mr-2 font-black text-clover-deep">{formatMemoTime(memo.time)}</span>
               <span className="mr-1 font-bold text-clover-deep">{memo.phase === "break" ? "휴식" : "업무"}</span>
               {memo.text}
             </p>
