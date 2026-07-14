@@ -423,7 +423,7 @@ export default function WorkPage() {
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <div id="worklog">
-          <WorkLog sessions={sessions} categories={categories} today={today} onChange={load} />
+          <WorkLog sessions={sessions} categories={categories} today={today} activeSession={activeSession} onChange={load} />
         </div>
         <div className="grid gap-4">
           <WorkReflectionCard today={today} onChange={load} />

@@ -7,7 +7,7 @@ import GlassCard from "../common/GlassCard";
 import SessionCard from "./SessionCard";
 import { createStudyCapture, createWorkSession, getWorkLogNote, saveWorkLogNote } from "../../lib/storage/localStorageAdapter";
 import { addDays } from "../../lib/utils/date";
-import { fmtDateLabel, fmtHM } from "../../lib/utils/workUtils";
+import { computeElapsed, fmtClock, fmtDateLabel, fmtHM } from "../../lib/utils/workUtils";
 
 const FILTERS = [
   { key: "today", label: "오늘" },
@@ -16,7 +16,7 @@ const FILTERS = [
   { key: "all", label: "전체" }
 ];
 
-export default function WorkLog({ sessions = [], categories = [], today, onChange }) {
+export default function WorkLog({ sessions = [], categories = [], today, activeSession = null, onChange }) {
   const [filter, setFilter] = useState("today");
   const [note, setNote] = useState("");
   const [studyNeeded, setStudyNeeded] = useState(false);
@@ -30,6 +30,7 @@ export default function WorkLog({ sessions = [], categories = [], today, onChang
     memo: ""
   }));
   const [manualError, setManualError] = useState("");
+  const [tick, setTick] = useState(Date.now());
   const summaryKey = filter === "today" ? today : filter === "week" ? `${today}-week` : filter === "month" ? `${today.slice(0, 7)}-month` : "all";
 
   useEffect(() => {
@@ -46,8 +47,15 @@ export default function WorkLog({ sessions = [], categories = [], today, onChang
     }));
   }, [categories, today]);
 
+  useEffect(() => {
+    if (!activeSession) return undefined;
+    const timer = window.setInterval(() => setTick(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [activeSession?.id]);
+
   const todaySessions = useMemo(() => sessions.filter((session) => session.date === today), [sessions, today]);
   const todayTotal = todaySessions.reduce((sum, session) => sum + (session.duration || 0), 0);
+  const liveElapsed = activeSession ? computeElapsed(activeSession, tick) : null;
 
   const filtered = useMemo(() => {
     if (filter === "all") return sessions;
@@ -167,6 +175,33 @@ export default function WorkLog({ sessions = [], categories = [], today, onChang
           <p className="mt-1 text-lg font-black text-clover-ink">{filtered.length}건</p>
         </div>
       </div>
+
+      {activeSession && (
+        <div className="mb-4 rounded-[22px] border border-emerald-200 bg-emerald-50/70 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-clover-deep">진행 중 업무</p>
+              <p className="mt-1 truncate text-base font-black text-clover-ink">{activeSession.title}</p>
+              <p className="mt-1 text-xs font-bold text-clover-sub">
+                {fmtClock(activeSession.startTime)} 시작 · {activeSession.category || "업무"}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white/80 px-4 py-2 text-right">
+              <p className="text-xs font-black text-clover-sub">{liveElapsed?.isPaused ? "휴식 중" : "집중 중"}</p>
+              <p className="text-lg font-black text-clover-deep">{fmtHM(liveElapsed?.workSec || 0)}</p>
+            </div>
+          </div>
+          {!!activeSession.memos?.length && (
+            <div className="mt-3 grid gap-1">
+              {activeSession.memos.slice(-3).map((memo) => (
+                <p key={memo.id} className="rounded-xl bg-white/65 px-3 py-2 text-xs font-bold text-clover-sub">
+                  {memo.text}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="rounded-[26px] border border-amber-200 bg-amber-50/45 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">

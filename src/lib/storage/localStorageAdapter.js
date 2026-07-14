@@ -428,7 +428,18 @@ export function endActiveSession() {
   const pauses = (session.pauses || []).map((pause) => (!pause.end ? { ...pause, end: now } : pause));
   const pauseSec = pauses.reduce((sum, pause) => sum + Math.max(0, Math.round((pause.end - pause.start) / 1000)), 0);
   const duration = Math.max(0, Math.round((now - session.startTime) / 1000) - pauseSec);
-  const saved = { ...session, id: makeId("workSessions"), endTime: now, pauses, pauseSec, duration, updatedAt: today() };
+  const saved = {
+    ...session,
+    id: makeId("workSessions"),
+    date: session.date || today(),
+    endTime: now,
+    pauses,
+    pauseSec,
+    duration,
+    actualWork: session.actualWork || session.title || "",
+    categoryLog: session.categoryLog?.length ? session.categoryLog : [{ category: session.category, start: session.startTime, end: now }],
+    updatedAt: today()
+  };
   data.workSessions = [saved, ...(data.workSessions || [])];
   if (session.todoId) {
     data.todos = (data.todos || []).map((todo) => {

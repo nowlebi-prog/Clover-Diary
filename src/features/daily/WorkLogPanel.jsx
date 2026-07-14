@@ -16,6 +16,13 @@ const fmtDuration = (sec) => {
   return m ? `${h}시간 ${m}분` : `${h}시간`;
 };
 
+const elapsedWorkSec = (session, now = Date.now()) => {
+  if (!session) return 0;
+  const pauses = session.pauses || [];
+  const pauseSec = pauses.reduce((sum, pause) => sum + Math.max(0, Math.round(((pause.end || now) - pause.start) / 1000)), 0);
+  return Math.max(0, Math.round((now - session.startTime) / 1000) - pauseSec);
+};
+
 const weekDates = (base) => {
   const day = base.getDay();
   const monday = new Date(base);
@@ -32,12 +39,19 @@ export default function WorkLogPanel() {
   const [data, setData] = useState(getAllData());
   const [range, setRange] = useState("today");
   const [nextTodoDraft, setNextTodoDraft] = useState(getWorkLogNote(today).nextTodo || "");
+  const [tick, setTick] = useState(Date.now());
 
   useEffect(() => {
     const load = () => setData(getAllData());
     window.addEventListener("clover-data-change", load);
     return () => window.removeEventListener("clover-data-change", load);
   }, []);
+
+  useEffect(() => {
+    if (!data.activeSession) return undefined;
+    const timer = window.setInterval(() => setTick(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [data.activeSession?.id]);
 
   const dateKeys = useMemo(() => (range === "today" ? [today] : weekDates(new Date())), [range, today]);
 
@@ -48,6 +62,7 @@ export default function WorkLogPanel() {
 
   const totalFocusSec = sessions.reduce((sum, session) => sum + (session.duration || 0), 0);
   const totalBreakSec = sessions.reduce((sum, session) => sum + (session.pauseSec || 0), 0);
+  const activeSession = data.activeSession || null;
 
   const categoryTotals = useMemo(() => {
     const totals = {};
@@ -86,6 +101,19 @@ export default function WorkLogPanel() {
           <p className="mt-1 text-lg font-black text-amber-600">{fmtDuration(totalBreakSec)}</p>
         </div>
       </div>
+
+      {activeSession && range === "today" && (
+        <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-black text-clover-deep">진행 중 업무</p>
+              <p className="mt-1 truncate text-sm font-black text-clover-ink">{activeSession.title}</p>
+              <p className="mt-1 text-xs font-bold text-clover-sub">{activeSession.category || "업무"}</p>
+            </div>
+            <p className="shrink-0 rounded-xl bg-white/80 px-3 py-1 text-sm font-black text-clover-deep">{fmtDuration(elapsedWorkSec(activeSession, tick))}</p>
+          </div>
+        </div>
+      )}
 
       {!!categoryTotals.length && (
         <div className="mb-4 grid gap-2">
