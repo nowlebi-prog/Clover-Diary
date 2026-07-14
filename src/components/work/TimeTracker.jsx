@@ -4,6 +4,7 @@ import AppInput from "../common/AppInput";
 import AppSelect from "../common/AppSelect";
 import {
   addActiveSessionMemo,
+  createWorkSession,
   discardActiveSession,
   endActiveSession,
   pauseActiveSession,
@@ -12,6 +13,7 @@ import {
   updateActiveSession
 } from "../../lib/storage/localStorageAdapter";
 import { computeElapsed, fmtHM, fmtHMS } from "../../lib/utils/workUtils";
+import { toDateKey } from "../../lib/utils/date";
 
 const focusValue = (item) => item.focusId || item.id;
 
@@ -31,6 +33,16 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
   const [memoText, setMemoText] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
+  const today = toDateKey(new Date());
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manual, setManual] = useState({
+    date: today,
+    title: "",
+    category: categories[0]?.name || "업무",
+    start: "09:00",
+    end: "10:00",
+    memo: ""
+  });
 
   useEffect(() => {
     if (!activeSession) return undefined;
@@ -59,6 +71,66 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
     setMemoText("");
     onChange?.();
   };
+
+  const timeToMs = (dateKey, value) => {
+    const [hour = 0, minute = 0] = String(value || "00:00").split(":").map(Number);
+    const date = new Date(`${dateKey}T00:00:00`);
+    date.setHours(hour, minute, 0, 0);
+    return date.getTime();
+  };
+
+  const saveManualSession = () => {
+    const title = manual.title.trim();
+    if (!title) return;
+    const startTime = timeToMs(manual.date || today, manual.start);
+    let endTime = timeToMs(manual.date || today, manual.end);
+    if (endTime <= startTime) endTime += 24 * 3600 * 1000;
+    createWorkSession({
+      title,
+      actualWork: title,
+      category: manual.category || categories[0]?.name || "업무",
+      date: manual.date || today,
+      startTime,
+      endTime,
+      duration: Math.max(0, Math.round((endTime - startTime) / 1000)),
+      pauseSec: 0,
+      pauses: [],
+      memos: manual.memo.trim() ? [{ id: `memo-${Date.now()}`, text: manual.memo.trim(), phase: "note", time: Date.now() }] : [],
+      categoryLog: [{ category: manual.category || categories[0]?.name || "업무", start: startTime, end: endTime }],
+      manual: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    setManual((current) => ({ ...current, title: "", memo: "" }));
+    setManualOpen(false);
+    onChange?.();
+  };
+
+  const ManualAdd = (
+    <div className="mt-4 rounded-[18px] border border-clover-line bg-white/55 p-4">
+      <button type="button" onClick={() => setManualOpen((value) => !value)} className="flex w-full items-center justify-between text-left text-sm font-black text-clover-deep">
+        <span>타이머 깜빡했을 때 수동추가</span>
+        <span>{manualOpen ? "닫기" : "열기"}</span>
+      </button>
+      {manualOpen && (
+        <div className="mt-3 grid gap-3">
+          <AppInput value={manual.title} onChange={(event) => setManual((current) => ({ ...current, title: event.target.value }))} placeholder="무슨 일을 했나요?" />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <AppInput type="date" value={manual.date} onChange={(event) => setManual((current) => ({ ...current, date: event.target.value }))} />
+            <AppSelect value={manual.category} onChange={(event) => setManual((current) => ({ ...current, category: event.target.value }))}>
+              {categories.map((category) => <option key={category.id || category.name} value={category.name}>{category.name}</option>)}
+            </AppSelect>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <AppInput value={manual.start} onChange={(event) => setManual((current) => ({ ...current, start: event.target.value }))} placeholder="시작 09:00" />
+            <AppInput value={manual.end} onChange={(event) => setManual((current) => ({ ...current, end: event.target.value }))} placeholder="종료 10:00" />
+          </div>
+          <AppInput value={manual.memo} onChange={(event) => setManual((current) => ({ ...current, memo: event.target.value }))} placeholder="메모" />
+          <AppButton onClick={saveManualSession} disabled={!manual.title.trim()}>수동 기록 추가</AppButton>
+        </div>
+      )}
+    </div>
+  );
 
   if (!activeSession) {
     return (
@@ -117,6 +189,7 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
             업무 시작
           </AppButton>
         </div>
+        {ManualAdd}
       </section>
     );
   }
@@ -206,6 +279,7 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
           ))}
         </div>
       )}
+      {ManualAdd}
     </section>
   );
 }

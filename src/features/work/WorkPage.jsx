@@ -261,6 +261,30 @@ function WorkCalendarCard({ year, month, itemsByDate, selectedDate, onSelectDate
   );
 }
 
+function FloatingMustPanel({ items, onOpenSchedule }) {
+  const mustItems = items.filter((item) => item.todayMust).slice(0, 8);
+  if (!mustItems.length) return null;
+
+  return (
+    <aside className="fixed right-5 top-28 z-20 hidden w-64 xl:block">
+      <GlassCard className="rounded-[18px] border border-emerald-100 bg-white/92 p-4 shadow-glass backdrop-blur-xl">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <SectionTitle>오늘 꼭!</SectionTitle>
+          <button type="button" onClick={onOpenSchedule} className="text-xs font-black text-clover-deep">수정</button>
+        </div>
+        <div className="grid gap-2">
+          {mustItems.map((item) => (
+            <article key={`${item.type}-${item.id}`} className="rounded-[14px] bg-emerald-50/75 px-3 py-2">
+              <p className="truncate text-sm font-black text-clover-ink">{item.displayTitle || item.title}</p>
+              <p className="mt-1 text-[11px] font-bold text-clover-sub">{formatTime(item) || item.category || "일정"}</p>
+            </article>
+          ))}
+        </div>
+      </GlassCard>
+    </aside>
+  );
+}
+
 function WorkReflectionCard({ today, onChange }) {
   const [draft, setDraft] = useState(() => getAllData().workLogNotes?.[today]?.reflection || "");
 
@@ -315,7 +339,6 @@ export default function WorkPage() {
   const categories = getWorkCategories();
   const activeSession = getActiveSession();
   const sessions = data.workSessions || [];
-  const weeklyGoalHours = Number(data.workSettings?.weeklyGoalHours || 40);
   const todayItems = useMemo(() => getTodayItems(data, today), [data, today]);
   const todayTodos = useMemo(
     () => (data.todos || []).filter((todo) => !todo.completed && (!todo.dueDate || todo.dueDate <= today)).slice(0, 12),
@@ -347,13 +370,6 @@ export default function WorkPage() {
   }, [todayItems, todayTodos]);
   const monthItems = useMemo(() => getMonthCalendarItems(data, calendarMonth.year, calendarMonth.month), [data, calendarMonth]);
 
-  const saveWeeklyGoal = (value) => {
-    const next = getAllData();
-    next.workSettings = { ...(next.workSettings || {}), weeklyGoalHours: value };
-    saveAllData(next);
-    load();
-  };
-
   const toggleTodoNeedMove = (item) => {
     if (item.type !== "todo") return;
     const next = getAllData();
@@ -372,11 +388,11 @@ export default function WorkPage() {
 
       <p className="-mt-3 mb-5 text-sm font-bold text-clover-sub">오늘의 계획을 실행하고 기록하세요.</p>
       <WorkTabs />
-      <WorkTodayBrief items={todayItems} onOpenSchedule={() => navigate(`/schedule?date=${today}`)} />
+      <FloatingMustPanel items={todayItems} onOpenSchedule={() => navigate(`/schedule?date=${today}`)} />
 
       <div className="mb-4 grid gap-4 xl:grid-cols-[minmax(420px,1fr)_minmax(360px,0.85fr)]">
         <TimeTracker activeSession={activeSession} categories={categories} todos={focusItems} onChange={load} />
-        <WorkStats sessions={sessions} categories={categories} today={today} weeklyGoalHours={weeklyGoalHours} onWeeklyGoalHoursChange={saveWeeklyGoal} />
+        <WorkStats sessions={sessions} categories={categories} today={today} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -399,6 +415,10 @@ export default function WorkPage() {
           </div>
           <TodayTimeline items={todayItems} onToggleNeedMove={toggleTodoNeedMove} />
         </GlassCard>
+      </div>
+
+      <div className="mt-4">
+        <WorkTodayBrief items={todayItems} onOpenSchedule={() => navigate(`/schedule?date=${today}`)} />
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">

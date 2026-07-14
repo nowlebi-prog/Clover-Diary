@@ -11,7 +11,7 @@ export const collections = [
   "workSessions", "savings", "deletedItems"
 ];
 
-export const DEFAULT_WORK_CATEGORIES = ["업무", "회의", "기획", "잡무"];
+export const DEFAULT_WORK_CATEGORIES = ["PPT", "위스티아", "갭이어", "공부", "신사업", "유튜브", "자기개발", "기타"];
 
 export const initialData = {
   todos: [

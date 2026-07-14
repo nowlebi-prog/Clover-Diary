@@ -30,11 +30,11 @@ const weekDays = ["월", "화", "수", "목", "금", "토", "일"];
 const emptyChore = (today) => ({ title: "", icon: "🧺", cycle: "매주", nextDueDate: today, days: [], completed: false });
 const emptyShopping = () => ({ title: "", category: "생활용품", completed: false, memo: "", importance: 0, price: "" });
 const moodOptions = [
-  { score: 1, label: "매우 나쁨", face: "☹" },
-  { score: 2, label: "나쁨", face: "🙁" },
-  { score: 3, label: "보통", face: "😐" },
-  { score: 4, label: "좋음", face: "🙂" },
-  { score: 5, label: "매우 좋음", face: "😄" }
+  { score: 1, label: "매우 나쁨", face: "\u{1F622}" },
+  { score: 2, label: "나쁨", face: "\u{1F61F}" },
+  { score: 3, label: "보통", face: "\u{1F610}" },
+  { score: 4, label: "좋음", face: "\u{1F642}" },
+  { score: 5, label: "매우 좋음", face: "\u{1F604}" }
 ];
 
 const nextDueDate = (chore, today) => {
@@ -65,7 +65,6 @@ function LifeTabs({ value, onChange }) {
     </div>
   );
 }
-
 function TodayChoreOverview({ chores, today, onDone, onPostpone, onManage }) {
   const dueChores = chores
     .filter((item) => !item.archived && item.lastDoneAt !== today && (!item.nextDueDate || item.nextDueDate <= today))
@@ -320,9 +319,11 @@ function TodayRecordGraph({ entries, today }) {
 const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 function LifeJournalDetails({ data, today, onChange }) {
-  const mood = (data.moodEntries || []).find((item) => item.date === today);
-  const reflection = (data.reflections || []).find((item) => item.date === today);
-  const gratitudeEntry = (data.gratitudeEntries || []).find((item) => item.date === today);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const dateTabs = [addDays(today, -2), addDays(today, -1), today];
+  const mood = (data.moodEntries || []).find((item) => item.date === selectedDate);
+  const reflection = (data.reflections || []).find((item) => item.date === selectedDate);
+  const gratitudeEntry = (data.gratitudeEntries || []).find((item) => item.date === selectedDate);
   const [score, setScore] = useState(mood?.score || 3);
   const [moodLabel, setMoodLabel] = useState(mood?.label || moodOptions.find((item) => item.score === Number(mood?.score))?.label || "보통");
   const [sleepHours, setSleepHours] = useState(mood?.sleepHours || "");
@@ -339,7 +340,7 @@ function LifeJournalDetails({ data, today, onChange }) {
     setSummary(reflection?.body || reflection?.memo || "");
     setGratitude([0, 1, 2].map((index) => gratitudeEntry?.items?.[index] || ""));
     setPhotos(mood?.photos || []);
-  }, [mood?.id, reflection?.id, gratitudeEntry?.id]);
+  }, [selectedDate, mood?.id, reflection?.id, gratitudeEntry?.id]);
 
   const handlePhotoUpload = (files) => {
     Array.from(files || []).forEach((file) => {
@@ -347,7 +348,7 @@ function LifeJournalDetails({ data, today, onChange }) {
       reader.onload = () => {
         setPhotos((current) => [
           ...current,
-          { id: makeId("photo"), name: file.name, src: reader.result, createdAt: today }
+          { id: makeId("photo"), name: file.name, src: reader.result, createdAt: selectedDate }
         ]);
       };
       reader.readAsDataURL(file);
@@ -359,7 +360,7 @@ function LifeJournalDetails({ data, today, onChange }) {
     const selectedMood = moodOptions.find((item) => item.score === Number(score)) || moodOptions[2];
     const record = {
       id: mood?.id || makeId("dailyRecord"),
-      date: today,
+      date: selectedDate,
       mood: moodLabel,
       moodScore: Number(score) || 3,
       sleepHours: Number(sleepHours) || 0,
@@ -368,13 +369,13 @@ function LifeJournalDetails({ data, today, onChange }) {
       gratitudeList: gratitude,
       photoUrl: photos[0]?.src || "",
       photos,
-      createdAt: mood?.createdAt || today,
+      createdAt: mood?.createdAt || selectedDate,
       updatedAt: today
     };
     next.moodEntries = [
       {
         id: mood?.id || makeId("mood"),
-        date: today,
+        date: selectedDate,
         mood: moodLabel,
         emoji: selectedMood.face,
         label: moodLabel,
@@ -383,34 +384,34 @@ function LifeJournalDetails({ data, today, onChange }) {
         sleepHours: Number(sleepHours) || 0,
         weather: weather.trim(),
         photos,
-        createdAt: mood?.createdAt || today,
+        createdAt: mood?.createdAt || selectedDate,
         updatedAt: today
       },
-      ...(next.moodEntries || []).filter((item) => item.date !== today)
+      ...(next.moodEntries || []).filter((item) => item.date !== selectedDate)
     ];
     next.reflections = [
       {
         id: reflection?.id || makeId("reflection"),
-        date: today,
+        date: selectedDate,
         title: "오늘 요약",
         body: summary.trim(),
         memo: summary.trim(),
-        createdAt: reflection?.createdAt || today,
+        createdAt: reflection?.createdAt || selectedDate,
         updatedAt: today
       },
-      ...(next.reflections || []).filter((item) => item.date !== today)
+      ...(next.reflections || []).filter((item) => item.date !== selectedDate)
     ];
     next.gratitudeEntries = [
       {
         id: gratitudeEntry?.id || makeId("gratitude"),
-        date: today,
+        date: selectedDate,
         items: gratitude,
-        createdAt: gratitudeEntry?.createdAt || today,
+        createdAt: gratitudeEntry?.createdAt || selectedDate,
         updatedAt: today
       },
-      ...(next.gratitudeEntries || []).filter((item) => item.date !== today)
+      ...(next.gratitudeEntries || []).filter((item) => item.date !== selectedDate)
     ];
-    next.dailyRecords = [record, ...(next.dailyRecords || []).filter((item) => item.date !== today)];
+    next.dailyRecords = [record, ...(next.dailyRecords || []).filter((item) => item.date !== selectedDate)];
     saveAllData(next);
     onChange?.();
   };
@@ -418,11 +419,31 @@ function LifeJournalDetails({ data, today, onChange }) {
   return (
     <div className="grid gap-4 xl:grid-cols-[.85fr_1.15fr]">
       <GlassCard>
-        <SectionTitle>오늘 기록</SectionTitle>
-        <TodayRecordGraph entries={data.moodEntries || []} today={today} />
+        <SectionTitle>하루 기록</SectionTitle>
+        <div className="mb-4 grid gap-2">
+          <AppInput type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
+          <div className="grid grid-cols-3 gap-2">
+            {dateTabs.map((date) => {
+              const label = date === today ? "오늘" : date === addDays(today, -1) ? "어제" : "그제";
+              const hasRecord = (data.moodEntries || []).some((item) => item.date === date) || (data.reflections || []).some((item) => item.date === date);
+              return (
+                <button
+                  key={date}
+                  type="button"
+                  onClick={() => setSelectedDate(date)}
+                  className={`rounded-2xl px-3 py-2 text-xs font-black transition ${selectedDate === date ? "bg-clover-deep text-white" : "bg-white/70 text-clover-sub"}`}
+                >
+                  {label}
+                  {hasRecord && <span className="ml-1">•</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <TodayRecordGraph entries={data.moodEntries || []} today={selectedDate} />
       </GlassCard>
       <GlassCard>
-        <SectionTitle action={<AppButton onClick={save}>저장</AppButton>}>기록 작성</SectionTitle>
+        <SectionTitle action={<AppButton onClick={save}>저장</AppButton>}>{selectedDate} 기록 작성</SectionTitle>
         <div className="grid gap-3">
           <div>
             <p className="mb-2 text-sm font-bold">기분 선택</p>

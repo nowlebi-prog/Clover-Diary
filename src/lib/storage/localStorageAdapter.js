@@ -321,7 +321,10 @@ export const {
 
 export function getTaskCategories() {
   const data = getAllData();
-  return Array.isArray(data.taskCategories) && data.taskCategories.length ? data.taskCategories : [...DEFAULT_WORK_CATEGORIES];
+  const saved = Array.isArray(data.taskCategories) && data.taskCategories.length ? data.taskCategories : [];
+  const names = new Set(saved.map((category) => typeof category === "string" ? category : category.name));
+  const missingDefaults = DEFAULT_WORK_CATEGORIES.filter((name) => !names.has(name));
+  return [...saved, ...missingDefaults];
 }
 
 export function saveTaskCategories(categories) {
