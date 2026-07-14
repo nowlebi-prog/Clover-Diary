@@ -1,0 +1,17 @@
+{
+  "name": "Eunbi's personal Diary",
+  "short_name": "Clover Diary",
+  "description": "Eunbi's personal diary and daily dashboard.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAF7",
+  "theme_color": "#F8FAF7",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
