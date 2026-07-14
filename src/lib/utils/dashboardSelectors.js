@@ -78,8 +78,8 @@ export function getTodayItems(data, today = toDateKey()) {
 
 export function getUpcomingDeadlines(data, today = toDateKey()) {
   const items = [];
-  getIncompleteTodos(data).forEach((item) => item.dueDate && items.push(compact(item, "todo", item.dueDate, { label: "Todo" })));
-  (data.events || []).filter((item) => !item.completed).forEach((item) => item.date && items.push(compact(item, "event", item.date, { label: "Event" })));
+  getIncompleteTodos(data).forEach((item) => item.deadlineWarning && item.dueDate && items.push(compact(item, "todo", item.dueDate, { label: "Todo" })));
+  (data.events || []).filter((item) => !item.completed && item.deadlineWarning).forEach((item) => item.date && items.push(compact(item, "event", item.date, { label: "Event" })));
   (data.contentPlans || []).filter((item) => !item.completed).forEach((item) => item.publishDate && items.push(compact(item, "content", item.publishDate, { label: "Content" })));
   (data.payments || []).filter((item) => !item.completed && item.status !== "입금 완료").forEach((item) => item.expectedDate && items.push(compact(item, "payment", item.expectedDate, { label: "Payment" })));
   (data.campaigns || []).filter((item) => !item.completed).forEach((item) => {

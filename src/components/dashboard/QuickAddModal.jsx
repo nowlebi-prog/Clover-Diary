@@ -24,8 +24,8 @@ const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).sli
 const defaults = (type) => {
   const today = toDateKey(new Date());
   const map = {
-    todo: { title: "", dueDate: today, allDay: false, startTime: "", endTime: "", endDate: "", dueTime: "", priority: "normal", category: "개인", completed: false, subTasks: [], memo: "", todayMust: false },
-    event: { title: "", date: today, allDay: false, time: "09:00", startTime: "09:00", endTime: "", category: "개인", priority: "normal", needMove: false, memo: "", todayMust: false },
+    todo: { title: "", dueDate: today, allDay: false, startTime: "", endTime: "", endDate: "", dueTime: "", priority: "normal", category: "개인", completed: false, subTasks: [], memo: "", todayMust: false, deadlineWarning: false },
+    event: { title: "", date: today, allDay: false, time: "09:00", startTime: "09:00", endTime: "", category: "개인", priority: "normal", needMove: false, memo: "", todayMust: false, deadlineWarning: false },
     payment: { project: "", client: "", amount: "", category: "자유소득", status: "입금 예정", expectedDate: today, memo: "" },
     expense: { title: "", amount: "", date: today, category: "생활비", memo: "" },
     memo: { body: "" },
@@ -95,8 +95,8 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
     const category = (form.category || "개인").trim();
     const payload =
       type === "memo" ? { ...form, body: form.body || quickText, done: false }
-      : type === "todo" ? { ...form, subTasks: cleanSubTasks(form.subTasks), category, project: category, projectName: category, dueTime: form.allDay ? "" : form.startTime || form.dueTime || "", startTime: form.allDay ? "" : form.startTime || form.dueTime || "", endTime: form.allDay ? "" : form.endTime || "" }
-      : type === "event" ? { ...form, category, time: form.allDay ? "" : form.startTime || form.time || "", startTime: form.allDay ? "" : form.startTime || form.time || "", endTime: form.allDay ? "" : form.endTime || "", priority: form.priority || "normal", needMove: Boolean(form.needMove), todayMust: Boolean(form.todayMust) }
+      : type === "todo" ? { ...form, subTasks: cleanSubTasks(form.subTasks), category, project: category, projectName: category, dueTime: form.allDay ? "" : form.startTime || form.dueTime || "", startTime: form.allDay ? "" : form.startTime || form.dueTime || "", endTime: form.allDay ? "" : form.endTime || "", deadlineWarning: Boolean(form.deadlineWarning) }
+      : type === "event" ? { ...form, category, time: form.allDay ? "" : form.startTime || form.time || "", startTime: form.allDay ? "" : form.startTime || form.time || "", endTime: form.allDay ? "" : form.endTime || "", priority: form.priority || "normal", needMove: Boolean(form.needMove), todayMust: Boolean(form.todayMust), deadlineWarning: Boolean(form.deadlineWarning) }
       : form;
     allData[collection] = [{ id: makeId(collection), createdAt: date, updatedAt: date, ...payload }, ...(allData[collection] || [])];
     saveAllData(allData);
@@ -142,6 +142,7 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
             <label className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">다음날로 종료<input type="checkbox" disabled={form.allDay} checked={Boolean(form.endDate && form.endDate !== form.dueDate)} onChange={(event) => set("endDate", event.target.checked ? addDays(form.dueDate || toDateKey(new Date()), 1) : "")} /></label>
             <label className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">하루종일<input type="checkbox" checked={Boolean(form.allDay)} onChange={(event) => setForm((current) => ({ ...current, allDay: event.target.checked, startTime: "", endTime: "", endDate: "", dueTime: "" }))} /></label>
             <label className="flex items-center justify-between rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm font-bold text-clover-deep">오늘 꼭!<input type="checkbox" checked={Boolean(form.todayMust)} onChange={(event) => set("todayMust", event.target.checked)} /></label>
+            <label className="flex items-center justify-between rounded-2xl bg-red-50/70 px-4 py-3 text-sm font-bold text-rose-700">마감 주의<input type="checkbox" checked={Boolean(form.deadlineWarning)} onChange={(event) => set("deadlineWarning", event.target.checked)} /></label>
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1 text-sm font-bold">중요도<AppSelect value={form.priority || "normal"} onChange={(event) => set("priority", event.target.value)}><option value="high">매우 중요</option><option value="normal">보통</option><option value="low">가벼움</option></AppSelect></label>
               <label className="grid gap-1 text-sm font-bold">분류<AppSelect value={form.category || "개인"} onChange={(event) => set("category", event.target.value)}>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</AppSelect></label>
@@ -154,7 +155,7 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
         {type === "event" && (
           <>
             <label className="grid gap-1 text-sm font-bold">일정<AppInput value={form.title} onChange={(event) => set("title", event.target.value)} /></label>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <label className="grid gap-1 text-sm font-bold">날짜<AppInput type="date" value={form.date} onChange={(event) => set("date", event.target.value)} /></label>
               <label className="grid gap-1 text-sm font-bold">시작<TimeField value={form.startTime || form.time || ""} disabled={form.allDay} onChange={(value) => { set("startTime", value); set("time", value); }} /></label>
               <label className="grid gap-1 text-sm font-bold">종료<TimeField value={form.endTime || ""} disabled={form.allDay} onChange={(value) => set("endTime", value)} /></label>
@@ -167,6 +168,7 @@ export default function QuickAddModal({ open, initialType = "todo", onClose }) {
               <label className="flex items-center justify-between rounded-2xl bg-white/55 px-4 py-3 text-sm font-bold">종일<input type="checkbox" checked={Boolean(form.allDay)} onChange={(event) => setForm((current) => ({ ...current, allDay: event.target.checked, startTime: event.target.checked ? "" : current.startTime, time: event.target.checked ? "" : current.time, endTime: event.target.checked ? "" : current.endTime }))} /></label>
               <label className="flex items-center justify-between rounded-2xl bg-red-50/70 px-4 py-3 text-sm font-bold text-rose-700">이동 필요<input type="checkbox" checked={Boolean(form.needMove)} onChange={(event) => set("needMove", event.target.checked)} /></label>
               <label className="flex items-center justify-between rounded-2xl bg-emerald-50/70 px-4 py-3 text-sm font-bold text-clover-deep">오늘 꼭!<input type="checkbox" checked={Boolean(form.todayMust)} onChange={(event) => set("todayMust", event.target.checked)} /></label>
+              <label className="flex items-center justify-between rounded-2xl bg-red-50/70 px-4 py-3 text-sm font-bold text-rose-700">마감 주의<input type="checkbox" checked={Boolean(form.deadlineWarning)} onChange={(event) => set("deadlineWarning", event.target.checked)} /></label>
             </div>
             <label className="grid gap-1 text-sm font-bold">메모<AppTextarea value={form.memo || ""} onChange={(event) => set("memo", event.target.value)} /></label>
           </>

@@ -204,6 +204,7 @@ const emptySchedule = (selectedDate, unscheduled = false) => ({
   memo: "",
   status: "todo",
   priority: "normal",
+  deadlineWarning: false,
   completed: false
 });
 
@@ -752,7 +753,8 @@ function ScheduleEditorV2({ item, selectedDate, onClose, onSave, onDelete }) {
     endDate: normalizeEndDate(initialDate, item?.endDate),
     timeMode: item?.timeMode || initialMode,
     priority: item?.priority || "normal",
-    needMove: Boolean(item?.needMove)
+    needMove: Boolean(item?.needMove),
+    deadlineWarning: Boolean(item?.deadlineWarning)
   });
   const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const timeMode = form.timeMode || "timed";
@@ -858,10 +860,11 @@ function ScheduleEditorV2({ item, selectedDate, onClose, onSave, onDelete }) {
               <option value="high">높음</option>
             </AppSelect>
           </label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <TogglePill label="종일" checked={timeMode === "allDay" || Boolean(form.isAllDay)} onChange={(checked) => set("timeMode", checked ? "allDay" : "timed")} />
             <TogglePill label="이동 필요" tone="rose" checked={Boolean(form.needMove)} onChange={(checked) => set("needMove", checked)} />
             <TogglePill label="오늘 꼭!" tone="mint" checked={Boolean(form.todayMust)} onChange={(checked) => set("todayMust", checked)} />
+            <TogglePill label="마감 주의" tone="rose" checked={Boolean(form.deadlineWarning)} onChange={(checked) => set("deadlineWarning", checked)} />
           </div>
         </div>
 
@@ -997,6 +1000,7 @@ export default function SchedulePage() {
         priority: form.priority || "normal",
         needMove: Boolean(form.needMove),
         todayMust: Boolean(form.todayMust),
+        deadlineWarning: Boolean(form.deadlineWarning),
         completed: Boolean(form.completed),
         updatedAt: today
       };
