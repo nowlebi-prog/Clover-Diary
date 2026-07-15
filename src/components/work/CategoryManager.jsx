@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AppButton from "../common/AppButton";
 import AppInput from "../common/AppInput";
 import GlassCard from "../common/GlassCard";
@@ -10,6 +10,17 @@ export default function CategoryManager({ categories = [] }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [color, setColor] = useState(PALETTE[0]);
+  const [drafts, setDrafts] = useState({});
+
+  useEffect(() => {
+    setDrafts(Object.fromEntries(categories.map((cat) => [cat.id, cat.name])));
+  }, [categories]);
+
+  const saveName = (cat) => {
+    const nextName = String(drafts[cat.id] || "").trim();
+    if (!nextName || nextName === cat.name) return;
+    updateWorkCategory(cat.id, { name: nextName });
+  };
 
   return (
     <GlassCard className="p-5">
@@ -34,9 +45,13 @@ export default function CategoryManager({ categories = [] }) {
             <div key={cat.id} className="flex items-center gap-2">
               <span className="h-4 w-4 shrink-0 rounded-full" style={{ background: cat.color }} />
               <AppInput
-                value={cat.name}
-                onChange={(event) => updateWorkCategory(cat.id, { name: event.target.value })}
+                value={drafts[cat.id] ?? cat.name}
+                onChange={(event) => setDrafts((current) => ({ ...current, [cat.id]: event.target.value }))}
+                onBlur={() => saveName(cat)}
               />
+              <button className="shrink-0 text-xs font-bold text-clover-deep" onClick={() => saveName(cat)}>
+                저장
+              </button>
               <button className="shrink-0 text-xs font-bold text-clover-sub hover:text-clover-danger" onClick={() => deleteWorkCategory(cat.id)}>
                 삭제
               </button>

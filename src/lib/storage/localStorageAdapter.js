@@ -319,34 +319,50 @@ export const {
 // non-array state (current running timer, category list, per-day notes),
 // so they get small dedicated helpers instead of the generic list() pattern.
 
+const WORK_CATEGORY_COLORS = ["#8DDFA8", "#A9C9FF", "#F6C68D", "#F4B6D2", "#BDE7E7", "#BFEFE0", "#F6A6A6", "#FFDCD1"];
+
+function normalizeWorkCategories(categories = []) {
+  const seen = new Set();
+  return (categories || []).reduce((list, category, index) => {
+    const rawName = typeof category === "string" ? category : category?.name;
+    const name = String(rawName || "").trim();
+    if (!name || seen.has(name)) return list;
+    seen.add(name);
+    list.push(typeof category === "string"
+      ? { id: `work-category-${index}-${name}`, name, color: WORK_CATEGORY_COLORS[index % WORK_CATEGORY_COLORS.length] }
+      : { ...category, id: category.id || `work-category-${index}-${name}`, name, color: category.color || WORK_CATEGORY_COLORS[index % WORK_CATEGORY_COLORS.length] });
+    return list;
+  }, []);
+}
+
 export function getTaskCategories() {
   const data = getAllData();
-  const saved = Array.isArray(data.taskCategories) && data.taskCategories.length ? data.taskCategories : [];
-  const names = new Set(saved.map((category) => typeof category === "string" ? category : category.name));
-  const missingDefaults = DEFAULT_WORK_CATEGORIES.filter((name) => !names.has(name));
-  return [...saved, ...missingDefaults];
+  const saved = Array.isArray(data.taskCategories) ? data.taskCategories : [];
+  const normalized = normalizeWorkCategories(saved);
+  if (normalized.length) return normalized;
+  const names = new Set(normalized.map((category) => category.name));
+  const missingDefaults = DEFAULT_WORK_CATEGORIES.filter((name) => !names.has(String(name || "").trim()));
+  return normalizeWorkCategories([...normalized, ...missingDefaults]);
 }
 
 export function saveTaskCategories(categories) {
   const data = getAllData();
-  data.taskCategories = categories;
-  saveAllData(data, { silent: true });
+  data.taskCategories = normalizeWorkCategories(categories);
+  saveAllData(data);
 }
 
 export function getWorkCategories() {
-  return getTaskCategories().map((category, index) => {
-    const colors = ["#8DDFA8", "#A9C9FF", "#F6C68D", "#F4B6D2", "#BDE7E7"];
-    return typeof category === "string"
-      ? { id: `work-category-${index}`, name: category, color: colors[index % colors.length] }
-      : category;
-  });
+  return normalizeWorkCategories(getTaskCategories());
 }
 
 export function createWorkCategory(payload) {
   const categories = getWorkCategories();
+  const name = String(payload.name || "").trim();
+  const existing = categories.find((category) => category.name === name);
+  if (existing) return existing;
   const item = {
     id: makeId("workCategory"),
-    name: payload.name || "새 카테고리",
+    name: name || "새 카테고리",
     color: payload.color || "#8DDFA8"
   };
   saveTaskCategories([...categories, item]);
@@ -354,7 +370,8 @@ export function createWorkCategory(payload) {
 }
 
 export function updateWorkCategory(id, updates) {
-  saveTaskCategories(getWorkCategories().map((category) => category.id === id ? { ...category, ...updates } : category));
+  const nextName = String(updates.name || "").trim();
+  saveTaskCategories(getWorkCategories().map((category) => category.id === id ? { ...category, ...updates, name: nextName || category.name } : category));
 }
 
 export function deleteWorkCategory(id) {
