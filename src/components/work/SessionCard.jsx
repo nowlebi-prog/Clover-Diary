@@ -137,8 +137,9 @@ export default function SessionCard({ session, categories = [], siblingSessions 
       )}
 
       {!readOnly && (
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex min-w-0 items-center gap-2">
           <AppInput
+            className="min-w-0 flex-1"
             placeholder="메모 추가"
             value={memoDraft}
             onChange={(event) => setMemoDraft(event.target.value)}
@@ -146,7 +147,7 @@ export default function SessionCard({ session, categories = [], siblingSessions 
               if (event.key === "Enter") addMemo();
             }}
           />
-          <AppButton variant="soft" onClick={addMemo}>추가</AppButton>
+          <AppButton className="shrink-0 whitespace-nowrap px-4" variant="soft" onClick={addMemo}>추가</AppButton>
         </div>
       )}
     </article>
