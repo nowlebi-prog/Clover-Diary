@@ -314,23 +314,48 @@ export const {
   getWorkSessions, createWorkSession, updateWorkSession, deleteWorkSession
 } = api;
 
-// ── Work timer / worklog helpers ──
+// Work timer / worklog helpers
 // These live alongside the generic collection CRUD above but store
 // non-array state (current running timer, category list, per-day notes),
 // so they get small dedicated helpers instead of the generic list() pattern.
 
-const WORK_CATEGORY_COLORS = ["#8DDFA8", "#A9C9FF", "#F6C68D", "#F4B6D2", "#BDE7E7", "#BFEFE0", "#F6A6A6", "#FFDCD1"];
+export const WORK_CATEGORY_GROUPS = [
+  { name: "업무", colors: ["#BFEFD6", "#8DDFA8", "#63C98B", "#3FA66C", "#23844F"] },
+  { name: "공부", colors: ["#DCEBFF", "#B7D4FF", "#91BEFF", "#6EA6F4", "#4789D8"] },
+  { name: "사업", colors: ["#E8DDFF", "#D4C0FF", "#BFA2F2", "#A785DD", "#8E6AC8"] },
+  { name: "개인", colors: ["#FFE0EC", "#F7BAD3", "#ED96BD", "#DA6EA0", "#C94E85"] },
+  { name: "기타", colors: ["#F4E7C8", "#E8D39E", "#D8BA75", "#C9A04E", "#A98232"] }
+];
+
+const WORK_CATEGORY_COLORS = WORK_CATEGORY_GROUPS.flatMap((group) => group.colors);
+
+export function inferWorkCategoryGroup(name = "") {
+  const value = String(name);
+  if (/공부|영상|마케팅|AI|자기개발|강의|학습/.test(value)) return "공부";
+  if (/사업|신사업|창업|브랜드/.test(value)) return "사업";
+  if (/개인|집안일|생활|건강/.test(value)) return "개인";
+  if (/기타|잡무/.test(value)) return "기타";
+  return "업무";
+}
+
+function colorForWorkCategory(groupName, index) {
+  const group = WORK_CATEGORY_GROUPS.find((item) => item.name === groupName) || WORK_CATEGORY_GROUPS[0];
+  return group.colors[index % group.colors.length];
+}
 
 function normalizeWorkCategories(categories = []) {
   const seen = new Set();
   return (categories || []).reduce((list, category, index) => {
     const rawName = typeof category === "string" ? category : category?.name;
     const name = String(rawName || "").trim();
-    if (!name || seen.has(name)) return list;
-    seen.add(name);
+    const group = String((typeof category === "string" ? "" : category?.group) || inferWorkCategoryGroup(name)).trim();
+    const key = `${group}:${name}`;
+    if (!name || seen.has(key)) return list;
+    const groupIndex = list.filter((item) => item.group === group).length;
+    seen.add(key);
     list.push(typeof category === "string"
-      ? { id: `work-category-${index}-${name}`, name, color: WORK_CATEGORY_COLORS[index % WORK_CATEGORY_COLORS.length] }
-      : { ...category, id: category.id || `work-category-${index}-${name}`, name, color: category.color || WORK_CATEGORY_COLORS[index % WORK_CATEGORY_COLORS.length] });
+      ? { id: `work-category-${index}-${name}`, group, name, color: colorForWorkCategory(group, groupIndex) }
+      : { ...category, id: category.id || `work-category-${index}-${name}`, group, name, color: category.color || colorForWorkCategory(group, groupIndex) });
     return list;
   }, []);
 }
@@ -340,9 +365,7 @@ export function getTaskCategories() {
   const saved = Array.isArray(data.taskCategories) ? data.taskCategories : [];
   const normalized = normalizeWorkCategories(saved);
   if (normalized.length) return normalized;
-  const names = new Set(normalized.map((category) => category.name));
-  const missingDefaults = DEFAULT_WORK_CATEGORIES.filter((name) => !names.has(String(name || "").trim()));
-  return normalizeWorkCategories([...normalized, ...missingDefaults]);
+  return normalizeWorkCategories(DEFAULT_WORK_CATEGORIES);
 }
 
 export function saveTaskCategories(categories) {
@@ -358,12 +381,15 @@ export function getWorkCategories() {
 export function createWorkCategory(payload) {
   const categories = getWorkCategories();
   const name = String(payload.name || "").trim();
-  const existing = categories.find((category) => category.name === name);
+  const group = String(payload.group || inferWorkCategoryGroup(name)).trim();
+  const existing = categories.find((category) => category.name === name && category.group === group);
   if (existing) return existing;
+  const groupIndex = categories.filter((category) => category.group === group).length;
   const item = {
     id: makeId("workCategory"),
+    group,
     name: name || "새 카테고리",
-    color: payload.color || "#8DDFA8"
+    color: payload.color || colorForWorkCategory(group, groupIndex)
   };
   saveTaskCategories([...categories, item]);
   return item;
@@ -371,7 +397,8 @@ export function createWorkCategory(payload) {
 
 export function updateWorkCategory(id, updates) {
   const nextName = String(updates.name || "").trim();
-  saveTaskCategories(getWorkCategories().map((category) => category.id === id ? { ...category, ...updates, name: nextName || category.name } : category));
+  const nextGroup = String(updates.group || "").trim();
+  saveTaskCategories(getWorkCategories().map((category) => category.id === id ? { ...category, ...updates, group: nextGroup || category.group, name: nextName || category.name } : category));
 }
 
 export function deleteWorkCategory(id) {
@@ -382,13 +409,14 @@ export function getActiveSession() {
   return getAllData().activeSession || null;
 }
 
-export function startActiveSession({ title, category, todoId = "" }) {
+export function startActiveSession({ title, category, categoryGroup = "", todoId = "" }) {
   const data = getAllData();
   const now = Date.now();
   data.activeSession = {
     id: makeId("activeWork"),
     title,
     category,
+    categoryGroup: categoryGroup || inferWorkCategoryGroup(category),
     todoId,
     date: today(),
     startTime: now,
@@ -454,7 +482,7 @@ export function endActiveSession() {
     pauseSec,
     duration,
     actualWork: session.actualWork || session.title || "",
-    categoryLog: session.categoryLog?.length ? session.categoryLog : [{ category: session.category, start: session.startTime, end: now }],
+    categoryLog: session.categoryLog?.length ? session.categoryLog : [{ category: session.category, categoryGroup: session.categoryGroup || inferWorkCategoryGroup(session.category), start: session.startTime, end: now }],
     updatedAt: today()
   };
   data.workSessions = [saved, ...(data.workSessions || [])];
@@ -501,7 +529,7 @@ export function saveWorkLogNote(date, patch) {
   saveAllData(data, { silent: true });
 }
 
-// ── Gap year daily budget helpers ──
+// Gap year daily budget helpers
 export const GAP_YEAR_TODO_TITLE = "갭이어 예산 올리기";
 
 export function ensureGapYearDailyTodo() {

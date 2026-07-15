@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppButton from "../common/AppButton";
 import AppInput from "../common/AppInput";
 import AppSelect from "../common/AppSelect";
@@ -7,6 +7,7 @@ import {
   createWorkSession,
   discardActiveSession,
   endActiveSession,
+  inferWorkCategoryGroup,
   pauseActiveSession,
   resumeActiveSession,
   startActiveSession,
@@ -16,6 +17,18 @@ import { computeElapsed, fmtHM, fmtHMS } from "../../lib/utils/workUtils";
 import { toDateKey } from "../../lib/utils/date";
 
 const focusValue = (item) => item.focusId || item.id;
+
+const groupCategories = (categories = []) =>
+  categories.reduce((map, category) => {
+    const group = category.group || inferWorkCategoryGroup(category.name);
+    map[group] = [...(map[group] || []), category];
+    return map;
+  }, {});
+
+const categoryMeta = (categories = [], name = "") =>
+  categories.find((category) => category.name === name) ||
+  categories[0] ||
+  { name: "업무", group: "업무", color: "#8DDFA8" };
 
 const formatMemoTime = (value) => {
   const date = new Date(value || Date.now());
@@ -44,6 +57,10 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
     memo: ""
   });
 
+  const grouped = useMemo(() => groupCategories(categories), [categories]);
+  const selectedMeta = categoryMeta(categories, draftCategory);
+  const selectedColor = selectedMeta.color || "#8DDFA8";
+
   useEffect(() => {
     if (!activeSession) return undefined;
     const timer = setInterval(() => setTick(Date.now()), 1000);
@@ -51,8 +68,8 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
   }, [activeSession?.id]);
 
   useEffect(() => {
-    if (!categories.some((category) => category.name === draftCategory)) {
-      setDraftCategory(categories[0]?.name || "업무");
+    if (categories.length && !categories.some((category) => category.name === draftCategory)) {
+      setDraftCategory(categories[0].name);
     }
   }, [categories, draftCategory]);
 
@@ -60,10 +77,10 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
     const selected = todos.find((todo) => focusValue(todo) === draftTodoId);
     if (!selected) return;
     setDraftTitle(selected.title || "");
-    setDraftCategory(selected.category || selected.project || "업무");
-  }, [draftTodoId, todos]);
-
-  const selectedColor = categories.find((category) => category.name === draftCategory)?.color || "#8DDFA8";
+    if (selected.category && categories.some((category) => category.name === selected.category)) {
+      setDraftCategory(selected.category);
+    }
+  }, [categories, draftTodoId, todos]);
 
   const addMemo = () => {
     if (!memoText.trim()) return;
@@ -82,13 +99,15 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
   const saveManualSession = () => {
     const title = manual.title.trim();
     if (!title) return;
+    const meta = categoryMeta(categories, manual.category);
     const startTime = timeToMs(manual.date || today, manual.start);
     let endTime = timeToMs(manual.date || today, manual.end);
     if (endTime <= startTime) endTime += 24 * 3600 * 1000;
     createWorkSession({
       title,
       actualWork: title,
-      category: manual.category || categories[0]?.name || "업무",
+      category: meta.name,
+      categoryGroup: meta.group,
       date: manual.date || today,
       startTime,
       endTime,
@@ -96,7 +115,7 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
       pauseSec: 0,
       pauses: [],
       memos: manual.memo.trim() ? [{ id: `memo-${Date.now()}`, text: manual.memo.trim(), phase: "note", time: Date.now() }] : [],
-      categoryLog: [{ category: manual.category || categories[0]?.name || "업무", start: startTime, end: endTime }],
+      categoryLog: [{ category: meta.name, categoryGroup: meta.group, start: startTime, end: endTime }],
       manual: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -106,10 +125,24 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
     onChange?.();
   };
 
+  const categoryOptions = (
+    <>
+      {Object.entries(grouped).map(([group, items]) => (
+        <optgroup key={group} label={group}>
+          {items.map((category) => (
+            <option key={category.id || `${group}-${category.name}`} value={category.name}>
+              {category.name}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </>
+  );
+
   const ManualAdd = (
     <div className="mt-4 rounded-[18px] border border-clover-line bg-white/55 p-4">
       <button type="button" onClick={() => setManualOpen((value) => !value)} className="flex w-full items-center justify-between text-left text-sm font-black text-clover-deep">
-        <span>타이머 깜빡했을 때 수동추가</span>
+        <span>깜빡한 업무 수동 추가</span>
         <span>{manualOpen ? "닫기" : "열기"}</span>
       </button>
       {manualOpen && (
@@ -118,7 +151,7 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
           <div className="grid gap-2 sm:grid-cols-2">
             <AppInput type="date" value={manual.date} onChange={(event) => setManual((current) => ({ ...current, date: event.target.value }))} />
             <AppSelect value={manual.category} onChange={(event) => setManual((current) => ({ ...current, category: event.target.value }))}>
-              {categories.map((category) => <option key={category.id || category.name} value={category.name}>{category.name}</option>)}
+              {categoryOptions}
             </AppSelect>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -138,7 +171,7 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
         <div className="mb-5 flex items-center justify-between gap-3">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-clover-deep">Focus Timer</p>
           <span className="rounded-full px-3 py-1 text-xs font-black text-clover-text" style={{ background: selectedColor }}>
-            대기
+            {selectedMeta.group}
           </span>
         </div>
         <div className="mx-auto grid max-w-xl gap-4 text-center">
@@ -155,20 +188,25 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
             value={draftTitle}
             onChange={(event) => setDraftTitle(event.target.value)}
           />
-          <div className="flex flex-wrap justify-center gap-2">
-            {categories.map((category) => (
-              <button
-                key={category.id || category.name}
-                type="button"
-                onClick={() => setDraftCategory(category.name)}
-                className="rounded-full px-3 py-1.5 text-xs font-black transition"
-                style={{
-                  background: draftCategory === category.name ? category.color : "#ffffff90",
-                  color: draftCategory === category.name ? "#1F2A24" : "#718077"
-                }}
-              >
-                {category.name}
-              </button>
+          <div className="grid gap-2 text-left">
+            {Object.entries(grouped).map(([group, items]) => (
+              <div key={group} className="flex flex-wrap items-center gap-2">
+                <span className="w-14 text-xs font-black text-clover-sub">{group}</span>
+                {items.map((category) => (
+                  <button
+                    key={category.id || `${group}-${category.name}`}
+                    type="button"
+                    onClick={() => setDraftCategory(category.name)}
+                    className="rounded-full px-3 py-1.5 text-xs font-black transition"
+                    style={{
+                      background: draftCategory === category.name ? category.color : "#ffffff90",
+                      color: draftCategory === category.name ? "#1F2A24" : "#718077"
+                    }}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
           <AppButton
@@ -176,9 +214,11 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
             disabled={!draftTitle.trim()}
             onClick={() => {
               const selected = todos.find((todo) => focusValue(todo) === draftTodoId);
+              const meta = categoryMeta(categories, draftCategory);
               startActiveSession({
                 title: draftTitle.trim(),
-                category: draftCategory,
+                category: meta.name,
+                categoryGroup: meta.group,
                 todoId: selected?.source === "todo" || selected?.type === "todo" ? selected.id : ""
               });
               setDraftTitle("");
@@ -195,7 +235,8 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
   }
 
   const { workSec, pauseSec, isPaused } = computeElapsed(activeSession, tick);
-  const categoryColor = categories.find((category) => category.name === activeSession.category)?.color || "#8DDFA8";
+  const activeMeta = categoryMeta(categories, activeSession.category);
+  const categoryColor = activeMeta.color || "#8DDFA8";
 
   return (
     <section className="glass rounded-[18px] border border-clover-line bg-white/82 p-5">
@@ -204,7 +245,7 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
           {isPaused ? "쉬는 중" : "집중 중"}
         </p>
         <span className="rounded-full px-3 py-1 text-xs font-black text-clover-text" style={{ background: categoryColor }}>
-          {activeSession.category}
+          {activeMeta.group} · {activeSession.category}
         </span>
       </div>
 

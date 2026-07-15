@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import AppButton from "../common/AppButton";
 import AppInput from "../common/AppInput";
 import AppSelect from "../common/AppSelect";
-import { deleteWorkSession, updateWorkSession } from "../../lib/storage/localStorageAdapter";
+import { deleteWorkSession, inferWorkCategoryGroup, updateWorkSession } from "../../lib/storage/localStorageAdapter";
 import { categoryColor, findOverlap, fmtClock, fmtHM } from "../../lib/utils/workUtils";
 
 function toTimeInputValue(ms) {
@@ -17,19 +17,39 @@ function applyTimeToDate(ms, timeValue) {
   return date.getTime();
 }
 
+function groupCategories(categories = []) {
+  return categories.reduce((map, category) => {
+    const group = category.group || inferWorkCategoryGroup(category.name);
+    map[group] = [...(map[group] || []), category];
+    return map;
+  }, {});
+}
+
+function getCategoryMeta(categories, name, fallbackGroup = "업무") {
+  return categories.find((category) => category.name === name) || {
+    id: `current-${name}`,
+    group: fallbackGroup || inferWorkCategoryGroup(name),
+    name,
+    color: categoryColor(categories, name)
+  };
+}
+
 export default function SessionCard({ session, categories = [], siblingSessions = [], readOnly = false, onChange }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(null);
   const [memoDraft, setMemoDraft] = useState("");
   const [error, setError] = useState("");
+  const currentMeta = getCategoryMeta(categories, session.category, session.categoryGroup);
   const categoryOptions = categories.some((category) => category.name === session.category)
     ? categories
-    : [{ id: `current-${session.category}`, name: session.category, color: categoryColor(categories, session.category) }, ...categories];
+    : [currentMeta, ...categories];
+  const grouped = useMemo(() => groupCategories(categoryOptions), [categoryOptions]);
 
   const startEdit = () => {
     setDraft({
       title: session.title,
-      category: session.category,
+      category: currentMeta.name,
+      categoryGroup: currentMeta.group,
       start: toTimeInputValue(session.startTime),
       end: toTimeInputValue(session.endTime)
     });
@@ -38,6 +58,7 @@ export default function SessionCard({ session, categories = [], siblingSessions 
   };
 
   const save = () => {
+    const selectedMeta = getCategoryMeta(categoryOptions, draft.category, draft.categoryGroup);
     const startTime = applyTimeToDate(session.startTime, draft.start);
     let endTime = applyTimeToDate(session.startTime, draft.end);
     if (endTime <= startTime) endTime += 24 * 3600 * 1000;
@@ -52,8 +73,9 @@ export default function SessionCard({ session, categories = [], siblingSessions 
     const duration = Math.max(Math.round((endTime - startTime) / 1000) - Number(session.pauseSec || 0), 0);
     updateWorkSession(session.id, {
       title: draft.title.trim() || session.title,
-      category: draft.category || session.category,
-      categoryLog: [{ category: draft.category || session.category, start: startTime, end: endTime }],
+      category: selectedMeta.name,
+      categoryGroup: selectedMeta.group,
+      categoryLog: [{ category: selectedMeta.name, categoryGroup: selectedMeta.group, start: startTime, end: endTime }],
       startTime,
       endTime,
       duration
@@ -70,7 +92,7 @@ export default function SessionCard({ session, categories = [], siblingSessions 
   const addMemo = () => {
     if (!memoDraft.trim()) return;
     updateWorkSession(session.id, {
-      memos: [...(session.memos || []), { id: `memo-${Date.now()}`, text: memoDraft.trim(), phase: "note" }]
+      memos: [...(session.memos || []), { id: `memo-${Date.now()}`, text: memoDraft.trim(), phase: "note", time: Date.now() }]
     });
     setMemoDraft("");
     onChange?.();
@@ -86,8 +108,8 @@ export default function SessionCard({ session, categories = [], siblingSessions 
             <p className="truncate text-sm font-black">{session.title}</p>
           )}
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: categoryColor(categories, session.category) }}>
-              {session.category}
+            <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: currentMeta.color }}>
+              {currentMeta.group} · {session.category}
             </span>
             <span className="text-[11px] font-bold text-clover-sub">{fmtHM(session.duration)}</span>
             {session.pauseSec > 0 && <span className="text-[11px] text-clover-sub">휴식 {fmtHM(session.pauseSec)}</span>}
@@ -112,14 +134,22 @@ export default function SessionCard({ session, categories = [], siblingSessions 
       </div>
 
       {editing ? (
-        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-[minmax(120px,1fr)_auto_auto_auto] sm:items-center">
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-[minmax(160px,1fr)_auto_auto_auto] sm:items-center">
           <AppSelect
-            className="min-w-0"
             value={draft.category || ""}
-            onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}
+            onChange={(event) => {
+              const meta = getCategoryMeta(categoryOptions, event.target.value, draft.categoryGroup);
+              setDraft((current) => ({ ...current, category: meta.name, categoryGroup: meta.group }));
+            }}
           >
-            {categoryOptions.map((category) => (
-              <option key={category.id || category.name} value={category.name}>{category.name}</option>
+            {Object.entries(grouped).map(([group, items]) => (
+              <optgroup key={group} label={group}>
+                {items.map((category) => (
+                  <option key={category.id || `${group}-${category.name}`} value={category.name}>
+                    {category.name}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </AppSelect>
           <input
