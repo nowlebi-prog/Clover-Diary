@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AppButton from "../common/AppButton";
 import AppInput from "../common/AppInput";
+import AppSelect from "../common/AppSelect";
 import { deleteWorkSession, updateWorkSession } from "../../lib/storage/localStorageAdapter";
 import { categoryColor, findOverlap, fmtClock, fmtHM } from "../../lib/utils/workUtils";
 
@@ -21,10 +22,14 @@ export default function SessionCard({ session, categories = [], siblingSessions 
   const [draft, setDraft] = useState(null);
   const [memoDraft, setMemoDraft] = useState("");
   const [error, setError] = useState("");
+  const categoryOptions = categories.some((category) => category.name === session.category)
+    ? categories
+    : [{ id: `current-${session.category}`, name: session.category, color: categoryColor(categories, session.category) }, ...categories];
 
   const startEdit = () => {
     setDraft({
       title: session.title,
+      category: session.category,
       start: toTimeInputValue(session.startTime),
       end: toTimeInputValue(session.endTime)
     });
@@ -47,6 +52,8 @@ export default function SessionCard({ session, categories = [], siblingSessions 
     const duration = Math.max(Math.round((endTime - startTime) / 1000) - Number(session.pauseSec || 0), 0);
     updateWorkSession(session.id, {
       title: draft.title.trim() || session.title,
+      category: draft.category || session.category,
+      categoryLog: [{ category: draft.category || session.category, start: startTime, end: endTime }],
       startTime,
       endTime,
       duration
@@ -105,7 +112,16 @@ export default function SessionCard({ session, categories = [], siblingSessions 
       </div>
 
       {editing ? (
-        <div className="mt-3 flex items-center gap-2 text-xs">
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-[minmax(120px,1fr)_auto_auto_auto] sm:items-center">
+          <AppSelect
+            className="min-w-0"
+            value={draft.category || ""}
+            onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}
+          >
+            {categoryOptions.map((category) => (
+              <option key={category.id || category.name} value={category.name}>{category.name}</option>
+            ))}
+          </AppSelect>
           <input
             type="time"
             value={draft.start}
