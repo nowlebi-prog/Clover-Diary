@@ -402,7 +402,7 @@ function ScheduleRow({ item, onComplete, onEdit, onDelete, extraAction }) {
 
 function ScheduleRowCompact({ item, onComplete, onEdit, onDelete, extraAction }) {
   return (
-    <article className="border-b border-clover-line/70 px-3 py-3 text-sm last:border-0">
+    <article className="min-w-0 max-w-full overflow-hidden border-b border-clover-line/70 px-3 py-3 text-sm last:border-0">
       <div className="flex min-w-0 items-center gap-2">
         <input type="checkbox" checked={false} onChange={() => onComplete(item)} className="h-4 w-4 shrink-0 accent-clover-deep" aria-label="완료" />
         <span className="shrink-0 whitespace-nowrap text-[11px] font-black leading-tight text-clover-sub sm:text-xs">{timeText(item)}</span>
@@ -412,8 +412,8 @@ function ScheduleRowCompact({ item, onComplete, onEdit, onDelete, extraAction })
           <CategoryChip category={item.category} />
         </span>
       </div>
-      {item.memo && <p className="mt-1 truncate pl-6 text-xs font-bold text-clover-sub">{item.memo}</p>}
-      <div className="mt-2 flex flex-wrap justify-end gap-1 pl-6">
+      {item.memo && <p className="mt-1 min-w-0 max-w-full break-all pl-6 text-xs font-bold leading-relaxed text-clover-sub">{item.memo}</p>}
+      <div className="mt-2 flex min-w-0 flex-wrap justify-end gap-1 pl-6">
         {extraAction}
         <button type="button" onClick={() => onEdit(item)} className="rounded-lg border border-clover-line bg-white px-2.5 py-1.5 text-xs font-black text-clover-sub">수정</button>
         <button type="button" onClick={() => onDelete(item)} className="rounded-lg border border-clover-line bg-white px-2.5 py-1.5 text-xs font-black text-clover-sub">삭제</button>
@@ -618,7 +618,7 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
 
 function UnscheduledPanel({ items, selectedDate, onAdd, onToday, onSetDate, onEdit, onDelete, onComplete }) {
   return (
-    <GlassCard className="rounded-[22px] border border-amber-100 bg-amber-50/35 p-5">
+    <GlassCard className="min-w-0 max-w-full overflow-hidden rounded-[22px] border border-amber-100 bg-amber-50/35 p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <SectionTitle>날짜 미정</SectionTitle>
@@ -626,7 +626,7 @@ function UnscheduledPanel({ items, selectedDate, onAdd, onToday, onSetDate, onEd
         </div>
         <button type="button" onClick={onAdd} className="rounded-full bg-amber-100 px-3 py-2 text-xs font-black text-amber-800">+ 날짜 미정 추가</button>
       </div>
-      <div className="grid gap-2">
+      <div className="grid min-w-0 gap-2">
         {items.slice(0, 8).map((item) => (
           <ScheduleRowCompact
             key={`${item.collection}-${item.id}`}
@@ -1151,7 +1151,7 @@ export default function SchedulePage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(340px,.8fr)]">
+      <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,.8fr)]">
         <TimelineCompact
           selectedDate={selectedDate}
           items={selectedItems}
