@@ -783,6 +783,7 @@ export default function HomePage() {
         <div className="flex flex-wrap items-center gap-2">
           <WeatherCard />
           <AppButton variant="soft" onClick={refreshNow}>새로고침</AppButton>
+          <AppButton variant="soft" onClick={() => navigate("/quick-links")}>바로가기 URL</AppButton>
           <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
         </div>
       </PageHeader>
