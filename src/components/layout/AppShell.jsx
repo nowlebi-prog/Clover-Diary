@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
 import BottomNav from "./BottomNav";
+import FloatingScratchMemo from "./FloatingScratchMemo";
 import Sidebar from "./Sidebar";
 import QuickAddModal from "../dashboard/QuickAddModal";
 import FocusHourReminder from "../dashboard/FocusHourReminder";
@@ -56,6 +57,7 @@ export default function AppShell() {
       {!weeklyReport && routineCoach && <RoutineCoachModal data={routineCoach.data} today={routineCoach.today} onClose={closeRoutineCoach} />}
       {!quickAddType && !weeklyReport && !routineCoach && <TodayTaskReminder />}
       {!quickAddType && !weeklyReport && !routineCoach && <FocusHourReminder />}
+      {!quickAddType && !weeklyReport && !routineCoach && <FloatingScratchMemo />}
       <BottomNav />
     </div>
   );
