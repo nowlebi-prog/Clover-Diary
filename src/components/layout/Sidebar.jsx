@@ -10,6 +10,7 @@ const items = [
   { to: "/study", label: "Study", paths: ["/study"] },
   { to: "/money", label: "Money", paths: ["/money"] },
   { to: "/memo", label: "Memo", paths: ["/memo"] },
+  { to: "/quick-links", label: "URL", paths: ["/quick-links"] },
   { to: "/archive", label: "Archive", paths: ["/archive"] }
 ];
 

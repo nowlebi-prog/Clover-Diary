@@ -1110,6 +1110,7 @@ export default function SchedulePage() {
         <div className="flex flex-wrap gap-2">
           <AppButton variant="ghost" onClick={() => navigate(-1)}>← 뒤로</AppButton>
           <AppButton variant="soft" onClick={() => setEditing(emptySchedule(selectedDate))}>+ 빠른 추가</AppButton>
+          <AppButton variant="soft" onClick={() => navigate("/quick-links")}>🔗 바로가기 URL</AppButton>
         </div>
       </PageHeader>
       <p className="-mt-3 mb-5 text-sm font-bold text-clover-sub">월간 일정과 선택한 날짜 일정을 한눈에 관리해요.</p>

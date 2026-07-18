@@ -24,6 +24,7 @@ import SettingsPage from "./features/settings/SettingsPage";
 import SchedulePage from "./features/schedule/SchedulePage";
 import WorkLogPage from "./features/worklog/WorkLogPage";
 import MemoPage from "./features/memo/MemoPage";
+import QuickLinksPage from "./features/quickLinks/QuickLinksPage";
 
 function Protected({ session }) {
   if (!session) return <Navigate to="/login" replace />;
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="/files" element={<FilesPage />} />
         <Route path="/worklog" element={<WorkLogPage />} />
         <Route path="/memo" element={<MemoPage />} />
+        <Route path="/quick-links" element={<QuickLinksPage />} />
         <Route path="/settings" element={<SettingsPage onLogout={setSession} />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
