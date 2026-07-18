@@ -780,11 +780,11 @@ export default function HomePage() {
       )}
 
       <PageHeader eyebrow={today} title="오늘도 Lucky Day 🍀">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex max-w-full shrink-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1">
           <WeatherCard />
-          <AppButton variant="soft" onClick={refreshNow}>새로고침</AppButton>
-          <AppButton variant="soft" onClick={() => navigate("/quick-links")}>바로가기 URL</AppButton>
-          <AppButton onClick={() => window.dispatchEvent(new Event("clover-quick-add"))}>+ 빠른 추가</AppButton>
+          <button type="button" onClick={refreshNow} className="h-9 shrink-0 rounded-full bg-white/70 px-3 text-xs font-black text-clover-deep shadow-sm hover:bg-white">새로고침</button>
+          <button type="button" onClick={() => navigate("/quick-links")} className="h-9 shrink-0 rounded-full bg-white/70 px-3 text-xs font-black text-clover-deep shadow-sm hover:bg-white">바로가기 URL</button>
+          <button type="button" onClick={() => window.dispatchEvent(new Event("clover-quick-add"))} className="h-9 shrink-0 rounded-full bg-clover-deep px-3 text-xs font-black text-white shadow-sm hover:bg-[#31754f]">+ 빠른 추가</button>
         </div>
       </PageHeader>
       {dailyQuote && (
