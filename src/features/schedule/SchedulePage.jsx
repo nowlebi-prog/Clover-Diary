@@ -213,12 +213,14 @@ const parseQuickLines = (text) => text
   .map((line) => line.trim())
   .filter(Boolean)
   .map((line) => {
-    const match = line.match(/^(\d{1,2}):(\d{2})\s*(?:~|-)\s*(\d{1,2}):(\d{2})\s+(.+)$/);
+    const match = line.match(/^(\d{1,2}):(\d{2})\s*(?:~|-)\s*(\d{1,2}):(\d{2})\s+(?:\[([^\]]+)\]\s*)?(.+)$/);
     if (!match) return null;
-    const [, sh, sm, eh, em, title] = match;
+    const [, sh, sm, eh, em, rawCategory, title] = match;
+    const category = rawCategory?.trim();
     return {
       startTime: `${sh.padStart(2, "0")}:${sm}`,
       endTime: `${eh.padStart(2, "0")}:${em}`,
+      category: category || "기타",
       title: title.trim()
     };
   })
@@ -493,13 +495,13 @@ function Timeline({ selectedDate, items, quickText, onQuickText, onApplyQuick, o
             <AppTextarea
               value={quickText}
               onChange={(event) => onQuickText(event.target.value)}
-              placeholder={"09:00~12:00 밥\n12:00~13:00 술"}
+              placeholder={"예시: 09:00~10:00 [PPT] 회의\n13:00~15:00 [공부] 자료 정리"}
               className="min-h-[54px] bg-white/80 py-2 text-sm leading-5"
             />
           </label>
           <AppButton onClick={onApplyQuick}>자동 반영</AppButton>
         </div>
-        <p className="mt-2 text-xs font-bold text-clover-sub">예시: 09:00~10:00 회의. 입력한 일정은 아래 타임라인에 바로 반영돼요.</p>
+        <p className="mt-2 text-xs font-bold text-clover-sub">예시: 09:00~10:00 [PPT] 회의. 대괄호 안이 카테고리로 저장돼요.</p>
       </div>
 
       <div className="relative">
@@ -565,7 +567,7 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
             <AppTextarea
               value={quickText}
               onChange={(event) => onQuickText(event.target.value)}
-              placeholder={"예시: 09:00~10:00 회의\n13:00~15:00 자료 정리"}
+              placeholder={"예시: 09:00~10:00 [PPT] 회의\n13:00~15:00 [공부] 자료 정리"}
               className="min-h-[54px] bg-white/80 py-2 text-sm leading-5"
             />
           </label>
@@ -1071,11 +1073,13 @@ export default function SchedulePage() {
     const parsed = parseQuickLines(quickText);
     if (!parsed.length) return;
     persist((next) => {
+      const quickCategories = parsed.map((item) => item.category || "기타");
+      next.scheduleCategories = uniqueCategories([...(next.scheduleCategories || scheduleCategories), ...quickCategories]);
       const events = parsed.map((item) => ({
         id: makeId("event"),
         title: item.title,
-        category: "기타",
-        scheduleCategory: "기타",
+        category: item.category || "기타",
+        scheduleCategory: item.category || "기타",
         date: selectedDate,
         scheduleDate: selectedDate,
         time: item.startTime,
