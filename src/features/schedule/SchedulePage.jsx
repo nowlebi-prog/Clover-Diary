@@ -67,6 +67,28 @@ const spansHour = (item, hour) => {
   if (start === null || end === null) return false;
   return hour >= start && hour <= end;
 };
+const timeMinutes = (value) => {
+  const [hour, minute = "0"] = String(value || "").split(":").map(Number);
+  if (!Number.isFinite(hour)) return null;
+  return hour * 60 + (Number.isFinite(minute) ? minute : 0);
+};
+const timelineMetrics = (item) => {
+  const dayStart = 8 * 60;
+  const dayEnd = 24 * 60;
+  const startRaw = timeMinutes(item.startTime || item.time || item.dueTime);
+  const endRaw = timeMinutes(item.endTime);
+  if (startRaw === null || endRaw === null) return null;
+  const endNext = endRaw <= startRaw ? endRaw + 24 * 60 : endRaw;
+  const visibleStart = Math.max(dayStart, startRaw);
+  const visibleEnd = Math.min(dayEnd, endNext);
+  if (visibleEnd <= dayStart || visibleStart >= dayEnd) return null;
+  return {
+    top: Math.max(0, (visibleStart - dayStart) * 0.9),
+    height: Math.max(38, (visibleEnd - visibleStart) * 0.9),
+    start: startRaw,
+    end: endNext
+  };
+};
 const addDays = (dateKey, amount) => {
   const date = new Date(`${dateKey}T00:00:00`);
   date.setDate(date.getDate() + amount);
@@ -660,6 +682,104 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
   );
 }
 
+function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQuick, onEdit, onDelete }) {
+  const [showDetails, setShowDetails] = useState(false);
+  const timedItems = items
+    .filter((item) => item.startTime && item.endTime && !item.isAllDay && !item.isUnscheduled)
+    .map((item) => ({ ...item, metrics: timelineMetrics(item) }))
+    .filter((item) => item.metrics)
+    .sort((a, b) => a.metrics.start - b.metrics.start);
+  const current = new Date();
+  const isToday = selectedDate === toDateKey(current);
+  const currentTop = ((current.getHours() - 8) * 60 + current.getMinutes()) * 0.9;
+  const timelineHeight = hours.length * 54;
+
+  return (
+    <GlassCard className="rounded-[22px] border border-clover-line bg-white/88 p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-end gap-3">
+          <SectionTitle>타임라인</SectionTitle>
+          <span className="text-sm font-black text-clover-sub">{Number(selectedDate.slice(5, 7))}월 {Number(selectedDate.slice(8))}일</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowDetails((value) => !value)}
+          className={`rounded-full border px-3 py-2 text-xs font-black transition ${showDetails ? "border-clover-deep bg-clover-deep text-white" : "border-clover-line bg-white/80 text-clover-sub"}`}
+        >
+          세부옵션
+        </button>
+      </div>
+
+      <div className="mb-3 rounded-[14px] border border-clover-line bg-white/70 p-2.5">
+        <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
+          <label className="grid gap-1.5 text-sm font-black">
+            빠른 입력
+            <AppTextarea
+              value={quickText}
+              onChange={(event) => onQuickText(event.target.value)}
+              placeholder={"예시: 09:00~10:00 [PPT] 회의\n13:00~15:00 [공부] 자료 정리"}
+              className="min-h-[54px] bg-white/80 py-2 text-sm leading-5"
+            />
+          </label>
+          <AppButton className="min-h-10 px-4 py-2" onClick={onApplyQuick}>자동 반영</AppButton>
+        </div>
+      </div>
+
+      {showDetails && (
+        <p className="mb-3 rounded-[14px] bg-slate-50 px-4 py-3 text-xs font-bold text-clover-sub">
+          일정 블록을 누르면 수정할 수 있고, 세부옵션에서는 수정/삭제 버튼이 함께 보여요.
+        </p>
+      )}
+
+      <div className="relative">
+        {isToday && current.getHours() >= 8 && current.getHours() <= 23 && (
+          <div className="pointer-events-none absolute left-[58px] right-0 z-20 flex items-center" style={{ top: `${Math.max(0, currentTop)}px` }}>
+            <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{formatTime(`${current.getHours()}:${current.getMinutes()}`)}</span>
+            <span className="h-px flex-1 bg-red-400" />
+          </div>
+        )}
+        <div className="grid grid-cols-[52px_1fr] gap-4">
+          <div className="relative" style={{ height: `${timelineHeight}px` }}>
+            {hours.map((hour) => (
+              <div key={hour} className="absolute left-0 right-0 text-right text-xs font-black text-clover-sub" style={{ top: `${(hour - 8) * 54 + 10}px` }}>
+                {String(hour).padStart(2, "0")}:00
+              </div>
+            ))}
+          </div>
+          <div className="relative" style={{ height: `${timelineHeight}px` }}>
+            {hours.map((hour) => (
+              <div key={hour} className="absolute left-0 right-0 border-b border-dashed border-slate-200" style={{ top: `${(hour - 8) * 54}px`, height: "54px" }} />
+            ))}
+            {timedItems.map((item, index) => {
+              const tone = categoryMeta[item.category]?.block || "border-slate-200 bg-slate-50/90 text-slate-950";
+              const offset = (index % 3) * 8;
+              return (
+                <article
+                  key={`${item.collection}-${item.id}`}
+                  className={`absolute left-0 right-0 z-10 flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border px-4 py-2.5 text-sm shadow-sm ${tone}`}
+                  style={{ top: `${item.metrics.top}px`, minHeight: `${item.metrics.height}px`, marginLeft: `${offset}px` }}
+                >
+                  <button type="button" onClick={() => onEdit(item)} className="grid min-w-0 grid-cols-[86px_1fr] items-center gap-3 text-left max-sm:grid-cols-1 max-sm:gap-1">
+                    <span className="text-xs font-black">{timeText(item)}</span>
+                    <b className="min-w-0 truncate">{item.title}</b>
+                  </button>
+                  {showDetails && (
+                    <div className="mt-2 flex justify-end gap-1">
+                      <button type="button" onClick={() => onEdit(item)} className="rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-black">수정</button>
+                      <button type="button" onClick={() => onDelete(item)} className="rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-black">삭제</button>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </div>
+        {!timedItems.length && <p className="mt-3 rounded-[14px] bg-white/55 p-4 text-sm font-bold text-clover-sub">시간이 정해진 일정이 아직 없어요. 빠른 입력으로 추가하거나 세부옵션에서 수정해보세요.</p>}
+      </div>
+    </GlassCard>
+  );
+}
+
 function UnscheduledPanel({ items, selectedDate, onAdd, onToday, onSetDate, onEdit, onDelete, onComplete }) {
   return (
     <GlassCard className="min-w-0 max-w-full overflow-hidden rounded-[22px] border border-amber-100 bg-amber-50/35 p-5">
@@ -1203,7 +1323,7 @@ export default function SchedulePage() {
       </div>
 
       <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,.8fr)]">
-        <TimelineCompact
+        <VisualTimelineCompact
           selectedDate={selectedDate}
           items={selectedItems}
           quickText={quickText}
