@@ -186,14 +186,14 @@ export default function QuickLinksPage() {
           </div>
         </GlassCard>
 
-        <GlassCard className="min-w-0 p-5">
-          <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(300px,420px)] xl:items-center">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-xl">☘</span>
-              <h2 className="whitespace-nowrap text-lg font-black text-clover-text">저장된 링크</h2>
+        <GlassCard className="min-w-0 overflow-hidden p-5">
+          <div className="mb-4 grid min-w-0 gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-50 text-base">☘</span>
+              <h2 className="min-w-0 text-base font-black text-clover-text sm:text-lg">저장된 링크</h2>
               <span className="shrink-0 rounded-full bg-white/75 px-3 py-1 text-xs font-black text-clover-sub">총 {filteredLinks.length}개</span>
             </div>
-            <div className="grid gap-2 md:grid-cols-[minmax(180px,1fr)_120px]">
+            <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_120px]">
               <AppInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder="제목, 메모, URL 검색" />
               <AppSelect value={sort} onChange={(event) => setSort(event.target.value)}>
                 <option value="latest">최신순</option>
