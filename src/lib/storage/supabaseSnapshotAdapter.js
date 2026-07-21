@@ -1,9 +1,10 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const SNAPSHOT_ID = import.meta.env.VITE_CLOVER_SYNC_ID || "default";
+const SNAPSHOT_ID = import.meta.env.VITE_CLOVER_SYNC_ID || "";
 const TABLE = import.meta.env.VITE_CLOVER_SYNC_TABLE || "clover_app_snapshots";
+const PUBLIC_SNAPSHOT_SYNC_ENABLED = import.meta.env.VITE_ENABLE_PUBLIC_SNAPSHOT_SYNC === "true";
 
-const enabled = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+const enabled = Boolean(PUBLIC_SNAPSHOT_SYNC_ENABLED && SUPABASE_URL && SUPABASE_ANON_KEY && SNAPSHOT_ID);
 
 const endpoint = (query = "") => `${SUPABASE_URL}/rest/v1/${TABLE}${query}`;
 

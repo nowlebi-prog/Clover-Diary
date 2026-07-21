@@ -1,6 +1,7 @@
 import { STORAGE_KEYS } from "../storage/storageKeys";
 
-const DEMO_USER = { username: "eunbibi", password: "986454" };
+const LOCAL_USERNAME = import.meta.env.VITE_LOCAL_USERNAME || "eunbibi";
+const LOCAL_PASSWORD = import.meta.env.VITE_LOCAL_PASSWORD || "";
 
 export function getSession() {
   try {
@@ -11,7 +12,14 @@ export function getSession() {
 }
 
 export function login(username, password) {
-  if (username === DEMO_USER.username && password === DEMO_USER.password) {
+  if (!LOCAL_PASSWORD) {
+    return {
+      ok: false,
+      message: "로컬 로그인 비밀번호가 설정되지 않았어요. VITE_LOCAL_PASSWORD 환경변수를 설정해주세요."
+    };
+  }
+
+  if (username === LOCAL_USERNAME && password === LOCAL_PASSWORD) {
     const session = { user: { id: "local-user-eunbibi", username }, loggedInAt: new Date().toISOString() };
     localStorage.setItem(STORAGE_KEYS.auth, JSON.stringify(session));
     return { ok: true, session };

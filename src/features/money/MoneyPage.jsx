@@ -12,7 +12,7 @@ import { getAllData, moveToTrash, saveAllData } from "../../lib/storage/localSto
 import { toDateKey } from "../../lib/utils/date";
 import { shoppingCategories } from "../../lib/utils/shoppingConstants";
 
-const MONEY_PASSWORD = import.meta.env.VITE_MONEY_PASSWORD || "986454";
+const MONEY_PASSWORD = import.meta.env.VITE_MONEY_PASSWORD || "";
 const sum = (items, field = "amount") => items.reduce((total, item) => total + Number(item[field] || 0), 0);
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const money = (value) => `${Number(value || 0).toLocaleString()}원`;
@@ -25,6 +25,11 @@ function MoneyGate({ onUnlock }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const submit = () => {
+    if (!MONEY_PASSWORD) {
+      setError("Money 비밀번호가 설정되지 않았어요. VITE_MONEY_PASSWORD 환경변수를 설정해주세요.");
+      return;
+    }
+
     if (password === MONEY_PASSWORD) {
       sessionStorage.setItem("clover-money-unlocked", "true");
       onUnlock();
