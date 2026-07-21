@@ -706,7 +706,15 @@ export default function HomePage() {
   const habitStatus = getTodayHabitStatus(data.habits, data.habitLogs, today);
   const workSessions = (data.workSessions || []).filter((item) => item.date === today);
   const todayFocusSec = workSessions.reduce((sum, item) => sum + Number(item.duration || 0), 0);
-  const studyDue = (data.studyCaptures || []).filter((item) => !item.isReviewed || item.reviewSchedule?.nextReviewAt <= today || item.status === "waiting");
+  const studyItemsDue = (data.studyItems || []).filter((item) =>
+    !item.archived &&
+    item.revisitDate &&
+    item.revisitDate <= today &&
+    ["not_started", "in_progress", "apply_pending"].includes(item.status)
+  );
+  const studyDue = studyItemsDue.length
+    ? studyItemsDue
+    : (data.studyCaptures || []).filter((item) => !item.isReviewed || item.reviewSchedule?.nextReviewAt <= today || item.status === "waiting");
   const todayTodos = (data.todos || []).filter((todo) => !todo.completed && (!todo.dueDate || todo.dueDate <= today));
   const categories = getWorkCategories();
   const focusItems = useMemo(() => {

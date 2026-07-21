@@ -72,6 +72,23 @@ export const experimentOutcomes = [
   ["hold", "보류"]
 ];
 
+export const studyItemStatuses = [
+  ["not_started", "공부 전"],
+  ["in_progress", "공부 중"],
+  ["apply_pending", "적용 대기"],
+  ["applied", "적용 완료"],
+  ["paused", "보류"]
+];
+
+export const studyItemPriorities = [
+  ["high", "높음"],
+  ["normal", "보통"],
+  ["low", "낮음"]
+];
+
+export const studyItemCategories = ["AI", "PPT", "디자인", "브랜드", "마케팅", "코딩", "사업", "기타"];
+export const relatedProjects = ["유료PPT", "위스티아", "AI 아이디어", "클로버", "개인 앱", "기타"];
+
 const today = () => toDateKey(new Date());
 const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const splitWords = (text = "") =>
@@ -84,6 +101,7 @@ const splitWords = (text = "") =>
 export function getStudyData() {
   const data = getAllData();
   return {
+    items: data.studyItems || [],
     captures: data.studyCaptures || [],
     categories: data.studyCategories || [],
     notes: data.studyNotes || [],
@@ -92,6 +110,82 @@ export function getStudyData() {
     workflows: data.studyWorkflows || [],
     projects: data.todos || []
   };
+}
+
+function normalizeUrls(urls = []) {
+  if (typeof urls === "string") {
+    return urls
+      .split("\n")
+      .map((url) => ({ id: makeId("study-url"), title: "", url: url.trim() }))
+      .filter((item) => item.url);
+  }
+  return (urls || []).map((item) => (
+    typeof item === "string" ? { id: makeId("study-url"), title: "", url: item } : { id: item.id || makeId("study-url"), title: item.title || "", url: item.url || "" }
+  )).filter((item) => item.url);
+}
+
+function normalizeSummary(summary) {
+  if (Array.isArray(summary)) return [summary[0] || "", summary[1] || "", summary[2] || ""];
+  return String(summary || "").split("\n").concat(["", "", ""]).slice(0, 3);
+}
+
+export function normalizeStudyItem(payload = {}) {
+  const now = today();
+  return {
+    id: payload.id || makeId("study-item"),
+    title: payload.title || "새 공부 주제",
+    category: payload.category || studyItemCategories[0],
+    subCategory: payload.subCategory || "",
+    status: payload.status || "not_started",
+    priority: payload.priority || "normal",
+    createdAt: payload.createdAt || now,
+    updatedAt: payload.updatedAt || now,
+    sourceNote: payload.sourceNote || "",
+    referenceUrls: normalizeUrls(payload.referenceUrls),
+    uploadUrls: normalizeUrls(payload.uploadUrls),
+    appliedUrls: normalizeUrls(payload.appliedUrls),
+    studyNotes: payload.studyNotes || "",
+    summary: normalizeSummary(payload.summary),
+    applicationIdeas: payload.applicationIdeas || "",
+    nextAction: payload.nextAction || "",
+    relatedProject: payload.relatedProject || "",
+    revisitDate: payload.revisitDate || "",
+    archived: Boolean(payload.archived),
+    completedAt: payload.completedAt || "",
+    archiveNote: payload.archiveNote || ""
+  };
+}
+
+export function createStudyItem(payload = {}) {
+  const current = getStudyData();
+  const item = normalizeStudyItem(payload);
+  saveStudyPatch({ studyItems: [item, ...current.items] });
+  return item;
+}
+
+export function updateStudyItem(id, updates) {
+  const current = getStudyData();
+  saveStudyPatch({
+    studyItems: current.items.map((item) =>
+      item.id === id ? normalizeStudyItem({ ...item, ...updates, id, updatedAt: today() }) : item
+    )
+  });
+}
+
+export function deleteStudyItem(id) {
+  const current = getStudyData();
+  saveStudyPatch({ studyItems: current.items.filter((item) => item.id !== id) });
+}
+
+export function archiveStudyItem(id, archiveNote = "") {
+  const current = getStudyData();
+  saveStudyPatch({
+    studyItems: current.items.map((item) =>
+      item.id === id
+        ? normalizeStudyItem({ ...item, status: "applied", archived: true, archiveNote, completedAt: item.completedAt || today(), updatedAt: today() })
+        : item
+    )
+  });
 }
 
 export function createStudyNote(payload = {}) {
