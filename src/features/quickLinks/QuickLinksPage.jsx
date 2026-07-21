@@ -144,8 +144,8 @@ export default function QuickLinksPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <GlassCard className="p-5">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+        <GlassCard className="min-w-0 overflow-hidden p-5">
           <div className="mb-4 flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-xl">🔗</span>
             <h2 className="text-lg font-black text-clover-text">링크 등록 / 수정</h2>
@@ -202,7 +202,7 @@ export default function QuickLinksPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-[18px] border border-clover-line bg-white/60">
+          <div className="max-w-full overflow-x-auto rounded-[18px] border border-clover-line bg-white/60">
             <div className="hidden min-w-[760px] grid-cols-[86px_96px_minmax(90px,1fr)_minmax(160px,1.4fr)_minmax(100px,1fr)_136px] border-b border-clover-line bg-white/60 text-center text-xs font-black text-clover-sub md:grid">
               <span className="px-3 py-3">대분류</span>
               <span className="px-3 py-3">소분류</span>
@@ -213,18 +213,18 @@ export default function QuickLinksPage() {
             </div>
             <div className="divide-y divide-clover-line">
               {filteredLinks.map((item) => (
-                <article key={item.id} className="grid gap-2 p-3 text-sm md:min-w-[760px] md:grid-cols-[86px_96px_minmax(90px,1fr)_minmax(160px,1.4fr)_minmax(100px,1fr)_136px] md:items-center">
+                <article key={item.id} className="grid min-w-0 gap-2 overflow-hidden p-3 text-sm md:min-w-[760px] md:grid-cols-[86px_96px_minmax(90px,1fr)_minmax(160px,1.4fr)_minmax(100px,1fr)_136px] md:items-center">
                   <button type="button" onClick={() => setFilter(item.bigCategory)} className={`w-fit rounded-full px-3 py-1 text-xs font-black ${categoryClass(item.bigCategory)}`}>
                     {item.bigCategory}
                   </button>
                   <button type="button" onClick={() => setFilter(item.smallCategory)} className="w-fit rounded-full bg-white px-3 py-1 text-xs font-black text-clover-sub">
                     {item.smallCategory}
                   </button>
-                  <p className="font-black text-clover-text">{item.title}</p>
-                  <a href={normalizeUrl(item.url)} target="_blank" rel="noreferrer" className="truncate font-bold text-blue-600 hover:underline">
+                  <p className="min-w-0 break-words font-black text-clover-text">{item.title}</p>
+                  <a href={normalizeUrl(item.url)} target="_blank" rel="noreferrer" className="min-w-0 max-w-full break-all font-bold text-blue-600 hover:underline md:truncate">
                     {item.url}
                   </a>
-                  <p className="text-clover-sub">{item.memo || "-"}</p>
+                  <p className="min-w-0 break-words text-clover-sub">{item.memo || "-"}</p>
                   <div className="flex flex-wrap gap-1.5">
                     <a href={normalizeUrl(item.url)} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700">열기</a>
                     <button type="button" onClick={() => editLink(item)} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700">수정</button>

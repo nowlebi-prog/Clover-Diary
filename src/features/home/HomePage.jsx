@@ -803,7 +803,7 @@ export default function HomePage() {
 
       <SummaryChips todayItems={todayItems} deadlines={deadlines} habitStatus={habitStatus} todayFocusSec={todayFocusSec} />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(320px,.82fr)_minmax(0,1.18fr)]">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,.82fr)_minmax(0,1.18fr)]">
         <HomeFocusTimerLive activeSession={activeSession} focusItems={focusItems} categories={categories} todayFocusSec={todayFocusSec} onChange={load} />
         <PriorityCard
           topItems={todayMustItems}
@@ -814,7 +814,7 @@ export default function HomePage() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-2">
         <TodayScheduleCard items={todayItems} today={today} />
         <WeeklyStrip data={data} today={today} />
       </div>
@@ -823,7 +823,7 @@ export default function HomePage() {
         <StatusCards data={data} today={today} habitStatus={habitStatus} studyDue={studyDue} workSessions={workSessions} />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(320px,.85fr)_minmax(0,1.15fr)]">
+      <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)]">
         <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
           <QuickMemoPad memos={data.memoPosts || data.inboxMemos || []} />
           <Link to="/memo" className="mt-2 inline-block text-xs font-black text-clover-deep underline decoration-dotted">메모장 전체 보기</Link>

@@ -307,8 +307,8 @@ function MemoEntry({ entry, type, onOpenImage, onUpdate, onDelete }) {
   };
 
   return (
-    <article className={`rounded-[18px] border p-4 ${type === "post" ? "border-emerald-100 bg-emerald-50/35" : "border-clover-line bg-white/55"}`}>
-      <div className="flex items-start gap-3">
+    <article className={`min-w-0 overflow-hidden rounded-[18px] border p-4 ${type === "post" ? "border-emerald-100 bg-emerald-50/35" : "border-clover-line bg-white/55"}`}>
+      <div className="flex min-w-0 items-start gap-3">
         <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-black ${type === "post" ? "bg-emerald-100 text-clover-deep" : "bg-white text-clover-deep"}`}>
           {type === "post" ? "글" : "댓"}
         </div>
@@ -365,10 +365,10 @@ function PostDetail({ post, onAddComment, onUpdatePost, onUpdateComment, onDelet
   const comments = post.comments || [];
 
   return (
-    <GlassCard className="rounded-[22px] border border-clover-line bg-white/86 p-5">
+    <GlassCard className="min-w-0 overflow-hidden rounded-[22px] border border-clover-line bg-white/86 p-5">
       <EditablePostHeader post={post} onUpdate={onUpdatePost} onToggleDone={onToggleDone} />
 
-      <div className="grid gap-3">
+      <div className="grid min-w-0 gap-3">
         {(rootEntry.body || rootEntry.link || rootEntry.images?.length) && (
           <MemoEntry entry={rootEntry} type="post" onOpenImage={onOpenImage} onUpdate={(_, updates) => onUpdatePost(updates)} onDelete={() => {}} />
         )}
@@ -508,8 +508,8 @@ export default function MemoPage() {
         )}
       </GlassCard>
 
-      <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="grid content-start gap-4">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+        <div className="grid min-w-0 content-start gap-4">
           <PostComposer onCreate={createPost} />
           <PostList
             posts={visiblePosts}

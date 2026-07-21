@@ -6,7 +6,7 @@ export default function PageHeader({ eyebrow, title, children }) {
   const canGoBack = location.pathname !== "/";
 
   return (
-    <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+    <header className="mb-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
         {canGoBack && (
           <button
@@ -24,7 +24,7 @@ export default function PageHeader({ eyebrow, title, children }) {
           <h1 className="break-keep text-2xl font-bold text-clover-text sm:text-3xl">{title}</h1>
         </div>
       </div>
-      {children}
+      {children && <div className="min-w-0 max-w-full sm:flex sm:justify-end">{children}</div>}
     </header>
   );
 }

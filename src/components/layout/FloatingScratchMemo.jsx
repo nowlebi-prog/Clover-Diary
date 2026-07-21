@@ -116,7 +116,7 @@ export default function FloatingScratchMemo() {
       <button
         type="button"
         onClick={() => setCollapsed(false)}
-        className="fixed z-40 rounded-2xl border border-emerald-100 bg-emerald-50/95 px-4 py-3 text-sm font-black text-clover-deep shadow-glass backdrop-blur"
+      className="fixed z-40 hidden rounded-2xl border border-emerald-100 bg-emerald-50/95 px-4 py-3 text-sm font-black text-clover-deep shadow-glass backdrop-blur md:block"
         style={floatingStyle}
         aria-label="메모잇 열기"
       >
@@ -127,7 +127,7 @@ export default function FloatingScratchMemo() {
 
   return (
     <aside
-      className={`fixed z-40 flex flex-col overflow-hidden rounded-[10px] border border-rose-100 bg-rose-50/95 shadow-[0_18px_55px_rgba(83,60,60,0.16)] backdrop-blur ${expanded ? "" : "w-[min(300px,calc(100vw-2rem))]"}`}
+      className={`fixed z-40 hidden flex-col overflow-hidden rounded-[10px] border border-rose-100 bg-rose-50/95 shadow-[0_18px_55px_rgba(83,60,60,0.16)] backdrop-blur md:flex ${expanded ? "" : "w-[min(300px,calc(100vw-2rem))]"}`}
       style={floatingStyle}
     >
       <div

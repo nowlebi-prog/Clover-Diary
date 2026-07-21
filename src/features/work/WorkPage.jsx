@@ -390,12 +390,12 @@ export default function WorkPage() {
       <WorkTabs />
       <FloatingMustPanel items={todayItems} onOpenSchedule={() => navigate(`/schedule?date=${today}`)} />
 
-      <div className="mb-4 grid gap-4 xl:grid-cols-[minmax(420px,1fr)_minmax(360px,0.85fr)]">
+      <div className="mb-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
         <TimeTracker activeSession={activeSession} categories={categories} todos={focusItems} onChange={load} />
         <WorkStats sessions={sessions} categories={categories} today={today} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <WorkCalendarCard
           year={calendarMonth.year}
           month={calendarMonth.month}
@@ -421,7 +421,7 @@ export default function WorkPage() {
         <WorkTodayBrief items={todayItems} onOpenSchedule={() => navigate(`/schedule?date=${today}`)} />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <div id="worklog">
           <WorkLog sessions={sessions} categories={categories} today={today} activeSession={activeSession} onChange={load} />
         </div>

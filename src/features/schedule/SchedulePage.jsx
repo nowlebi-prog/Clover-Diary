@@ -1174,7 +1174,7 @@ export default function SchedulePage() {
         />
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(420px,1fr)_minmax(420px,1fr)]">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <MonthCalendar
           year={month.year}
           month={month.month}
