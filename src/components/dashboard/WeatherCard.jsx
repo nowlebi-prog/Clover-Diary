@@ -60,8 +60,8 @@ export default function WeatherCard() {
     : error || dustLabel;
 
   return (
-    <span className="inline-flex min-h-11 items-center gap-3 rounded-full border border-white/70 bg-white/70 px-4 text-xs font-bold text-clover-deep shadow-glass backdrop-blur-xl">
-      <span className="grid h-8 w-8 place-items-center rounded-full bg-[#E8F7FF] text-lg">☀️</span>
+    <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/70 bg-white/70 px-3 text-[11px] font-bold text-clover-deep shadow-glass backdrop-blur-xl">
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-[#E8F7FF] text-base">☀️</span>
       {weatherLabel}
     </span>
   );
