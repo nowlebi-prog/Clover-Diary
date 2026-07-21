@@ -439,7 +439,41 @@ function GroupBox({ title, tone = "mint", items, children }) {
   );
 }
 
-function SelectedDateCard({ selectedDate, groups, onAdd, onComplete, onEdit, onDelete, onSetTime }) {
+function MoveReminderBox({ items, onComplete, onEdit, onDelete, onToday, onSetTime }) {
+  if (!items.length) return null;
+
+  return (
+    <div className="overflow-hidden rounded-[16px] border border-amber-100 bg-amber-50/55">
+      <div className="flex items-center justify-between gap-2 border-b border-amber-100 px-3 py-2">
+        <div>
+          <b className="text-xs font-black text-amber-800">이동 중 할 일</b>
+          <p className="text-[11px] font-bold text-amber-700/75">날짜 미정으로 둔 일 중 이동하면서 처리할 수 있는 후보예요.</p>
+        </div>
+        <span className="rounded-full bg-white/75 px-2.5 py-1 text-[11px] font-black text-amber-800">{items.length}개</span>
+      </div>
+      <div>
+        {items.slice(0, 5).map((item) => (
+          <ScheduleRowCompact
+            key={`move-reminder-${item.collection}-${item.id}`}
+            item={item}
+            onComplete={onComplete}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            extraAction={(
+              <>
+                <button type="button" onClick={() => onToday(item)} className="rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1.5 text-xs font-black text-clover-deep">오늘로</button>
+                <button type="button" onClick={() => onSetTime(item)} className="rounded-lg border border-amber-100 bg-white px-2.5 py-1.5 text-xs font-black text-amber-800">시간 잡기</button>
+              </>
+            )}
+          />
+        ))}
+      </div>
+      {items.length > 5 && <p className="px-3 py-2 text-center text-xs font-black text-amber-700">+{items.length - 5}개 더 있어요</p>}
+    </div>
+  );
+}
+
+function SelectedDateCard({ selectedDate, groups, moveReminderItems = [], onAdd, onComplete, onEdit, onDelete, onSetTime, onAssignToday }) {
   const date = new Date(`${selectedDate}T00:00:00`);
   const title = date.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
   return (
@@ -467,6 +501,14 @@ function SelectedDateCard({ selectedDate, groups, onAdd, onComplete, onEdit, onD
             />
           ))}
         </GroupBox>
+        <MoveReminderBox
+          items={moveReminderItems}
+          onComplete={onComplete}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onToday={(item) => onAssignToday(item, selectedDate)}
+          onSetTime={(item) => onSetTime({ ...item, date: selectedDate, scheduleDate: selectedDate, isUnscheduled: false })}
+        />
       </div>
     </GlassCard>
   );
@@ -935,6 +977,8 @@ export default function SchedulePage() {
     noTime: selectedItems.filter((item) => !item.startTime && !item.endTime && !item.isAllDay)
   };
   const unscheduledItems = allItems.filter((item) => item.isUnscheduled);
+  const selectedMoveItems = allItems.filter((item) => item.needMove && isDateInRange(item, selectedDate));
+  const moveReminderItems = selectedMoveItems.length ? unscheduledItems : [];
   const counts = allItems.reduce((map, item) => ({ ...map, [item.category]: (map[item.category] || 0) + 1 }), {});
 
   const persist = (updater) => {
@@ -1148,11 +1192,13 @@ export default function SchedulePage() {
         <SelectedDateCard
           selectedDate={selectedDate}
           groups={groups}
+          moveReminderItems={moveReminderItems}
           onAdd={() => setEditing(emptySchedule(selectedDate))}
           onComplete={completeItem}
           onEdit={setEditing}
           onDelete={deleteItem}
           onSetTime={(item) => setEditing({ ...item, timeMode: "timed", startTime: item.startTime || "09:00", endTime: item.endTime || "10:00" })}
+          onAssignToday={(item, date) => assignDate(item, date, "noTime")}
         />
       </div>
 
