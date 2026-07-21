@@ -27,6 +27,7 @@ function readPosition() {
 export default function FloatingScratchMemo() {
   const [collapsed, setCollapsed] = useState(false);
   const [closed, setClosed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState("");
   const [position, setPosition] = useState(readPosition);
   const textareaRef = useRef(null);
@@ -41,13 +42,13 @@ export default function FloatingScratchMemo() {
     const textarea = textareaRef.current;
     if (!textarea || collapsed || closed) return;
 
-    const maxHeight = Math.max(140, window.innerHeight - position.top - 76);
+    const maxHeight = expanded ? Math.max(240, window.innerHeight - 150) : Math.max(140, window.innerHeight - position.top - 76);
     textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 150), maxHeight)}px`;
-  }, [text, collapsed, closed, position.top]);
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, expanded ? 420 : 150), maxHeight)}px`;
+  }, [text, collapsed, closed, expanded, position.top]);
 
   const startDrag = (event) => {
-    if (event.target.closest("button")) return;
+    if (expanded || event.target.closest("button")) return;
 
     const pointer = event.touches?.[0] || event;
     dragRef.current = {
@@ -97,11 +98,18 @@ export default function FloatingScratchMemo() {
 
   if (closed) return null;
 
-  const floatingStyle = {
-    right: `${position.right}px`,
-    top: `${position.top}px`,
-    maxHeight: `calc(100vh - ${position.top + 16}px)`
-  };
+  const floatingStyle = expanded
+    ? {
+        right: "24px",
+        top: "72px",
+        width: "min(560px, calc(100vw - 3rem))",
+        maxHeight: "calc(100vh - 96px)"
+      }
+    : {
+        right: `${position.right}px`,
+        top: `${position.top}px`,
+        maxHeight: `calc(100vh - ${position.top + 16}px)`
+      };
 
   if (collapsed) {
     return (
@@ -119,16 +127,25 @@ export default function FloatingScratchMemo() {
 
   return (
     <aside
-      className="fixed z-40 flex w-[min(300px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[10px] border border-rose-100 bg-rose-50/95 shadow-[0_18px_55px_rgba(83,60,60,0.16)] backdrop-blur"
+      className={`fixed z-40 flex flex-col overflow-hidden rounded-[10px] border border-rose-100 bg-rose-50/95 shadow-[0_18px_55px_rgba(83,60,60,0.16)] backdrop-blur ${expanded ? "" : "w-[min(300px,calc(100vw-2rem))]"}`}
       style={floatingStyle}
     >
       <div
-        className="flex h-9 shrink-0 cursor-move select-none items-center justify-between border-b border-rose-100 bg-rose-100/75 px-3"
+        className={`flex h-9 shrink-0 select-none items-center justify-between border-b border-rose-100 bg-rose-100/75 px-3 ${expanded ? "" : "cursor-move"}`}
         onMouseDown={startDrag}
         onTouchStart={startDrag}
       >
         <p className="text-sm font-black text-clover-text">메모잇</p>
         <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            className="grid h-6 w-6 cursor-pointer place-items-center rounded-full text-sm font-black text-clover-sub hover:bg-white/70 hover:text-clover-deep"
+            aria-label={expanded ? "메모잇 원래 크기" : "메모잇 확장"}
+            title={expanded ? "원래 크기" : "확장"}
+          >
+            {expanded ? "↙" : "↗"}
+          </button>
           <button
             type="button"
             onClick={() => setCollapsed(true)}
