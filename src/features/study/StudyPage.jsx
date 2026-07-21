@@ -102,6 +102,7 @@ function QuickAddModal({ onClose, onDone }) {
     category: "AI",
     sourceNote: "",
     referenceUrl: "",
+    uploadUrl: "",
     revisitDate: "",
     priority: "normal"
   });
@@ -114,6 +115,7 @@ function QuickAddModal({ onClose, onDone }) {
       category: draft.category,
       sourceNote: draft.sourceNote.trim(),
       referenceUrls: draft.referenceUrl.trim() ? [{ title: "", url: draft.referenceUrl.trim() }] : [],
+      uploadUrls: draft.uploadUrl.trim() ? [{ title: "", url: draft.uploadUrl.trim() }] : [],
       revisitDate: draft.revisitDate,
       priority: draft.priority,
       status: "not_started",
@@ -131,8 +133,9 @@ function QuickAddModal({ onClose, onDone }) {
           <label className="grid gap-1 text-sm font-bold">우선순위<AppSelect value={draft.priority} onChange={(event) => set("priority", event.target.value)}>{studyItemPriorities.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</AppSelect></label>
           <label className="grid gap-1 text-sm font-bold">다시 볼 날짜<AppInput type="date" value={draft.revisitDate} onChange={(event) => set("revisitDate", event.target.value)} /></label>
         </div>
-        <label className="grid gap-1 text-sm font-bold">공부하게 된 계기<AppTextarea value={draft.sourceNote} onChange={(event) => set("sourceNote", event.target.value)} placeholder="왜 나중에 봐야겠다고 느꼈는지 짧게 적어두세요." /></label>
+        <label className="grid gap-1 text-sm font-bold">공부 내용 자세히<AppTextarea value={draft.sourceNote} onChange={(event) => set("sourceNote", event.target.value)} placeholder="공부할 내용, 왜 필요한지, 참고할 포인트를 적어두세요." /></label>
         <label className="grid gap-1 text-sm font-bold">참고 URL<AppInput value={draft.referenceUrl} onChange={(event) => set("referenceUrl", event.target.value)} placeholder="https://..." /></label>
+        <label className="grid gap-1 text-sm font-bold">업로드 URL<AppInput value={draft.uploadUrl} onChange={(event) => set("uploadUrl", event.target.value)} placeholder="결과물이나 파일을 올려둔 링크" /></label>
         <AppButton onClick={save} disabled={!draft.title.trim()}>저장</AppButton>
       </div>
     </Modal>
@@ -232,7 +235,7 @@ function StudyItemEditor({ item, onClose, onSaved, onDelete }) {
           <label className="grid gap-1 text-sm font-bold">관련 프로젝트<AppSelect value={draft.relatedProject || ""} onChange={(event) => set("relatedProject", event.target.value)}><option value="">선택 안 함</option>{relatedProjects.map((project) => <option key={project}>{project}</option>)}</AppSelect></label>
           <label className="grid gap-1 text-sm font-bold">다시 볼 날짜<AppInput type="date" value={draft.revisitDate || ""} onChange={(event) => set("revisitDate", event.target.value)} /></label>
         </div>
-        <label className="grid gap-1 text-sm font-bold">공부하게 된 계기<AppTextarea value={draft.sourceNote || ""} onChange={(event) => set("sourceNote", event.target.value)} /></label>
+        <label className="grid gap-1 text-sm font-bold">공부 내용 자세히<AppTextarea value={draft.sourceNote || ""} onChange={(event) => set("sourceNote", event.target.value)} /></label>
         <label className="grid gap-1 text-sm font-bold">참고 URL 목록<span className="text-xs text-clover-sub">한 줄에 하나씩. 제목을 붙이고 싶으면 `제목 | URL`</span><AppTextarea value={draft.referenceUrlsText} onChange={(event) => set("referenceUrlsText", event.target.value)} /></label>
         <label className="grid gap-1 text-sm font-bold">공부 메모<AppTextarea value={draft.studyNotes || ""} onChange={(event) => set("studyNotes", event.target.value)} className="min-h-[110px]" /></label>
         <div className="grid gap-2">
