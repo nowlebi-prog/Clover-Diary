@@ -745,7 +745,7 @@ export default function HomePage() {
   const dailyQuote = useMemo(() => {
     const savedQuotes = (data.quotes || [])
       .map((quote) => ({
-        text: (quote.text || quote.body || quote.title || "").trim(),
+        text: (quote.text || quote.body || quote.title || "").replace(/\s+/g, " ").trim(),
         source: (quote.source || "").trim()
       }))
       .filter((quote) => quote.text);
@@ -787,7 +787,7 @@ export default function HomePage() {
         />
       )}
 
-      <PageHeader eyebrow={today} title="오늘도 Lucky Day 🍀">
+      <PageHeader eyebrow={today} title={<span className="whitespace-nowrap">오늘도 Lucky Day 🍀</span>}>
         <div className="flex max-w-full shrink-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1">
           <WeatherCard />
           <button type="button" onClick={refreshNow} className="h-9 shrink-0 rounded-full bg-white/70 px-3 text-xs font-black text-clover-deep shadow-sm hover:bg-white">새로고침</button>
