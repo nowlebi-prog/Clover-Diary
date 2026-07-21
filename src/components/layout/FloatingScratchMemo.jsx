@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const positionKey = "clover-floating-scratch-memo-position";
-const defaultPosition = { right: 28, bottom: 130 };
+const defaultPosition = { right: 28, top: 120 };
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -10,7 +10,14 @@ function clamp(value, min, max) {
 function readPosition() {
   try {
     const saved = JSON.parse(localStorage.getItem(positionKey) || "null");
-    if (Number.isFinite(saved?.right) && Number.isFinite(saved?.bottom)) return saved;
+    if (Number.isFinite(saved?.right) && Number.isFinite(saved?.top)) return saved;
+
+    if (Number.isFinite(saved?.right) && Number.isFinite(saved?.bottom) && typeof window !== "undefined") {
+      return {
+        right: saved.right,
+        top: clamp(window.innerHeight - saved.bottom - 250, 56, Math.max(56, window.innerHeight - 96))
+      };
+    }
   } catch {
     // Ignore malformed saved positions.
   }
@@ -19,6 +26,7 @@ function readPosition() {
 
 export default function FloatingScratchMemo() {
   const [collapsed, setCollapsed] = useState(false);
+  const [closed, setClosed] = useState(false);
   const [text, setText] = useState("");
   const [position, setPosition] = useState(readPosition);
   const textareaRef = useRef(null);
@@ -31,20 +39,24 @@ export default function FloatingScratchMemo() {
 
   useEffect(() => {
     const textarea = textareaRef.current;
-    if (!textarea || collapsed) return;
+    if (!textarea || collapsed || closed) return;
+
+    const maxHeight = Math.max(140, window.innerHeight - position.top - 76);
     textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 150), 520)}px`;
-  }, [text, collapsed]);
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 150), maxHeight)}px`;
+  }, [text, collapsed, closed, position.top]);
 
   const startDrag = (event) => {
     if (event.target.closest("button")) return;
+
     const pointer = event.touches?.[0] || event;
     dragRef.current = {
       startX: pointer.clientX,
       startY: pointer.clientY,
       startRight: position.right,
-      startBottom: position.bottom
+      startTop: position.top
     };
+
     window.addEventListener("mousemove", moveDrag);
     window.addEventListener("mouseup", endDrag);
     window.addEventListener("touchmove", moveDrag, { passive: false });
@@ -54,13 +66,15 @@ export default function FloatingScratchMemo() {
   const moveDrag = (event) => {
     if (!dragRef.current) return;
     event.preventDefault?.();
+
     const pointer = event.touches?.[0] || event;
     const nextRight = dragRef.current.startRight - (pointer.clientX - dragRef.current.startX);
-    const nextBottom = dragRef.current.startBottom - (pointer.clientY - dragRef.current.startY);
+    const nextTop = dragRef.current.startTop + (pointer.clientY - dragRef.current.startY);
     const nextPosition = {
       right: clamp(nextRight, 12, Math.max(12, window.innerWidth - 96)),
-      bottom: clamp(nextBottom, 76, Math.max(76, window.innerHeight - 80))
+      top: clamp(nextTop, 48, Math.max(48, window.innerHeight - 96))
     };
+
     positionRef.current = nextPosition;
     setPosition(nextPosition);
   };
@@ -81,7 +95,13 @@ export default function FloatingScratchMemo() {
     window.removeEventListener("touchend", endDrag);
   }, []);
 
-  const floatingStyle = { right: `${position.right}px`, bottom: `${position.bottom}px` };
+  if (closed) return null;
+
+  const floatingStyle = {
+    right: `${position.right}px`,
+    top: `${position.top}px`,
+    maxHeight: `calc(100vh - ${position.top + 16}px)`
+  };
 
   if (collapsed) {
     return (
@@ -90,7 +110,7 @@ export default function FloatingScratchMemo() {
         onClick={() => setCollapsed(false)}
         className="fixed z-40 rounded-2xl border border-emerald-100 bg-emerald-50/95 px-4 py-3 text-sm font-black text-clover-deep shadow-glass backdrop-blur"
         style={floatingStyle}
-        aria-label="임시 메모 열기"
+        aria-label="메모잇 열기"
       >
         메모잇
       </button>
@@ -99,11 +119,11 @@ export default function FloatingScratchMemo() {
 
   return (
     <aside
-      className="fixed z-40 w-[min(300px,calc(100vw-2rem))] overflow-hidden rounded-[10px] border border-rose-100 bg-rose-50/95 shadow-[0_18px_55px_rgba(83,60,60,0.16)] backdrop-blur"
+      className="fixed z-40 flex w-[min(300px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[10px] border border-rose-100 bg-rose-50/95 shadow-[0_18px_55px_rgba(83,60,60,0.16)] backdrop-blur"
       style={floatingStyle}
     >
       <div
-        className="flex h-9 cursor-move select-none items-center justify-between border-b border-rose-100 bg-rose-100/75 px-3"
+        className="flex h-9 shrink-0 cursor-move select-none items-center justify-between border-b border-rose-100 bg-rose-100/75 px-3"
         onMouseDown={startDrag}
         onTouchStart={startDrag}
       >
@@ -120,10 +140,10 @@ export default function FloatingScratchMemo() {
           </button>
           <button
             type="button"
-            onClick={() => setText("")}
+            onClick={() => setClosed(true)}
             className="grid h-6 w-6 cursor-pointer place-items-center rounded-full text-sm font-black text-clover-sub hover:bg-white/70 hover:text-clover-danger"
-            aria-label="메모잇 비우기"
-            title="비우기"
+            aria-label="메모잇 닫기"
+            title="닫기"
           >
             x
           </button>
@@ -133,8 +153,8 @@ export default function FloatingScratchMemo() {
         ref={textareaRef}
         value={text}
         onChange={(event) => setText(event.target.value)}
-        placeholder={"그냥 잠깐 끄적끄적...\n필요 없으면 x로 지워요."}
-        className="block min-h-[150px] max-h-[520px] w-full resize-none overflow-y-auto bg-transparent px-3 py-3 text-sm leading-6 text-clover-text outline-none placeholder:text-clover-sub/70"
+        placeholder={"그냥 잠깐 끄적끄적...\n필요 없으면 x로 닫아요."}
+        className="block min-h-[150px] w-full resize-none overflow-y-auto bg-transparent px-3 py-3 text-sm leading-6 text-clover-text outline-none placeholder:text-clover-sub/70"
       />
     </aside>
   );
