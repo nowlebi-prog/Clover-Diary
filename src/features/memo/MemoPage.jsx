@@ -334,8 +334,8 @@ function MemoEntry({ entry, type, onOpenImage, onUpdate, onDelete }) {
             </div>
           ) : (
             <>
-              <p className="whitespace-pre-wrap break-keep text-[15px] font-bold leading-7 text-clover-text">{entry.body}</p>
-              {entry.link && <a href={entry.link} target="_blank" rel="noreferrer" className="mt-2 block truncate rounded-xl bg-white/70 px-3 py-2 text-sm font-bold text-clover-deep underline decoration-dotted">{entry.link}</a>}
+              <p className="whitespace-pre-wrap break-words text-[15px] font-bold leading-7 text-clover-text [overflow-wrap:anywhere]">{entry.body}</p>
+              {entry.link && <a href={entry.link} target="_blank" rel="noreferrer" className="mt-2 block max-w-full break-all rounded-xl bg-white/70 px-3 py-2 text-sm font-bold leading-5 text-clover-deep underline decoration-dotted [overflow-wrap:anywhere]">{entry.link}</a>}
               <ImageGrid images={entry.images || []} onOpen={onOpenImage} />
               <div className="mt-3 flex gap-3">
                 <button type="button" onClick={() => setEditing(true)} className="text-xs font-black text-clover-deep">수정</button>
