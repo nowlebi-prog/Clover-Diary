@@ -5,6 +5,7 @@ import { logout } from "../../lib/auth/localAuthAdapter";
 const items = [
   { to: "/", label: "Home", paths: ["/"] },
   { to: "/schedule", label: "Schedule", paths: ["/schedule"] },
+  { to: "/plan", label: "Plan", paths: ["/plan"] },
   { to: "/work", label: "Work", paths: ["/work", "/tasks", "/daily", "/campaigns", "/files", "/worklog"] },
   { to: "/life", label: "Life", paths: ["/life", "/habits", "/journal", "/mandalart", "/calendar"] },
   { to: "/study", label: "Study", paths: ["/study"] },

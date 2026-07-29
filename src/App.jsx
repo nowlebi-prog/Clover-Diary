@@ -22,6 +22,7 @@ import CampaignsPage from "./features/campaigns/CampaignsPage";
 import FilesPage from "./features/files/FilesPage";
 import SettingsPage from "./features/settings/SettingsPage";
 import SchedulePage from "./features/schedule/SchedulePage";
+import PlanPage from "./features/plan/PlanPage";
 import WorkLogPage from "./features/worklog/WorkLogPage";
 import MemoPage from "./features/memo/MemoPage";
 import QuickLinksPage from "./features/quickLinks/QuickLinksPage";
@@ -49,7 +50,7 @@ export default function App() {
       <Route element={<Protected session={session} />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/schedule" element={<SchedulePage />} />
-        <Route path="/plan" element={<Navigate to="/work" replace />} />
+        <Route path="/plan" element={<PlanPage />} />
         <Route path="/mandalart" element={<MandalartPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/daily" element={<DailyPage />} />
