@@ -435,10 +435,10 @@ function MonthCalendar({ year, month, selectedDate, items, filter, onSelect, onM
               key={cell.date}
               type="button"
               onClick={() => onSelect(cell.date)}
-              className={`min-h-[72px] border-b border-r border-clover-line/80 p-2 text-left transition hover:bg-emerald-50/40 md:min-h-[86px] ${!cell.inMonth ? "bg-slate-50/45 text-slate-300" : "bg-white/55 text-clover-ink"} ${selected ? "bg-emerald-50/70 ring-2 ring-inset ring-clover-deep/60" : ""}`}
+              className={`flex min-h-[72px] w-full flex-col items-start justify-start border-b border-r border-clover-line/80 p-2 text-left align-top transition hover:bg-emerald-50/40 md:min-h-[86px] ${!cell.inMonth ? "bg-slate-50/45 text-slate-300" : "bg-white/55 text-clover-ink"} ${selected ? "bg-emerald-50/70 ring-2 ring-inset ring-clover-deep/60" : ""}`}
             >
-              <span className={`mb-1 inline-grid h-6 min-w-6 place-items-center rounded-full px-1 text-xs font-black ${cell.isToday ? "bg-clover-ink text-white" : cell.weekday === 0 ? "text-red-400" : cell.weekday === 6 ? "text-sky-500" : ""}`}>{cell.day}</span>
-              <div className="grid gap-1">
+              <span className={`mb-1 grid h-5 min-w-5 shrink-0 place-items-center rounded-full px-1 text-xs font-black leading-none ${cell.isToday ? "bg-clover-ink text-white" : cell.weekday === 0 ? "text-red-400" : cell.weekday === 6 ? "text-sky-500" : ""}`}>{cell.day}</span>
+              <div className="grid w-full min-w-0 gap-1">
                 {dayItems.slice(0, 2).map((item) => (
                   <span key={`${item.collection}-${item.id}`} className={`truncate rounded-md border px-1.5 py-0.5 text-[10px] font-black ${categoryMeta[item.category]?.chip || categoryMeta["기타"].chip}`}>
                     {item.title}
