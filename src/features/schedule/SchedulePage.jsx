@@ -85,7 +85,7 @@ const timelineMetrics = (item, startHour = 8, endHour = 24) => {
   if (visibleEnd <= dayStart || visibleStart >= dayEnd) return null;
   return {
     top: Math.max(0, (visibleStart - dayStart) * 0.9),
-    height: Math.max(38, (visibleEnd - visibleStart) * 0.9),
+    height: Math.max(26, (visibleEnd - visibleStart) * 0.9),
     start: startRaw,
     end: endNext
   };
@@ -814,7 +814,7 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
               return (
                 <article
                   key={`${item.collection}-${item.id}`}
-                  className={`absolute z-10 flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border px-4 py-2.5 text-sm shadow-sm max-sm:px-3 ${tone}`}
+                  className={`absolute z-10 flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border px-3 py-1.5 text-xs shadow-sm max-sm:px-2 ${tone}`}
                   style={{
                     top: `${item.metrics.top}px`,
                     minHeight: `${item.metrics.height}px`,
@@ -822,8 +822,8 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
                     width: `calc(${laneWidth}% - ${laneGap}px)`
                   }}
                 >
-                  <button type="button" onClick={() => onEdit(item)} className="grid min-w-0 grid-cols-[86px_1fr] items-center gap-3 text-left max-sm:grid-cols-1 max-sm:gap-1">
-                    <span className="text-xs font-black">{timeText(item)}</span>
+                  <button type="button" onClick={() => onEdit(item)} className="grid min-w-0 grid-cols-[82px_1fr] items-center gap-2 text-left max-sm:grid-cols-1 max-sm:gap-0.5">
+                    <span className="text-[11px] font-black leading-tight">{timeText(item)}</span>
                     <b className="min-w-0 truncate">{item.title}</b>
                   </button>
                   {showDetails && (
