@@ -26,6 +26,7 @@ const categoryMeta = {
 };
 const dayLabels = ["일", "월", "화", "수", "목", "금", "토"];
 const hours = Array.from({ length: 16 }, (_, index) => index + 8);
+const makeHours = (startHour = 8, endHour = 24) => Array.from({ length: Math.max(0, endHour - startHour) }, (_, index) => index + startHour);
 const dateFields = {
   events: "date",
   todos: "dueDate",
@@ -72,9 +73,9 @@ const timeMinutes = (value) => {
   if (!Number.isFinite(hour)) return null;
   return hour * 60 + (Number.isFinite(minute) ? minute : 0);
 };
-const timelineMetrics = (item) => {
-  const dayStart = 8 * 60;
-  const dayEnd = 24 * 60;
+const timelineMetrics = (item, startHour = 8, endHour = 24) => {
+  const dayStart = startHour * 60;
+  const dayEnd = endHour * 60;
   const startRaw = timeMinutes(item.startTime || item.time || item.dueTime);
   const endRaw = timeMinutes(item.endTime);
   if (startRaw === null || endRaw === null) return null;
@@ -88,6 +89,48 @@ const timelineMetrics = (item) => {
     start: startRaw,
     end: endNext
   };
+};
+const timelineRange = (items) => {
+  const starts = items.map((item) => timeMinutes(item.startTime || item.time || item.dueTime)).filter((value) => value !== null);
+  const ends = items.map((item) => {
+    const start = timeMinutes(item.startTime || item.time || item.dueTime);
+    const end = timeMinutes(item.endTime);
+    if (start === null || end === null) return null;
+    return end <= start ? end + 24 * 60 : end;
+  }).filter((value) => value !== null);
+  if (!starts.length || !ends.length) return { startHour: 8, endHour: 24 };
+  const startHour = Math.min(8, Math.max(0, Math.floor(Math.min(...starts) / 60)));
+  const endHour = Math.max(24, Math.min(24, Math.ceil(Math.max(...ends) / 60)));
+  return { startHour, endHour };
+};
+const layoutTimelineItems = (items) => {
+  const sorted = [...items].sort((a, b) => a.metrics.start - b.metrics.start || a.metrics.end - b.metrics.end);
+  const laidOut = [];
+  let group = [];
+  let groupEnd = -Infinity;
+
+  const flush = () => {
+    if (!group.length) return;
+    const lanes = [];
+    const assigned = group.map((item) => {
+      const lane = lanes.findIndex((end) => end <= item.metrics.start);
+      const nextLane = lane === -1 ? lanes.length : lane;
+      lanes[nextLane] = item.metrics.end;
+      return { ...item, lane: nextLane };
+    });
+    const laneCount = Math.max(1, lanes.length);
+    laidOut.push(...assigned.map((item) => ({ ...item, laneCount })));
+    group = [];
+    groupEnd = -Infinity;
+  };
+
+  sorted.forEach((item) => {
+    if (group.length && item.metrics.start >= groupEnd) flush();
+    group.push(item);
+    groupEnd = Math.max(groupEnd, item.metrics.end);
+  });
+  flush();
+  return laidOut;
 };
 const addDays = (dateKey, amount) => {
   const date = new Date(`${dateKey}T00:00:00`);
@@ -247,6 +290,18 @@ const parseQuickLines = (text) => text
     };
   })
   .filter(Boolean);
+const splitOvernightQuickItems = (items, selectedDate) => items.flatMap((item) => {
+  const start = timeMinutes(item.startTime);
+  const end = timeMinutes(item.endTime);
+  if (start === null || end === null || end > start) {
+    return [{ ...item, date: selectedDate }];
+  }
+  const nextDate = addDays(selectedDate, 1);
+  return [
+    { ...item, date: selectedDate, endTime: "23:59" },
+    { ...item, date: nextDate, startTime: "00:00", title: `${item.title}` }
+  ];
+});
 
 function CategoryChip({ category }) {
   const meta = categoryMeta[category] || categoryMeta["기타"];
@@ -647,7 +702,7 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
 
       <div className="relative">
         {isToday && current.getHours() >= 8 && current.getHours() <= 23 && (
-          <div className="pointer-events-none absolute left-[60px] right-0 z-20 flex items-center max-sm:left-[50px]" style={{ top: `${Math.max(0, currentTop)}px` }}>
+          <div className="pointer-events-none absolute left-[60px] right-0 z-[5] flex items-center max-sm:left-[50px]" style={{ top: `${Math.max(0, currentTop)}px` }}>
             <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{formatTime(`${current.getHours()}:${current.getMinutes()}`)}</span>
             <span className="h-px flex-1 bg-red-400" />
           </div>
@@ -684,15 +739,17 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
 
 function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQuick, onEdit, onDelete }) {
   const [showDetails, setShowDetails] = useState(false);
-  const timedItems = items
-    .filter((item) => item.startTime && item.endTime && !item.isAllDay && !item.isUnscheduled)
-    .map((item) => ({ ...item, metrics: timelineMetrics(item) }))
+  const timedSourceItems = items.filter((item) => item.startTime && item.endTime && !item.isAllDay && !item.isUnscheduled);
+  const { startHour, endHour } = timelineRange(timedSourceItems);
+  const displayHours = makeHours(startHour, endHour);
+  const timedItems = layoutTimelineItems(timedSourceItems
+    .map((item) => ({ ...item, metrics: timelineMetrics(item, startHour, endHour) }))
     .filter((item) => item.metrics)
-    .sort((a, b) => a.metrics.start - b.metrics.start);
+    .sort((a, b) => a.metrics.start - b.metrics.start));
   const current = new Date();
   const isToday = selectedDate === toDateKey(current);
-  const currentTop = ((current.getHours() - 8) * 60 + current.getMinutes()) * 0.9;
-  const timelineHeight = hours.length * 54;
+  const currentTop = ((current.getHours() - startHour) * 60 + current.getMinutes()) * 0.9;
+  const timelineHeight = displayHours.length * 54;
 
   return (
     <GlassCard className="rounded-[22px] border border-clover-line bg-white/88 p-5">
@@ -732,31 +789,38 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
       )}
 
       <div className="relative">
-        {isToday && current.getHours() >= 8 && current.getHours() <= 23 && (
-          <div className="pointer-events-none absolute left-[60px] right-0 z-20 flex items-center max-sm:left-[50px]" style={{ top: `${Math.max(0, currentTop)}px` }}>
+        {isToday && current.getHours() >= startHour && current.getHours() < endHour && (
+          <div className="pointer-events-none absolute left-[60px] right-0 z-[5] flex items-center max-sm:left-[50px]" style={{ top: `${Math.max(0, currentTop)}px` }}>
             <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{formatTime(`${current.getHours()}:${current.getMinutes()}`)}</span>
             <span className="h-px flex-1 bg-red-400" />
           </div>
         )}
         <div className="grid grid-cols-[48px_1fr] gap-3 max-sm:grid-cols-[40px_1fr] max-sm:gap-2">
           <div className="relative" style={{ height: `${timelineHeight}px` }}>
-            {hours.map((hour) => (
-              <div key={hour} className="absolute left-0 right-0 text-right text-xs font-black text-clover-sub" style={{ top: `${(hour - 8) * 54 + 10}px` }}>
+            {displayHours.map((hour) => (
+              <div key={hour} className="absolute left-0 right-0 text-right text-xs font-black text-clover-sub" style={{ top: `${(hour - startHour) * 54 + 10}px` }}>
                 {String(hour).padStart(2, "0")}:00
               </div>
             ))}
           </div>
           <div className="relative" style={{ height: `${timelineHeight}px` }}>
-            {hours.map((hour) => (
-              <div key={hour} className="absolute left-0 right-0 border-b border-dashed border-slate-200" style={{ top: `${(hour - 8) * 54}px`, height: "54px" }} />
+            {displayHours.map((hour) => (
+              <div key={hour} className="absolute left-0 right-0 border-b border-dashed border-slate-200" style={{ top: `${(hour - startHour) * 54}px`, height: "54px" }} />
             ))}
             {timedItems.map((item) => {
               const tone = categoryMeta[item.category]?.block || "border-slate-200 bg-slate-50/90 text-slate-950";
+              const laneWidth = 100 / item.laneCount;
+              const laneGap = item.laneCount > 1 ? 6 : 0;
               return (
                 <article
                   key={`${item.collection}-${item.id}`}
-                  className={`absolute inset-x-0 z-10 flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border px-4 py-2.5 text-sm shadow-sm ${tone}`}
-                  style={{ top: `${item.metrics.top}px`, minHeight: `${item.metrics.height}px` }}
+                  className={`absolute z-10 flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border px-4 py-2.5 text-sm shadow-sm max-sm:px-3 ${tone}`}
+                  style={{
+                    top: `${item.metrics.top}px`,
+                    minHeight: `${item.metrics.height}px`,
+                    left: `calc(${item.lane * laneWidth}% + ${item.lane ? laneGap / 2 : 0}px)`,
+                    width: `calc(${laneWidth}% - ${laneGap}px)`
+                  }}
                 >
                   <button type="button" onClick={() => onEdit(item)} className="grid min-w-0 grid-cols-[86px_1fr] items-center gap-3 text-left max-sm:grid-cols-1 max-sm:gap-1">
                     <span className="text-xs font-black">{timeText(item)}</span>
@@ -1235,16 +1299,17 @@ export default function SchedulePage() {
   const applyQuickText = () => {
     const parsed = parseQuickLines(quickText);
     if (!parsed.length) return;
+    const expanded = splitOvernightQuickItems(parsed, selectedDate);
     persist((next) => {
-      const quickCategories = parsed.map((item) => item.category || "기타");
+      const quickCategories = expanded.map((item) => item.category || "기타");
       next.scheduleCategories = uniqueCategories([...(next.scheduleCategories || scheduleCategories), ...quickCategories]);
-      const events = parsed.map((item) => ({
+      const events = expanded.map((item) => ({
         id: makeId("event"),
         title: item.title,
         category: item.category || "기타",
         scheduleCategory: item.category || "기타",
-        date: selectedDate,
-        scheduleDate: selectedDate,
+        date: item.date || selectedDate,
+        scheduleDate: item.date || selectedDate,
         time: item.startTime,
         startTime: item.startTime,
         endTime: item.endTime,
