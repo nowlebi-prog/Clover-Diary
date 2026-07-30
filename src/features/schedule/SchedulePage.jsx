@@ -610,10 +610,10 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
 
   return (
     <GlassCard className="rounded-[22px] border border-clover-line bg-white/88 p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-end gap-3">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-2">
           <SectionTitle>타임라인</SectionTitle>
-          <span className="text-sm font-black text-clover-sub">{Number(selectedDate.slice(5, 7))}월 {Number(selectedDate.slice(8))}일</span>
+          <span className="shrink-0 rounded-full bg-white/75 px-2.5 py-1 text-xs font-black text-clover-sub">{Number(selectedDate.slice(5, 7))}월 {Number(selectedDate.slice(8))}일</span>
         </div>
         <button
           type="button"
@@ -647,7 +647,7 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
 
       <div className="relative">
         {isToday && current.getHours() >= 8 && current.getHours() <= 23 && (
-          <div className="pointer-events-none absolute left-[58px] right-0 z-20 flex items-center" style={{ top: `${Math.max(0, currentTop)}px` }}>
+          <div className="pointer-events-none absolute left-[60px] right-0 z-20 flex items-center max-sm:left-[50px]" style={{ top: `${Math.max(0, currentTop)}px` }}>
             <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{formatTime(`${current.getHours()}:${current.getMinutes()}`)}</span>
             <span className="h-px flex-1 bg-red-400" />
           </div>
@@ -696,10 +696,10 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
 
   return (
     <GlassCard className="rounded-[22px] border border-clover-line bg-white/88 p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-end gap-3">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-2">
           <SectionTitle>타임라인</SectionTitle>
-          <span className="text-sm font-black text-clover-sub">{Number(selectedDate.slice(5, 7))}월 {Number(selectedDate.slice(8))}일</span>
+          <span className="shrink-0 rounded-full bg-white/75 px-2.5 py-1 text-xs font-black text-clover-sub">{Number(selectedDate.slice(5, 7))}월 {Number(selectedDate.slice(8))}일</span>
         </div>
         <button
           type="button"
@@ -733,12 +733,12 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
 
       <div className="relative">
         {isToday && current.getHours() >= 8 && current.getHours() <= 23 && (
-          <div className="pointer-events-none absolute left-[58px] right-0 z-20 flex items-center" style={{ top: `${Math.max(0, currentTop)}px` }}>
+          <div className="pointer-events-none absolute left-[60px] right-0 z-20 flex items-center max-sm:left-[50px]" style={{ top: `${Math.max(0, currentTop)}px` }}>
             <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{formatTime(`${current.getHours()}:${current.getMinutes()}`)}</span>
             <span className="h-px flex-1 bg-red-400" />
           </div>
         )}
-        <div className="grid grid-cols-[52px_1fr] gap-4">
+        <div className="grid grid-cols-[48px_1fr] gap-3 max-sm:grid-cols-[40px_1fr] max-sm:gap-2">
           <div className="relative" style={{ height: `${timelineHeight}px` }}>
             {hours.map((hour) => (
               <div key={hour} className="absolute left-0 right-0 text-right text-xs font-black text-clover-sub" style={{ top: `${(hour - 8) * 54 + 10}px` }}>
@@ -750,14 +750,13 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
             {hours.map((hour) => (
               <div key={hour} className="absolute left-0 right-0 border-b border-dashed border-slate-200" style={{ top: `${(hour - 8) * 54}px`, height: "54px" }} />
             ))}
-            {timedItems.map((item, index) => {
+            {timedItems.map((item) => {
               const tone = categoryMeta[item.category]?.block || "border-slate-200 bg-slate-50/90 text-slate-950";
-              const offset = (index % 3) * 8;
               return (
                 <article
                   key={`${item.collection}-${item.id}`}
-                  className={`absolute left-0 right-0 z-10 flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border px-4 py-2.5 text-sm shadow-sm ${tone}`}
-                  style={{ top: `${item.metrics.top}px`, minHeight: `${item.metrics.height}px`, marginLeft: `${offset}px` }}
+                  className={`absolute inset-x-0 z-10 flex min-w-0 flex-col justify-between overflow-hidden rounded-xl border px-4 py-2.5 text-sm shadow-sm ${tone}`}
+                  style={{ top: `${item.metrics.top}px`, minHeight: `${item.metrics.height}px` }}
                 >
                   <button type="button" onClick={() => onEdit(item)} className="grid min-w-0 grid-cols-[86px_1fr] items-center gap-3 text-left max-sm:grid-cols-1 max-sm:gap-1">
                     <span className="text-xs font-black">{timeText(item)}</span>
