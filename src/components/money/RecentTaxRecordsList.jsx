@@ -24,7 +24,7 @@ export default function RecentTaxRecordsList({ records = [] }) {
             <p className="shrink-0 text-sm font-black">{money(record.totalAmount)}</p>
           </div>
         ))}
-        {!recent.length && <p className="rounded-2xl bg-white/45 p-3 text-sm text-clover-sub">아직 가져온 세금계산서/현금영수증이 없어요. 위에서 CSV를 업로드해보세요.</p>}
+        {!recent.length && <p className="rounded-2xl bg-white/45 p-3 text-sm text-clover-sub">아직 가져온 세금계산서/현금영수증이 없어요. 위에서 CSV를 업로드해 보세요.</p>}
       </div>
     </GlassCard>
   );

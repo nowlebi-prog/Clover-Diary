@@ -67,6 +67,41 @@ p {
 .thin-scroll::-webkit-scrollbar-thumb { background: rgba(62, 143, 99, 0.25); border-radius: 999px; }
 
 @media (max-width: 767px) {
+  .app-shell {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+  .mobile-bottom-nav {
+    bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
+  }
+  main {
+    min-width: 0;
+  }
+  main .grid, main .grid > *, main .flex > * {
+    min-width: 0;
+  }
+  main p, main h1, main h2, main h3, main label {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  main button.rounded-full {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
+  .page-header-actions > .flex {
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .glass.p-5, .glass.p-6 {
+    padding: 1rem;
+  }
+  .glass > .flex.items-center.justify-between {
+    flex-wrap: wrap;
+  }
   .glass {
     border-radius: 22px;
     box-shadow: 0 16px 42px rgba(70, 95, 80, 0.07);

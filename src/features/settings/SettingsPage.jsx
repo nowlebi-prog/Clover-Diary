@@ -276,7 +276,7 @@ export default function SettingsPage({ onLogout }) {
     if (!confirm("이 기기의 기존 기록을 현재 로그인한 계정에 합칠까요? 기존 원본은 그대로 보존됩니다.")) return;
     try {
       importLegacyData(); setLegacyAvailable(false);
-      setNotice("기존 기록을 합쳤어요. 서버 저장 상태를 확인해주세요.");
+      setNotice("기존 기록을 합쳤어요. 서버 저장 상태를 확인해 주세요.");
     } catch (error) { setNotice(`가져오지 못했어요: ${error.message}`); }
   };
 
@@ -309,7 +309,7 @@ export default function SettingsPage({ onLogout }) {
 
         <GlassCard>
           <SectionTitle>아이폰 홈 화면 위젯</SectionTitle>
-          <p className="text-sm text-clover-sub">Scriptable을 이용해 주간 날짜와 오늘 일정·할 일을 홈 화면에서 볼 수 있어요. 같은 다이어리 계정으로 연결해주세요.</p>
+          <p className="text-sm text-clover-sub">Scriptable을 이용해 주간 날짜와 오늘 일정·할 일을 홈 화면에서 볼 수 있어요. 같은 다이어리 계정으로 연결해 주세요.</p>
           <a href="/iphone-widget.html" className="mt-4 inline-block rounded-full bg-clover-deep px-5 py-3 text-sm font-bold text-white">위젯 설치 안내 열기</a>
           <p className="mt-3 text-xs text-clover-sub">갱신 시점은 iOS가 결정하며, 내용을 누르면 다이어리가 열려요.</p>
         </GlassCard>
@@ -320,7 +320,7 @@ export default function SettingsPage({ onLogout }) {
             <div className="flex flex-wrap gap-2">
               <StatusBadge tone={syncStatus.lastSyncStatus === "saved" ? "mint" : "cream"}>{describeSyncStatus(syncStatus)}</StatusBadge>
             </div>
-            <p>모든 기기에서 같은 Supabase 계정으로 로그인해주세요. 연결되면 변경 기록을 자동으로 합치고, 전송 실패 시 기기에 보관했다가 다시 전송해요.</p>
+            <p>모든 기기에서 같은 Supabase 계정으로 로그인해 주세요. 연결되면 변경 기록을 자동으로 합치고, 전송 실패 시 기기에 보관했다가 다시 전송해요.</p>
             {syncStatus.lastRemoteUpdatedAt && <p>마지막 원격 업데이트: {new Date(syncStatus.lastRemoteUpdatedAt).toLocaleString()}</p>}
             {syncStatus.lastLocalWriteAt && <p>마지막 로컬 저장: {new Date(syncStatus.lastLocalWriteAt).toLocaleString()}</p>}
             {syncStatus.lastSyncedAt && <p>마지막 서버 확인: {new Date(syncStatus.lastSyncedAt).toLocaleString()}</p>}

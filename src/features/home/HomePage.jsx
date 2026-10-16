@@ -506,7 +506,7 @@ function PriorityCard({ topItems, deadlineItems, onToggleTodo, onStart, onSchedu
                 </div>
               </article>
             ))}
-            {!cleanTop.length && <p className="rounded-[12px] bg-white/55 p-3 text-sm font-bold text-clover-sub">일정이나 할 일에서 오늘 꼭!을 체크해보세요.</p>}
+            {!cleanTop.length && <p className="rounded-[12px] bg-white/55 p-3 text-sm font-bold text-clover-sub">일정이나 할 일에서 오늘 꼭!을 체크해 보세요.</p>}
           </div>
         </div>
 
@@ -557,7 +557,7 @@ function WeeklyStrip({ data, today }) {
 
   return (
     <GlassCard className="rounded-[18px] border border-clover-line bg-white/86 p-5">
-      <SectionTitle action={<Link to={`/schedule?date=${selectedDate}`} className="rounded-full bg-white/75 px-3 py-1 text-xs font-black text-clover-deep">Schedule로 이동</Link>}>이번주 한눈에 보기</SectionTitle>
+      <SectionTitle action={<Link to={`/schedule?date=${selectedDate}`} className="rounded-full bg-white/75 px-3 py-1 text-xs font-black text-clover-deep">Schedule로 이동</Link>}>이번 주 한눈에 보기</SectionTitle>
       <div className="mb-3 flex items-center justify-between gap-2">
         <button type="button" onClick={() => setWeekOffset((value) => {
           const next = value - 1;
@@ -788,7 +788,7 @@ export default function HomePage() {
       )}
 
       <PageHeader eyebrow={today} title={<span className="whitespace-nowrap text-[22px] leading-tight sm:text-2xl lg:text-[26px]">오늘도 Lucky Day 🍀</span>}>
-        <div className="flex max-w-full shrink-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1">
+        <div className="flex max-w-full flex-wrap items-center gap-2 pb-1">
           <WeatherCard />
           <button type="button" onClick={refreshNow} className="h-9 shrink-0 rounded-full bg-white/70 px-3 text-xs font-black text-clover-deep shadow-sm hover:bg-white">새로고침</button>
           <button type="button" onClick={() => navigate("/quick-links")} className="h-9 shrink-0 rounded-full bg-white/70 px-3 text-xs font-black text-clover-deep shadow-sm hover:bg-white">바로가기 URL</button>

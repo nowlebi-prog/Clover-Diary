@@ -135,7 +135,7 @@ export default function TodoPanel({ todos = [], today }) {
       </div>
 
       {overdue.length > 0 && (
-        <p className="mt-2 text-[11px] font-bold text-clover-danger">지난 마감 {overdue.length}건 — 이월 버튼으로 정리해보세요.</p>
+        <p className="mt-2 text-[11px] font-bold text-clover-danger">지난 마감 {overdue.length}건 — 이월 버튼으로 정리해 보세요.</p>
       )}
 
       <button className="mt-4 text-xs font-bold text-clover-sub underline" onClick={() => setShowDone((v) => !v)}>

@@ -50,9 +50,9 @@ export default function WeatherCard() {
   }, [weather, dust]);
 
   const dustLabel = !summary
-    ? "날씨 확인중"
+    ? "날씨 확인 중"
     : summary.pm10 === null || summary.pm25 === null
-      ? "미세먼지 확인중"
+      ? "미세먼지 확인 중"
       : `미세 ${summary.pm10} · 초미세 ${summary.pm25}`;
 
   const weatherLabel = summary

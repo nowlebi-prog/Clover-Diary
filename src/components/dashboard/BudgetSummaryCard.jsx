@@ -10,7 +10,7 @@ export default function BudgetSummaryCard({ summary }) {
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">Budget</p>
-          <h2 className="text-base font-black">이번달 예산 요약</h2>
+          <h2 className="text-base font-black">이번 달 예산 요약</h2>
         </div>
         <SectionLink to="/money" />
       </div>

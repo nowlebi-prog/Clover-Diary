@@ -26,7 +26,7 @@ export default function TodayTopThree({ items = [], onToggle }) {
         ))}
         {!topItems.length && (
           <div className="rounded-[20px] bg-white/55 p-4 text-sm font-bold text-clover-sub">
-            오늘 꼭 끝낼 세 가지를 Tasks에서 정해보세요.
+            오늘 꼭 끝낼 세 가지를 Tasks에서 정해 보세요.
           </div>
         )}
       </div>

@@ -26,7 +26,7 @@ function MoneyGate({ onUnlock }) {
   const [error, setError] = useState("");
   const submit = () => {
     if (!MONEY_PASSWORD) {
-      setError("Money 비밀번호가 설정되지 않았어요. VITE_MONEY_PASSWORD 환경변수를 설정해주세요.");
+      setError("Money 비밀번호가 설정되지 않았어요. VITE_MONEY_PASSWORD 환경변수를 설정해 주세요.");
       return;
     }
 
@@ -451,7 +451,7 @@ function MoneyPageContent({ onLock }) {
               </div>
             </button>
           ))}
-          {!shoppingItems.filter((item) => !item.completed).length && <p className="rounded-[8px] bg-white/40 p-4 text-sm font-bold text-clover-sub">구매할 항목을 추가해보세요.</p>}
+          {!shoppingItems.filter((item) => !item.completed).length && <p className="rounded-[8px] bg-white/40 p-4 text-sm font-bold text-clover-sub">구매할 항목을 추가해 보세요.</p>}
         </MoneySection>
 
         <MoneySection title="저축" action="+ 저축" onAction={() => setEditor({ type: "saving", item: { date: today } })}>
@@ -461,7 +461,7 @@ function MoneyPageContent({ onLock }) {
               <span className="shrink-0 text-xs text-emerald-700 sm:text-sm">{money(item.amount)}</span>
             </button>
           ))}
-          {!savings.length && <p className="rounded-[8px] bg-white/40 p-4 text-sm font-bold text-clover-sub">저축 기록을 추가해보세요.</p>}
+          {!savings.length && <p className="rounded-[8px] bg-white/40 p-4 text-sm font-bold text-clover-sub">저축 기록을 추가해 보세요.</p>}
           {!!savings.length && <p className="rounded-[8px] bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-700">누적 저축 {money(sum(savings))}</p>}
         </MoneySection>
       </div>

@@ -74,7 +74,7 @@ export default function WorkStats({ sessions = [], categories = [], today }) {
 
         {!stats.detailEntries.length && (
           <p className="rounded-2xl bg-white/50 p-4 text-sm font-bold text-clover-sub">
-            오늘 기록된 집중 시간이 아직 없어요. 타이머를 시작하거나 수동으로 추가해보세요.
+            오늘 기록된 집중 시간이 아직 없어요. 타이머를 시작하거나 수동으로 추가해 보세요.
           </p>
         )}
       </div>

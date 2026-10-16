@@ -233,7 +233,7 @@ export default function QuickLinksPage() {
                 </article>
               ))}
               {!filteredLinks.length && (
-                <p className="p-8 text-center text-sm font-bold text-clover-sub">아직 저장된 링크가 없어요. 왼쪽에서 자주 쓰는 URL을 추가해보세요.</p>
+                <p className="p-8 text-center text-sm font-bold text-clover-sub">아직 저장된 링크가 없어요. 왼쪽에서 자주 쓰는 URL을 추가해 보세요.</p>
               )}
             </div>
           </div>

@@ -51,7 +51,7 @@ export default function SubTaskEditor({ value = [], onChange }) {
           onClick={() => addItem()}
           className="rounded-2xl border border-dashed border-clover-line bg-white/45 px-4 py-4 text-left text-sm font-semibold text-clover-sub transition hover:bg-white/70"
         >
-          하위 작업을 한 칸씩 추가해보세요.
+          하위 작업을 한 칸씩 추가해 보세요.
         </button>
       ) : (
         <div className="grid gap-2">

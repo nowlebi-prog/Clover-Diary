@@ -142,7 +142,7 @@ export default function DailyPage() {
                   </button>
                 );
               })}
-              {!data.goals?.length && <p className="text-sm text-clover-sub">작게 이어갈 목표를 추가해보세요.</p>}
+              {!data.goals?.length && <p className="text-sm text-clover-sub">작게 이어갈 목표를 추가해 보세요.</p>}
             </div>
           </GlassCard>
 

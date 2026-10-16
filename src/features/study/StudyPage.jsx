@@ -170,7 +170,7 @@ function StudyItemCard({ item, onOpen, onStatus, onArchive }) {
             {item.priority === "high" && <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-black text-rose-600">중요</span>}
           </div>
           <h3 className="mt-3 line-clamp-2 text-lg font-black text-clover-ink">{item.title}</h3>
-          <p className="mt-1 line-clamp-2 text-sm font-bold text-clover-sub">{item.nextAction || item.sourceNote || "다음 액션을 정해보세요."}</p>
+          <p className="mt-1 line-clamp-2 text-sm font-bold text-clover-sub">{item.nextAction || item.sourceNote || "다음 액션을 정해 보세요."}</p>
         </button>
         {item.revisitDate && <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-black text-clover-sub">{item.revisitDate}</span>}
       </div>
@@ -294,7 +294,7 @@ function StudyHome({ items, onTab, onOpen, onStatus, onArchive, onAdd }) {
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {revisit.map((item) => <StudyItemCard key={item.id} item={item} onOpen={onOpen} onStatus={onStatus} onArchive={onArchive} />)}
-          {!revisit.length && <EmptyBox title="오늘 다시 볼 공부 주제가 없어요." note="떠오른 주제가 있다면 가볍게 추가해보세요." action="주제 추가" onAction={onAdd} />}
+          {!revisit.length && <EmptyBox title="오늘 다시 볼 공부 주제가 없어요." note="떠오른 주제가 있다면 가볍게 추가해 보세요." action="주제 추가" onAction={onAdd} />}
         </div>
       </GlassCard>
 
@@ -336,7 +336,7 @@ function StudyHome({ items, onTab, onOpen, onStatus, onArchive, onAdd }) {
                 <p className="mt-1 text-xs font-bold text-clover-sub">{item.category} · {item.nextAction || "적용 완료"}</p>
               </button>
             ))}
-            {!recentApplied.length && <EmptyBox title="아직 적용 완료한 공부가 없어요." note="공부한 내용을 실제 작업에 한 번 연결해보세요." />}
+            {!recentApplied.length && <EmptyBox title="아직 적용 완료한 공부가 없어요." note="공부한 내용을 실제 작업에 한 번 연결해 보세요." />}
           </div>
         </GlassCard>
       </div>
@@ -496,8 +496,8 @@ export default function StudyPage() {
   const content = (() => {
     if (tab === "home") return <StudyHome items={items} onTab={setTab} onOpen={setEditing} onStatus={updateStatus} onArchive={moveArchive} onAdd={() => setQuickAddOpen(true)} />;
     if (tab === "queue") return <BoardTab title="Study Queue" note="아직 시작하지 않은 공부 주제예요." items={queue} empty={{ title: "아직 저장된 공부 주제가 없어요.", note: "나중에 찾아보고 싶은 주제를 먼저 적어두세요.", action: "주제 추가" }} onOpen={setEditing} onStatus={updateStatus} onArchive={moveArchive} onAdd={() => setQuickAddOpen(true)} />;
-    if (tab === "progress") return <BoardTab title="In Progress" note="지금 공부 중인 주제와 메모를 관리해요." items={progress} empty={{ title: "지금 공부 중인 주제가 없어요.", note: "오늘 다시 볼 주제에서 하나를 골라 시작해보세요.", action: "주제 추가" }} onOpen={setEditing} onStatus={updateStatus} onArchive={moveArchive} onAdd={() => setQuickAddOpen(true)} />;
-    if (tab === "applied") return <BoardTab title="Applied" note="적용 대기와 적용 완료 주제를 관리해요." items={applied} empty={{ title: "아직 적용 완료한 공부가 없어요.", note: "공부한 내용을 실제 작업에 한 번 연결해보세요.", action: "주제 추가" }} onOpen={setEditing} onStatus={updateStatus} onArchive={moveArchive} onAdd={() => setQuickAddOpen(true)} />;
+    if (tab === "progress") return <BoardTab title="In Progress" note="지금 공부 중인 주제와 메모를 관리해요." items={progress} empty={{ title: "지금 공부 중인 주제가 없어요.", note: "오늘 다시 볼 주제에서 하나를 골라 시작해 보세요.", action: "주제 추가" }} onOpen={setEditing} onStatus={updateStatus} onArchive={moveArchive} onAdd={() => setQuickAddOpen(true)} />;
+    if (tab === "applied") return <BoardTab title="Applied" note="적용 대기와 적용 완료 주제를 관리해요." items={applied} empty={{ title: "아직 적용 완료한 공부가 없어요.", note: "공부한 내용을 실제 작업에 한 번 연결해 보세요.", action: "주제 추가" }} onOpen={setEditing} onStatus={updateStatus} onArchive={moveArchive} onAdd={() => setQuickAddOpen(true)} />;
     if (tab === "archive") return <ArchiveTab items={items} onOpen={setEditing} />;
     return <CaptureSupportTab captures={data.captures || []} onUpload={() => setUploadOpen(true)} />;
   })();

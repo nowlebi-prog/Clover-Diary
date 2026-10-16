@@ -250,7 +250,7 @@ export default function JournalPage() {
 
           <GlassCard>
             <SectionTitle>오늘 요약</SectionTitle>
-            <AppTextarea value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="오늘 하루를 짧게 정리해보세요." />
+            <AppTextarea value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="오늘 하루를 짧게 정리해 보세요." />
           </GlassCard>
 
           <GlassCard>

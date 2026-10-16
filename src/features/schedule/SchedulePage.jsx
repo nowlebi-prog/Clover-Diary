@@ -25,8 +25,8 @@ const categoryMeta = {
   기타: { dot: "bg-slate-400", chip: "bg-slate-50 text-slate-700 border-slate-100", block: "border-slate-200 bg-slate-50/90 text-slate-950" }
 };
 const dayLabels = ["일", "월", "화", "수", "목", "금", "토"];
-const hours = Array.from({ length: 16 }, (_, index) => index + 8);
-const makeHours = (startHour = 8, endHour = 24) => Array.from({ length: Math.max(0, endHour - startHour) }, (_, index) => index + startHour);
+const hours = Array.from({ length: 24 }, (_, index) => index);
+const makeHours = (startHour = 0, endHour = 24) => Array.from({ length: Math.max(0, endHour - startHour) }, (_, index) => index + startHour);
 const dateFields = {
   events: "date",
   todos: "dueDate",
@@ -73,7 +73,7 @@ const timeMinutes = (value) => {
   if (!Number.isFinite(hour)) return null;
   return hour * 60 + (Number.isFinite(minute) ? minute : 0);
 };
-const timelineMetrics = (item, startHour = 8, endHour = 24) => {
+const timelineMetrics = (item, startHour = 0, endHour = 24) => {
   const dayStart = startHour * 60;
   const dayEnd = endHour * 60;
   const startRaw = timeMinutes(item.startTime || item.time || item.dueTime);
@@ -90,19 +90,7 @@ const timelineMetrics = (item, startHour = 8, endHour = 24) => {
     end: endNext
   };
 };
-const timelineRange = (items) => {
-  const starts = items.map((item) => timeMinutes(item.startTime || item.time || item.dueTime)).filter((value) => value !== null);
-  const ends = items.map((item) => {
-    const start = timeMinutes(item.startTime || item.time || item.dueTime);
-    const end = timeMinutes(item.endTime);
-    if (start === null || end === null) return null;
-    return end <= start ? end + 24 * 60 : end;
-  }).filter((value) => value !== null);
-  if (!starts.length || !ends.length) return { startHour: 8, endHour: 24 };
-  const startHour = Math.min(8, Math.max(0, Math.floor(Math.min(...starts) / 60)));
-  const endHour = Math.max(24, Math.min(24, Math.ceil(Math.max(...ends) / 60)));
-  return { startHour, endHour };
-};
+const timelineRange = () => ({ startHour: 0, endHour: 24 });
 const layoutTimelineItems = (items) => {
   const sorted = [...items].sort((a, b) => a.metrics.start - b.metrics.start || a.metrics.end - b.metrics.end);
   const laidOut = [];
@@ -608,8 +596,8 @@ function Timeline({ selectedDate, items, quickText, onQuickText, onApplyQuick, o
       </div>
 
       <div className="mb-3 rounded-[14px] border border-clover-line bg-white/70 p-2.5">
-        <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
-          <label className="grid gap-1.5 text-sm font-black">
+        <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <label className="grid min-w-0 gap-1.5 text-sm font-black">
             빠른 입력
             <AppTextarea
               value={quickText}
@@ -675,13 +663,13 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
           onClick={() => setShowDetails((currentValue) => !currentValue)}
           className={`rounded-full border px-3 py-2 text-xs font-black transition ${showDetails ? "border-clover-deep bg-clover-deep text-white" : "border-clover-line bg-white/80 text-clover-sub"}`}
         >
-          세부옵션
+          세부 옵션
         </button>
       </div>
 
       <div className="mb-3 rounded-[14px] border border-clover-line bg-white/70 p-2.5">
-        <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
-          <label className="grid gap-1.5 text-sm font-black">
+        <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <label className="grid min-w-0 gap-1.5 text-sm font-black">
             빠른 입력
             <AppTextarea
               value={quickText}
@@ -731,7 +719,7 @@ function TimelineCompact({ selectedDate, items, quickText, onQuickText, onApplyQ
             </div>
           );
         })}
-        {!timedItems.length && <p className="mt-3 rounded-[14px] bg-white/55 p-4 text-sm font-bold text-clover-sub">시간이 정해진 일정이 아직 없어요. 빠른 입력으로 추가한 뒤 세부옵션에서 수정해보세요.</p>}
+        {!timedItems.length && <p className="mt-3 rounded-[14px] bg-white/55 p-4 text-sm font-bold text-clover-sub">시간이 정해진 일정이 아직 없어요. 빠른 입력으로 추가한 뒤 세부 옵션에서 수정해 보세요.</p>}
       </div>
     </GlassCard>
   );
@@ -763,13 +751,13 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
           onClick={() => setShowDetails((value) => !value)}
           className={`rounded-full border px-3 py-2 text-xs font-black transition ${showDetails ? "border-clover-deep bg-clover-deep text-white" : "border-clover-line bg-white/80 text-clover-sub"}`}
         >
-          세부옵션
+          세부 옵션
         </button>
       </div>
 
       <div className="mb-3 rounded-[14px] border border-clover-line bg-white/70 p-2.5">
-        <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
-          <label className="grid gap-1.5 text-sm font-black">
+        <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <label className="grid min-w-0 gap-1.5 text-sm font-black">
             빠른 입력
             <AppTextarea
               value={quickText}
@@ -784,7 +772,7 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
 
       {showDetails && (
         <p className="mb-3 rounded-[14px] bg-slate-50 px-4 py-3 text-xs font-bold text-clover-sub">
-          일정 블록을 누르면 수정할 수 있고, 세부옵션에서는 수정/삭제 버튼이 함께 보여요.
+          일정 블록을 누르면 수정할 수 있고, 세부 옵션에서는 수정/삭제 버튼이 함께 보여요.
         </p>
       )}
 
@@ -837,7 +825,7 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
             })}
           </div>
         </div>
-        {!timedItems.length && <p className="mt-3 rounded-[14px] bg-white/55 p-4 text-sm font-bold text-clover-sub">시간이 정해진 일정이 아직 없어요. 빠른 입력으로 추가하거나 세부옵션에서 수정해보세요.</p>}
+        {!timedItems.length && <p className="mt-3 rounded-[14px] bg-white/55 p-4 text-sm font-bold text-clover-sub">시간이 정해진 일정이 아직 없어요. 빠른 입력으로 추가하거나 세부 옵션에서 수정해 보세요.</p>}
       </div>
     </GlassCard>
   );

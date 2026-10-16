@@ -16,7 +16,7 @@ export default function BottomNav() {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-3 left-3 right-3 z-30 overflow-x-auto rounded-full border border-white/70 bg-white/85 p-1.5 shadow-glass backdrop-blur-xl md:hidden">
+    <nav className="mobile-bottom-nav fixed bottom-3 left-3 right-3 z-30 overflow-x-auto rounded-full border border-white/70 bg-white/85 p-1.5 shadow-glass backdrop-blur-xl md:hidden">
       <div className="flex min-w-max gap-1">
         {items.map(({ to, label, paths }) => {
           const active = paths.some((path) => (path === "/" ? location.pathname === "/" : location.pathname.startsWith(path)));

@@ -129,7 +129,7 @@ export default function LifeHabitTracker({ data, onChange }) {
                 </div>
               );
             })}
-            {!habits.length && <div className="rounded-2xl bg-white/55 p-5 text-sm font-bold text-clover-sub">아직 습관이 없어요. 편집을 눌러 하나 추가해보세요.</div>}
+            {!habits.length && <div className="rounded-2xl bg-white/55 p-5 text-sm font-bold text-clover-sub">아직 습관이 없어요. 편집을 눌러 하나 추가해 보세요.</div>}
           </div>
         </div>
       </div>}
@@ -215,7 +215,7 @@ function HabitManagerFixed({ data, today, onClose, onChange }) {
               </div>
             ))}
             {!drafts.filter((habit) => habit.status !== "archived").length && (
-              <p className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-clover-sub">아직 등록된 습관이 없어요. 아래 버튼으로 추가해보세요.</p>
+              <p className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-clover-sub">아직 등록된 습관이 없어요. 아래 버튼으로 추가해 보세요.</p>
             )}
           </div>
         </div>

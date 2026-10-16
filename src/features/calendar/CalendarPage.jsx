@@ -185,7 +185,7 @@ export default function CalendarPage() {
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-bold text-clover-sub">항목 {selectedItems.length}개</span>
             <Link to={`/schedule?date=${selectedDate}`}>
-              <AppButton variant="soft">전체 할일 보기</AppButton>
+              <AppButton variant="soft">전체 할 일 보기</AppButton>
             </Link>
           </div>
         </div>

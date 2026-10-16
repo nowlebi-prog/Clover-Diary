@@ -35,7 +35,7 @@ export default function HabitCircleSummary({ habits = [], logs = [], onToggle })
           </button>
         );
       })}
-      {!active.length && <p className="text-sm text-clover-sub">Life에서 루틴을 추가해보세요.</p>}
+      {!active.length && <p className="text-sm text-clover-sub">Life에서 루틴을 추가해 보세요.</p>}
     </div>
   );
 }

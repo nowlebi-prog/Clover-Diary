@@ -104,11 +104,11 @@ export default function DurationTimeline({ items = [], date, onSaveEntries }) {
   const saveQuickTimeline = () => {
     const { entries, invalid } = parseQuickTimeline(quickText);
     if (invalid.length) {
-      setQuickError(`형식을 확인해주세요: ${invalid[0]}`);
+      setQuickError(`형식을 확인해 주세요: ${invalid[0]}`);
       return;
     }
     if (!entries.length) {
-      setQuickError("추가할 타임라인을 입력해주세요.");
+      setQuickError("추가할 타임라인을 입력해 주세요.");
       return;
     }
     onSaveEntries?.(entries);
@@ -132,7 +132,7 @@ export default function DurationTimeline({ items = [], date, onSaveEntries }) {
 
       {quickOpen && (
         <div className="mb-4 rounded-[22px] bg-white/70 p-4">
-          <p className="mb-2 text-sm font-black text-clover-ink">한 줄에 하나씩 입력해주세요</p>
+          <p className="mb-2 text-sm font-black text-clover-ink">한 줄에 하나씩 입력해 주세요</p>
           <textarea
             value={quickText}
             onChange={(event) => {

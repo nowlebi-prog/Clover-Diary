@@ -22,7 +22,7 @@ export default function LoginPage({ onLogin }) {
       if (!result.ok) return setError(result.message);
       onLogin(result.session);
       navigate("/");
-    } catch (error) { setError(error.message || "로그인하지 못했어요. 연결을 확인해주세요."); }
+    } catch (error) { setError(error.message || "로그인하지 못했어요. 연결을 확인해 주세요."); }
     finally { setSubmitting(false); }
   };
 
@@ -40,7 +40,7 @@ export default function LoginPage({ onLogin }) {
           {error && <p className="rounded-2xl bg-red-100 px-4 py-3 text-sm font-semibold text-red-600">{error}</p>}
           <AppButton disabled={submitting}>{submitting ? "로그인 중…" : "로그인"}</AppButton>
         </form>
-        <p className="mt-4 text-xs leading-relaxed text-clover-sub">{usingCloud ? "모든 기기에서 같은 Supabase 계정으로 로그인해주세요. 이 기기의 기존 기록은 설정에서 가져올 수 있어요." : "현재는 이 브라우저에만 저장됩니다. 기기 간 동기화에는 Supabase 연결이 필요해요."}</p>
+        <p className="mt-4 text-xs leading-relaxed text-clover-sub">{usingCloud ? "모든 기기에서 같은 Supabase 계정으로 로그인해 주세요. 이 기기의 기존 기록은 설정에서 가져올 수 있어요." : "현재는 이 브라우저에만 저장됩니다. 기기 간 동기화에는 Supabase 연결이 필요해요."}</p>
       </GlassCard>
     </main>
   );

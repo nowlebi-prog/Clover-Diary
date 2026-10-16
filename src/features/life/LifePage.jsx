@@ -478,7 +478,7 @@ function LifeJournalDetails({ data, today, onChange }) {
           </label>
         </div>
         <div className="mt-3 grid gap-3">
-          <AppTextarea value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="오늘 하루를 짧게 정리해보세요." />
+          <AppTextarea value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="오늘 하루를 짧게 정리해 보세요." />
           {gratitude.map((item, index) => (
             <AppInput key={index} value={item} onChange={(event) => setGratitude((current) => current.map((value, i) => (i === index ? event.target.value : value)))} placeholder={`${index + 1}. 오늘 감사한 일`} />
           ))}

@@ -52,7 +52,7 @@ export default function AppShell() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-[1360px] overflow-x-hidden px-3 py-4 pb-28 sm:px-4 md:gap-5 md:px-6 md:py-5 md:pb-8">
+    <div className="app-shell mx-auto flex w-full max-w-[1360px] overflow-x-hidden px-3 py-4 pb-28 sm:px-4 md:gap-5 md:px-6 md:py-5 md:pb-8">
       <Sidebar />
       <main className="min-w-0 max-w-full flex-1 overflow-x-hidden">
         <SyncStatus />

@@ -24,7 +24,7 @@ export default function PageHeader({ eyebrow, title, children }) {
           <h1 className="break-keep text-2xl font-bold text-clover-text sm:text-3xl">{title}</h1>
         </div>
       </div>
-      {children && <div className="min-w-0 max-w-full sm:flex sm:justify-end">{children}</div>}
+      {children && <div className="page-header-actions min-w-0 max-w-full sm:flex sm:justify-end">{children}</div>}
     </header>
   );
 }
