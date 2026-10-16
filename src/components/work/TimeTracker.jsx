@@ -184,7 +184,7 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
             ))}
           </AppSelect>
           <AppInput
-            placeholder="지금 시작할 업무명을 적어주세요"
+            placeholder="할 일 이름 (비워도 바로 시작할 수 있어요)"
             value={draftTitle}
             onChange={(event) => setDraftTitle(event.target.value)}
           />
@@ -211,7 +211,6 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
           </div>
           <AppButton
             className="mx-auto w-full max-w-sm"
-            disabled={!draftTitle.trim()}
             onClick={() => {
               const selected = todos.find((todo) => focusValue(todo) === draftTodoId);
               const meta = categoryMeta(categories, draftCategory);

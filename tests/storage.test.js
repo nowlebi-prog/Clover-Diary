@@ -19,7 +19,7 @@ function loadAdapter({ limit = Infinity } = {}) {
   Event: class {constructor(type){this.type=type;}}, CustomEvent: class {constructor(type,opts){this.type=type;this.detail=opts?.detail;}},
   isCloudSyncEnabled:()=>true, pullRemoteSnapshot:()=>new Promise(r=>{resolvePull=r;}), pushRemoteSnapshot:async()=>{throw Error('offline');}, console
  });
- vm.runInContext(source+'\nglobalThis.adapter={getAllData,saveAllData,getSyncState,normalizeSnapshot:typeof normalizeSnapshot === "function"?normalizeSnapshot:null,importLegacyData,buildFullBackup,setStorageUser,getRecoverySnapshots};',context);
+ vm.runInContext(source+'\nglobalThis.adapter={getAllData,saveAllData,getSyncState,normalizeSnapshot:typeof normalizeSnapshot === "function"?normalizeSnapshot:null,importLegacyData,buildFullBackup,setStorageUser,getRecoverySnapshots,startActiveSession,getActiveSession,pauseActiveSession,resumeActiveSession,endActiveSession,getTaskCategories,undoDataChange:typeof undoDataChange === "function" ? undoDataChange : null,redoDataChange:typeof redoDataChange === "function" ? redoDataChange : null,handleDataHistoryKeydown:typeof handleDataHistoryKeydown === "function" ? handleDataHistoryKeydown : null};',context);
  return {api:context.adapter,memory,events,timers,resolvePull:value=>resolvePull(value)};
 }
 
@@ -91,4 +91,66 @@ test('applying a remote snapshot keeps a separate recoverable pre-sync copy',()=
  api.saveAllData({todos:[]},{skipRemote:true});
  assert.equal(typeof api.getRecoverySnapshots,'function');
  assert.ok(api.getRecoverySnapshots().some(s=>s.data.todos.some(t=>t.id==='today')));
+});
+
+test('blank-title focus timer starts using the selected category',()=>{
+ const {api}=loadAdapter();
+ api.startActiveSession({title:'   ',category:'PPT'});
+ assert.equal(api.getActiveSession().title,'PPT 집중');
+ assert.ok(api.getActiveSession().startTime>0);
+ api.pauseActiveSession(); assert.equal(api.getActiveSession().pauses.length,1);
+ api.resumeActiveSession(); assert.ok(api.getActiveSession().pauses[0].end);
+ api.endActiveSession(); assert.equal(api.getActiveSession(),null);
+ assert.equal(api.getAllData().workSessions.length,1);
+});
+
+test('previous default timer categories become the six requested categories without losing records',()=>{
+ const {api}=loadAdapter();
+ api.saveAllData({taskCategories:['PPT','위스티아','갭이어','공부','신사업','유튜브','자기개발','기타'],todos:[{id:'old',category:'갭이어'}]});
+ assert.deepEqual(Array.from(api.getTaskCategories(),c=>c.name),['PPT','프모아','공부','유튜브','자기개발','기타']);
+ assert.equal(api.getAllData().todos[0].category,'갭이어');
+});
+
+test('undo and redo preserve independent remote additions and queue cloud saving',()=>{
+ const {api,events}=loadAdapter();
+ assert.equal(typeof api.undoDataChange,'function');
+ api.setStorageUser('alice');
+ api.saveAllData({todos:[{id:'a',title:'before'}]});
+ const edit=api.getAllData();edit.todos[0].title='after';api.saveAllData(edit);
+ const remote=api.getAllData();remote.todos.push({id:'b',title:'remote'});api.saveAllData(remote,{skipRemote:true});
+ assert.equal(api.undoDataChange(),true);
+ assert.equal(api.getAllData().todos.find(t=>t.id==='a').title,'before');
+ assert.equal(api.getAllData().todos.find(t=>t.id==='b').title,'remote');
+ assert.equal(api.getSyncState().pending,true);
+ assert.equal(api.redoDataChange(),true);
+ assert.equal(api.getAllData().todos.find(t=>t.id==='a').title,'after');
+ assert.ok(events.includes('clover-local-write'));
+ api.undoDataChange();const newer=api.getAllData();newer.todos[0].title='new branch';api.saveAllData(newer);
+ assert.equal(api.redoDataChange(),false);
+ api.setStorageUser('bob');assert.equal(api.undoDataChange(),false);
+});
+
+test('history shortcuts leave native text undo alone and undo saved changes outside editors',()=>{
+ const {api}=loadAdapter();assert.equal(typeof api.handleDataHistoryKeydown,'function');
+ api.saveAllData({todos:[{id:'a'}]});
+ let prevented=false;
+ const event={key:'z',ctrlKey:true,preventDefault(){prevented=true;},target:{closest(){return {};}}};
+ api.handleDataHistoryKeydown(event);assert.equal(prevented,false);assert.equal(api.getAllData().todos.length,1);
+ event.target.closest=()=>null;api.handleDataHistoryKeydown(event);assert.equal(prevented,true);assert.equal(api.getAllData().todos.length,0);
+ api.handleDataHistoryKeydown({...event,shiftKey:true});assert.equal(api.getAllData().todos.length,1);
+});
+
+test('undo never overwrites a newer remote edit or resurrects a remotely deleted item',()=>{
+ for (const removed of [false,true]) {
+  const {api}=loadAdapter();api.setStorageUser('alice');
+  api.saveAllData({todos:[{id:'a',title:'before'}]});
+  const edit=api.getAllData();edit.todos[0].title='local';api.saveAllData(edit);
+  const cloud=api.getAllData();cloud.todos=removed?[]:[{id:'a',title:'newer remote'}];api.saveAllData(cloud,{skipRemote:true});
+  api.undoDataChange();
+  assert.equal(api.getAllData().todos.length,removed?0:1);
+  if(!removed)assert.equal(api.getAllData().todos[0].title,'newer remote');
+  api.redoDataChange();
+  assert.equal(api.getAllData().todos.length,removed?0:1);
+  if(!removed)assert.equal(api.getAllData().todos[0].title,'newer remote');
+ }
 });

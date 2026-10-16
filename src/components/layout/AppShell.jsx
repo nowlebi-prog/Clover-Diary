@@ -8,11 +8,15 @@ import FocusHourReminder from "../dashboard/FocusHourReminder";
 import RoutineCoachModal from "../dashboard/RoutineCoachModal";
 import TodayTaskReminder from "../dashboard/TodayTaskReminder";
 import WeeklyReportModal from "../dashboard/WeeklyReportModal";
-import { getAllData } from "../../lib/storage/localStorageAdapter";
+import { getAllData, handleDataHistoryKeydown } from "../../lib/storage/localStorageAdapter";
 import { toDateKey } from "../../lib/utils/date";
 import SyncStatus from "../common/SyncStatus";
 
 export default function AppShell() {
+  useEffect(() => {
+    window.addEventListener('keydown', handleDataHistoryKeydown);
+    return () => window.removeEventListener('keydown', handleDataHistoryKeydown);
+  }, []);
   const [quickAddType, setQuickAddType] = useState(null);
   const [weeklyReport, setWeeklyReport] = useState(null);
   const [routineCoach, setRoutineCoach] = useState(null);

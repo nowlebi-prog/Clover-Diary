@@ -10,9 +10,45 @@ const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).sli
 const DELETED_ITEM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SNAPSHOT_CONTEXT = Symbol("clover-snapshot-context");
 let storageUser = null;
+const undoStack = [];
+const redoStack = [];
+const historyEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function rememberChange(before, after) {
+  if (historyEqual(before, after)) return;
+  undoStack.push({ before: clone(before), after: clone(after) });
+  redoStack.length = 0;
+  while (undoStack.length > 30 || (undoStack.length && JSON.stringify(undoStack).length > 2000000)) undoStack.shift();
+}
 const scopedKey = (key) => storageUser ? `${key}:user:${encodeURIComponent(storageUser)}` : key;
 export const getStorageUser = () => storageUser;
-export function setStorageUser(userId) { storageUser = userId || null; }
+export function setStorageUser(userId) {
+  if (storageUser !== (userId || null)) { undoStack.length = 0; redoStack.length = 0; }
+  storageUser = userId || null;
+}
+
+function replayChange(from, to, reverse) {
+  const entry = from.at(-1);
+  if (!entry) return false;
+  const current = getAllData();
+  // Current values win when another device changed the same field since this edit.
+  const result = mergeSnapshots(reverse ? entry.after : entry.before, current, reverse ? entry.before : entry.after);
+  preserveRecoverySnapshot(reverse ? 'before-undo' : 'before-redo', current);
+  archiveSyncConflicts(result.conflicts);
+  saveAllData(result.data, { recordHistory: false });
+  from.pop();
+  to.push(reverse ? { before: clone(result.data), after: clone(current) } : { before: clone(current), after: clone(result.data) });
+  return true;
+}
+export function undoDataChange() { return replayChange(undoStack, redoStack, true); }
+export function redoDataChange() { return replayChange(redoStack, undoStack, false); }
+export function handleDataHistoryKeydown(event) {
+  if (event.defaultPrevented || event.isComposing || event.altKey || !(event.ctrlKey || event.metaKey) || event.key?.toLowerCase() !== 'z') return;
+  if (event.target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]')) return;
+  event.preventDefault();
+  if (event.repeat) return;
+  try { if (event.shiftKey) redoDataChange(); else undoDataChange(); }
+  catch (error) { window.alert?.(`변경을 되돌리지 못했어요: ${error.message}`); }
+}
 
 const normalize = (data) => {
   const next = { ...clone(initialData), ...(data || {}) };
@@ -123,6 +159,7 @@ export function archiveSyncConflicts(conflicts) {
 export function saveAllData(data, options = {}) {
   const context = data?.[SNAPSHOT_CONTEXT];
   if (!options.skipRemote && context && context.userId !== storageUser) throw new Error("계정이 변경되어 이전 화면의 저장을 중단했어요.");
+  const before = !options.skipRemote && options.recordHistory !== false ? getAllData() : null;
   let normalized = normalize(data);
   if (!options.skipRemote && context) {
     const merged = mergeSnapshots(context.baseline, normalized, getAllData());
@@ -133,6 +170,7 @@ export function saveAllData(data, options = {}) {
     preserveRecoverySnapshot('before-cloud', getAllData());
   }
   localStorage.setItem(scopedKey(STORAGE_KEYS.appData), JSON.stringify(normalized));
+  if (before) rememberChange(before, normalized);
   if (!options.skipRemote) {
     try { localStorage.setItem(scopedKey(STORAGE_KEYS.appDataBackup), JSON.stringify({ savedAt: new Date().toISOString(), data: normalized })); } catch {}
     try { updateSyncState({ pending: true, lastLocalWriteAt: new Date().toISOString(), lastSyncStatus: 'pending' }); }
@@ -351,6 +389,10 @@ export function getTaskCategories() {
   const data = getAllData();
   const saved = Array.isArray(data.taskCategories) ? data.taskCategories : [];
   const normalized = normalizeWorkCategories(saved);
+  const previousDefaults = ['PPT', '위스티아', '갭이어', '공부', '신사업', '유튜브', '자기개발', '기타'];
+  if (normalized.length === previousDefaults.length && normalized.every((item, index) => item.name === previousDefaults[index])) {
+    return normalizeWorkCategories(['PPT', '프모아', '공부', '유튜브', '자기개발', '기타']);
+  }
   if (normalized.length) return normalized;
   return normalizeWorkCategories(DEFAULT_WORK_CATEGORIES);
 }
@@ -401,7 +443,7 @@ export function startActiveSession({ title, category, categoryGroup = "", todoId
   const now = Date.now();
   data.activeSession = {
     id: makeId("activeWork"),
-    title,
+    title: String(title || '').trim() || `${category || '기타'} 집중`,
     category,
     categoryGroup: categoryGroup || inferWorkCategoryGroup(category),
     todoId,
