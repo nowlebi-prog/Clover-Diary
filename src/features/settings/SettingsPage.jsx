@@ -308,6 +308,13 @@ export default function SettingsPage({ onLogout }) {
         <TrashSettings />
 
         <GlassCard>
+          <SectionTitle>아이폰 홈 화면 위젯</SectionTitle>
+          <p className="text-sm text-clover-sub">Scriptable을 이용해 주간 날짜와 오늘 일정·할 일을 홈 화면에서 볼 수 있어요. 같은 다이어리 계정으로 연결해주세요.</p>
+          <a href="/iphone-widget.html" className="mt-4 inline-block rounded-full bg-clover-deep px-5 py-3 text-sm font-bold text-white">위젯 설치 안내 열기</a>
+          <p className="mt-3 text-xs text-clover-sub">갱신 시점은 iOS가 결정하며, 내용을 누르면 다이어리가 열려요.</p>
+        </GlassCard>
+
+        <GlassCard>
           <SectionTitle>Supabase 동기화</SectionTitle>
           <div className="grid gap-3 text-sm text-clover-sub">
             <div className="flex flex-wrap gap-2">

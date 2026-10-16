@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eff5ef">
+  <title>아이폰 홈 화면 위젯 · Clover Diary</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#eff5ef;color:#17372d;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6}main{max-width:680px;margin:auto;padding:28px 20px 64px}a{color:#287451}.back{text-decoration:none;font-size:13px;font-weight:650}.eyebrow{font-size:11px;letter-spacing:.16em;color:#6b8575;margin:36px 0 9px}h1{font-size:clamp(28px,6vw,38px);letter-spacing:-.05em;line-height:1.25;margin:0 0 13px}h2{font-size:19px;letter-spacing:-.03em;margin:0 0 8px}.intro{color:#63766a;font-size:15px;margin:0 0 24px}.preview-label{text-align:center;color:#809084;font-size:11px;margin:0 0 8px}.widget{background:#fcfdfc;border-radius:24px;padding:20px 20px 13px;box-shadow:0 10px 35px #193d2710;border:1px solid #fff;margin-bottom:30px}.widget-head{display:flex;align-items:center;justify-content:space-between;font-weight:750;font-size:16px}.plus{font-size:23px;color:#298261}.week{display:flex;justify-content:space-between;margin:15px 0}.day{border-radius:9px;min-width:32px;padding:4px;text-align:center}.day span{display:block;font-size:10px;color:#829187}.day strong{font-size:17px}.day.active{background:#e7f4ec;color:#298261}.agenda{padding:11px 12px;background:#f1f5f2;border-radius:14px}.agenda p{margin:0;display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0}.agenda i{font-style:normal;color:#298261}.agenda b{font-weight:500;flex:1}.agenda time{color:#7c8880;font-size:11px}.stamp{font-size:9px;color:#8b978e;margin-top:9px}.step{background:#ffffffbd;border:1px solid #fff;border-radius:20px;padding:22px;margin:12px 0}.number{font-size:11px;letter-spacing:.06em;color:#72927e;margin-bottom:6px}.step p{font-size:14px;color:#63766a;margin:7px 0 14px}.button{display:inline-block;text-align:center;border:0;border-radius:12px;padding:12px 17px;background:#287451;color:#fff;text-decoration:none;font:600 14px -apple-system,BlinkMacSystemFont,sans-serif;cursor:pointer}.button:disabled{opacity:.5;cursor:wait}.secondary{background:#e7efe8;color:#287451}.buttons{display:flex;gap:9px;flex-wrap:wrap}.status{font-size:13px!important;color:#287451!important;margin-bottom:0!important}ol{padding-left:21px;font-size:14px;color:#526b5b}li{margin:8px 0}.note{font-size:12px;color:#748879;padding:5px 4px}.note p{margin:10px 0}details{font-size:13px;margin:18px 0;color:#63766a}summary{cursor:pointer;font-weight:650}textarea{width:100%;height:180px;font:11px monospace;border:1px solid #c7d7ca;border-radius:10px;padding:10px;margin-top:10px}code{font-size:12px;background:#e7efe8;padding:2px 5px;border-radius:4px}.divider{height:1px;background:#dce7dd;margin:26px 0}@media(max-width:370px){main{padding-left:14px;padding-right:14px}.step{padding:17px}.widget{padding:16px 14px}.agenda time{font-size:10px}}
+  </style>
+</head>
+<body>
+<main>
+  <a class="back" href="/settings">← 다이어리 설정</a>
+  <p class="eyebrow">CLOVER DIARY · IPHONE WIDGET</p>
+  <h1>오늘의 일정을<br>홈 화면에서 바로.</h1>
+  <p class="intro">Scriptable에 한 번 연결하면, 다이어리에 저장한 일정과 할 일을 아이폰 위젯으로 볼 수 있어요.</p>
+  <p class="preview-label">디자인 예시 · 실제 기록이 아닙니다</p>
+  <div class="widget" aria-label="주간 캘린더와 일정 위젯 디자인 예시">
+    <div class="widget-head">Clover Diary <span class="plus">+</span></div>
+    <div class="week" id="week"></div>
+    <div class="agenda">
+      <p><i>·</i><b>오늘의 계획 정리</b><time>09:00–09:30</time></p>
+      <p><i>·</i><b>집중하는 시간</b><time>14:00–15:00</time></p>
+      <p><i>○</i><b>책 20쪽 읽기</b><time>할 일</time></p>
+    </div>
+    <div class="stamp">최근 확인 · 09:00</div>
+  </div>
+  <section class="step">
+    <div class="number">STEP 01</div><h2>Scriptable 설치</h2>
+    <p>아이폰에서 앱을 설치하고 한 번 열어주세요. 별도의 Mac이나 Apple 개발자 등록은 필요하지 않아요.</p>
+    <a class="button secondary" href="https://apps.apple.com/kr/app/scriptable/id1405459188">App Store에서 열기 ↗</a>
+  </section>
+  <section class="step">
+    <div class="number">STEP 02</div><h2>위젯 코드 넣기</h2>
+    <p>아래 코드를 복사한 다음 Scriptable의 <b>＋</b>를 눌러 새 스크립트에 붙여넣으세요. 이름은 <b>CloverWidget</b>으로 저장해주세요.</p>
+    <div class="buttons"><button class="button" id="copy" disabled>코드 불러오는 중…</button><a class="button secondary" href="/CloverWidget.js" download="CloverWidget.js">파일 다운로드</a></div>
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <details id="manual"><summary>복사가 안 되면 코드 직접 선택</summary><textarea id="source" readonly aria-label="Scriptable 위젯 코드" spellcheck="false"></textarea></details>
+  </section>
+  <section class="step">
+    <div class="number">STEP 03</div><h2>다이어리 계정으로 로그인</h2>
+    <p>Scriptable에서 만든 스크립트의 <b>▶</b>를 누르세요. PC 다이어리와 같은 이메일·비밀번호로 로그인하면 미리보기가 열려요.</p>
+    <p>비밀번호는 저장하지 않습니다. 로그인 연결과 필요한 일정 사본만 아이폰의 Keychain에 보관해요. 이 웹페이지에는 비밀번호를 입력하지 않습니다.</p>
+  </section>
+  <section class="step">
+    <div class="number">STEP 04</div><h2>홈 화면에 위젯 추가</h2>
+    <ol>
+      <li>아이폰 홈 화면의 빈 곳을 길게 누르세요.</li>
+      <li><b>편집 → 위젯 추가</b> 또는 <b>＋</b>에서 Scriptable을 찾아주세요. iOS 버전에 따라 메뉴 이름은 다를 수 있어요.</li>
+      <li><b>중간 크기</b>나 <b>큰 크기</b> 위젯을 추가하세요.</li>
+      <li>추가한 위젯을 길게 눌러 <b>위젯 편집</b>으로 들어가세요.</li>
+      <li><b>Script</b>에서 <b>CloverWidget</b>을 선택하세요. <b>Parameter는 비워둡니다.</b></li>
+    </ol>
+  </section>
+  <div class="note">
+    <p><b>날짜나 일정을 누르면</b> 다이어리가 열립니다. 일정 추가·수정과 할 일 완료는 다이어리에서 해주세요.</p>
+    <p><b>갱신 시점은 iOS가 결정해요.</b> 15분 뒤부터 갱신을 요청하지만 정확한 주기는 보장되지 않습니다. PC에서 저장한 내용이 위젯에 즉시 표시되지는 않을 수 있어요. 바로 확인하려면 Scriptable에서 스크립트를 실행해 새로고침하세요.</p>
+    <p><b>연결이 끊기면</b> 마지막으로 불러온 사본과 확인 시간을 표시합니다. 로그인이 만료되면 Scriptable에서 다시 로그인해주세요.</p>
+    <p><b>PC 기록이 비어 보이면</b> 먼저 웹 다이어리의 본인 계정에서 기존 기록을 가져오고 ‘서버 저장 완료’를 확인하세요. 위젯은 서버의 일정·할 일만 읽습니다.</p>
+    <details><summary>촬영용 테스트 계정도 쓰고 싶어요</summary><p>스크립트 화면에서 ‘계정 바꾸기’를 선택하면 됩니다. 본인용과 동시에 쓰려면 Scriptable 위젯을 하나 더 추가하고, 그 위젯의 Parameter에 <code>demo</code>를 넣어주세요. 새 위젯의 로그인 안내를 눌러 테스트 계정으로 연결하면 본인용과 별도로 보관됩니다. 웹의 ‘기존 기록 가져오기’는 테스트 계정에서 누르지 마세요.</p></details>
+    <p>아이폰에서 Scriptable의 실제 표시·설치 확인이 필요합니다. 위의 화면은 디자인 예시이며 실제 아이폰에서 촬영한 화면은 아닙니다.</p>
+  </div>
+</main>
+<script>
+  const today = new Date();
+  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay()+6)%7));
+  const week = document.getElementById('week');
+  ['월','화','수','목','금','토','일'].forEach((label,i) => {
+    const day = new Date(monday); day.setDate(day.getDate()+i);
+    const cell = document.createElement('div'); cell.className = 'day' + (day.toDateString()===today.toDateString()?' active':'');
+    const weekday = document.createElement('span'); weekday.textContent = label;
+    const date = document.createElement('strong'); date.textContent = day.getDate(); cell.append(weekday,date); week.append(cell);
+  });
+  const button = document.getElementById('copy');
+  const status = document.getElementById('status');
+  const source = document.getElementById('source');
+  let code = '';
+  fetch('/CloverWidget.js', {cache:'no-store'}).then(async response => {
+    if (!response.ok) throw new Error('코드를 불러오지 못했어요. 새로고침해주세요.');
+    code = await response.text();
+    if (!code.includes('const CLOVER_CONFIG =') || code.includes('const CLOVER_CONFIG = null;')) throw new Error('위젯 연결 설정이 아직 준비되지 않았어요.');
+    source.value=code; button.disabled=false; button.textContent='위젯 코드 복사';
+  }).catch(error => {button.textContent='코드 준비 필요';status.textContent=error.message;});
+  button.addEventListener('click',async()=>{
+    try {await navigator.clipboard.writeText(code);status.textContent='복사했어요. Scriptable의 새 스크립트에 붙여넣어주세요.';}
+    catch {document.getElementById('manual').open=true;source.focus();source.select();status.textContent='아래 코드를 길게 눌러 전체 선택한 뒤 복사해주세요.';}
+  });
+</script>
+</body>
+</html>
