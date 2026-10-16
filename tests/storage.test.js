@@ -12,7 +12,7 @@ function loadAdapter({ limit = Infinity } = {}) {
  const memory = new Map(); const timers = new Map(); let id = 0; const events = [];
  let resolvePull;
  const context = vm.createContext({
-  mergeSnapshots, normalizeMandalart, initialData: {todos:[], habits:[], habitLogs:[], deletedItems:[],taskCategories:['default'],activeWorkTimer:null}, collections:['todos','habits','habitLogs','deletedItems'], DEFAULT_WORK_CATEGORIES:[],
+  mergeSnapshots, normalizeMandalart, initialData: {todos:[], habits:[], habitLogs:[], deletedItems:[],taskCategories:['default'],activeWorkTimer:null}, collections:['todos','habits','habitLogs','deletedItems'], DEFAULT_WORK_CATEGORIES:[], LEGACY_WORK_CATEGORIES:['legacy-a','legacy-b'],
   STORAGE_KEYS: {appData:'data', appDataBackup:'backup', syncMeta:'meta', recovery:'recovery'},
   localStorage: {getItem:k=>memory.get(k)??null, setItem:(k,v)=>{const chars=[...memory].reduce((n,[name,value])=>n+(name===k?0:value.length),0)+v.length;if(chars>limit){const error=new Error('Storage full');error.name='QuotaExceededError';throw error;}memory.set(k,v);}, removeItem:k=>memory.delete(k)},
   window: {dispatchEvent:e=>events.push(e.type),clearTimeout:n=>timers.delete(n),setTimeout:fn=>{timers.set(++id,fn);return id;}},
@@ -26,6 +26,11 @@ function loadAdapter({ limit = Infinity } = {}) {
 test('silent UI saves still notify cloud sync',()=>{
  const {api,events}=loadAdapter(); api.saveAllData({todos:[{id:'note',title:'saved'}]},{silent:true});
  assert.ok(events.includes('clover-local-write'));
+});
+test('untouched legacy default categories upgrade, customised lists stay',()=>{
+ const {api}=loadAdapter();api.setStorageUser('alice');
+ assert.deepEqual(Array.from(api.normalizeSnapshot({taskCategories:[{name:'legacy-b'},'legacy-a']}).taskCategories),[]);
+ assert.deepEqual(Array.from(api.normalizeSnapshot({taskCategories:['legacy-a','legacy-b','mine']}).taskCategories),['legacy-a','legacy-b','mine']);
 });
 test('first-device defaults do not overwrite remote categories or active timer',()=>{
  const {api}=loadAdapter();api.setStorageUser('alice');const local=api.getAllData();

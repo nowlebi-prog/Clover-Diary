@@ -1,4 +1,4 @@
-import { initialData, collections, DEFAULT_WORK_CATEGORIES } from "./initialData.js";
+import { initialData, collections, DEFAULT_WORK_CATEGORIES, LEGACY_WORK_CATEGORIES } from "./initialData.js";
 import { STORAGE_KEYS } from "./storageKeys.js";
 import { mergeSnapshots } from "./snapshotMerge.js";
 import { normalizeMandalart } from "./mandalartData.js";
@@ -14,11 +14,17 @@ const scopedKey = (key) => storageUser ? `${key}:user:${encodeURIComponent(stora
 export const getStorageUser = () => storageUser;
 export function setStorageUser(userId) { storageUser = userId || null; }
 
+const categoryName = (category) => String(typeof category === "string" ? category : category?.name || "").trim();
+const isLegacyWorkCategoryList = (categories) => Array.isArray(categories)
+  && categories.length === LEGACY_WORK_CATEGORIES.length
+  && LEGACY_WORK_CATEGORIES.every((name) => categories.some((category) => categoryName(category) === name));
+
 const normalize = (data) => {
   const next = { ...clone(initialData), ...(data || {}) };
   collections.forEach((key) => {
     if (!Array.isArray(data?.[key])) next[key] = [];
   });
+  if (isLegacyWorkCategoryList(next.taskCategories)) next.taskCategories = [...DEFAULT_WORK_CATEGORIES];
   const legacyMandalart = !storageUser && !data?.mandalart ? readStored("clover-desk:mandalart:v1") : null;
   next.mandalart = normalizeMandalart(data?.mandalart || legacyMandalart || {});
   next.habits = next.habits.map((habit) => ({

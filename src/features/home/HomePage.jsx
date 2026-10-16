@@ -394,8 +394,7 @@ function HomeFocusTimerLive({ activeSession, focusItems = [], categories = [], t
   const timerTitle = activeSession?.title || draftTitle || selectedItem?.title || "바로 시작할 일을 적어주세요";
 
   const start = () => {
-    const title = draftTitle.trim() || selectedItem?.title;
-    if (!title) return;
+    const title = draftTitle.trim() || selectedItem?.title || `${draftCategory || "업무"} 집중`;
     startActiveSession({
       title,
       category: selectedItem?.category || draftCategory || "업무",
@@ -463,7 +462,7 @@ function HomeFocusTimerLive({ activeSession, focusItems = [], categories = [], t
       </div>
 
       <div className="flex flex-wrap justify-center gap-2">
-        {!activeSession && <AppButton className="min-w-40" disabled={!selectedItem && !draftTitle.trim()} onClick={start}>시작하기</AppButton>}
+        {!activeSession && <AppButton className="min-w-40" onClick={start}>시작하기</AppButton>}
         {activeSession && (
           elapsed.isPaused
             ? <AppButton onClick={() => { resumeActiveSession(); setTick(Date.now()); onChange?.(); }}>재개</AppButton>

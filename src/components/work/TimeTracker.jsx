@@ -211,12 +211,11 @@ export default function TimeTracker({ activeSession, categories = [], todos = []
           </div>
           <AppButton
             className="mx-auto w-full max-w-sm"
-            disabled={!draftTitle.trim()}
             onClick={() => {
               const selected = todos.find((todo) => focusValue(todo) === draftTodoId);
               const meta = categoryMeta(categories, draftCategory);
               startActiveSession({
-                title: draftTitle.trim(),
+                title: draftTitle.trim() || `${meta.name} 집중`,
                 category: meta.name,
                 categoryGroup: meta.group,
                 todoId: selected?.source === "todo" || selected?.type === "todo" ? selected.id : ""
