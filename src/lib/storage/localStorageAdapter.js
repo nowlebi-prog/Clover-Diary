@@ -1,21 +1,28 @@
-import { initialData, collections, DEFAULT_WORK_CATEGORIES } from "./initialData";
-import { STORAGE_KEYS } from "./storageKeys";
-import { isCloudSyncEnabled, pullRemoteSnapshot, pushRemoteSnapshot } from "./supabaseSnapshotAdapter";
+import { initialData, collections, DEFAULT_WORK_CATEGORIES } from "./initialData.js";
+import { STORAGE_KEYS } from "./storageKeys.js";
+import { mergeSnapshots } from "./snapshotMerge.js";
+import { normalizeMandalart } from "./mandalartData.js";
+export { getCloudSyncStatus, syncAllDataFromCloud } from "./cloudSync.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const makeId = (name) => `${name}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const DELETED_ITEM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-let pushTimer = null;
-let syncTimer = null;
-let syncingFromCloud = false;
+const SNAPSHOT_CONTEXT = Symbol("clover-snapshot-context");
+let storageUser = null;
+const scopedKey = (key) => storageUser ? `${key}:user:${encodeURIComponent(storageUser)}` : key;
+export const getStorageUser = () => storageUser;
+export function setStorageUser(userId) { storageUser = userId || null; }
 
 const normalize = (data) => {
   const next = { ...clone(initialData), ...(data || {}) };
   collections.forEach((key) => {
-    if (!Array.isArray(next[key])) next[key] = [];
+    if (!Array.isArray(data?.[key])) next[key] = [];
   });
+  const legacyMandalart = !storageUser && !data?.mandalart ? readStored("clover-desk:mandalart:v1") : null;
+  next.mandalart = normalizeMandalart(data?.mandalart || legacyMandalart || {});
   next.habits = next.habits.map((habit) => ({
+    ...habit,
     id: habit.id,
     name: habit.name || habit.title || "New habit",
     icon: habit.icon || "CL",
@@ -32,6 +39,7 @@ const normalize = (data) => {
   next.habitLogs = next.habitLogs
     .filter((log) => log && log.habitId && log.date)
     .map((log) => ({
+      ...log,
       id: log.id,
       habitId: log.habitId,
       date: log.date,
@@ -47,135 +55,114 @@ const normalize = (data) => {
   return next;
 };
 
+export const normalizeSnapshot = normalize;
+function trackSnapshot(data) {
+  if (!storageUser && !data.mandalart) {
+    const legacyPlan = readStored("clover-desk:mandalart:v1");
+    if (legacyPlan) data.mandalart = normalizeMandalart(legacyPlan);
+  }
+  // Enumerable symbols survive {...data}, but never enter JSON storage or uploads.
+  data[SNAPSHOT_CONTEXT] = { userId: storageUser, baseline: clone(data) };
+  return data;
+}
+
+function readStored(key, fallback = null) {
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) : fallback;
+}
 export function getAllData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.appData);
-    if (!raw) {
-      return normalize(initialData);
+  const mainKey = scopedKey(STORAGE_KEYS.appData);
+  const backupKey = scopedKey(STORAGE_KEYS.appDataBackup);
+  const raw = localStorage.getItem(mainKey);
+  try { if (raw) return trackSnapshot(normalize(JSON.parse(raw))); } catch {}
+  try { const backup = readStored(backupKey); if (backup?.data) return trackSnapshot(normalize(backup.data)); } catch {}
+  if (raw || localStorage.getItem(backupKey)) throw new Error('기기 저장 데이터를 읽을 수 없어요. 원본은 보존되어 있습니다. 복구가 필요합니다.');
+  const fresh = normalize(storageUser ? {} : initialData);
+  if (!storageUser) {
+    const legacyPlan = readStored("clover-desk:mandalart:v1");
+    if (legacyPlan) fresh.mandalart = normalizeMandalart(legacyPlan);
+  }
+  return trackSnapshot(fresh);
+}
+export function getSyncState() {
+  const state = readStored(scopedKey(STORAGE_KEYS.syncMeta), {}) || {};
+  return storageUser ? { ...state, baseline: normalize(state.baseline || {}) } : state;
+}
+export function updateSyncState(updates) {
+  localStorage.setItem(scopedKey(STORAGE_KEYS.syncMeta), JSON.stringify({ ...getSyncState(), ...updates }));
+  window.dispatchEvent(new Event('clover-sync-status'));
+}
+export function getRecoverySnapshots() { return readStored(scopedKey(STORAGE_KEYS.recovery), []) || []; }
+export function preserveRecoverySnapshot(reason, data = getAllData()) {
+  const snapshots = getRecoverySnapshots();
+  if (snapshots.length && JSON.stringify(snapshots[0].data) === JSON.stringify(data)) return;
+  const candidates = [
+    { savedAt: new Date().toISOString(), reason, data: clone(data) }, ...snapshots
+  ].slice(0, 12);
+  while (candidates.length > 1 && JSON.stringify(candidates).length > 750000) candidates.pop();
+  for (;;) {
+    try { localStorage.setItem(scopedKey(STORAGE_KEYS.recovery), JSON.stringify(candidates)); return; }
+    catch (error) {
+      if (error.name !== "QuotaExceededError") throw error;
+      if (candidates.length > 1) { candidates.pop(); continue; }
+      const backup = readStored(scopedKey(STORAGE_KEYS.appDataBackup));
+      // Remote saves never replace this last-local-edit backup.
+      if (backup?.data && JSON.stringify(backup.data) === JSON.stringify(data)) return;
+      throw new Error("기기 저장 공간이 부족해 동기화를 보류했어요. 설정에서 전체 백업을 내려받은 뒤 저장 공간을 확보해주세요. 기존 기록은 보존되어 있습니다.");
     }
-    return normalize(JSON.parse(raw));
-  } catch {
-    try {
-      const backup = JSON.parse(localStorage.getItem(STORAGE_KEYS.appDataBackup) || "null");
-      if (backup?.data) return normalize(backup.data);
-    } catch {
-      // Keep the app usable even if both the main data and backup are damaged.
-    }
-    return normalize(initialData);
   }
 }
-
-function getSyncMeta() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.syncMeta) || "{}");
-  } catch {
-    return {};
-  }
+export function archiveSyncConflicts(conflicts) {
+  const state = getSyncState();
+  const previous = state.conflicts || [];
+  const seen = new Set(previous.map(item => JSON.stringify(item.conflict)));
+  const additions = conflicts.filter(conflict => !seen.has(JSON.stringify(conflict)))
+    .map(conflict => ({ savedAt: new Date().toISOString(), conflict }));
+  if (additions.length) updateSyncState({ conflicts: [...previous, ...additions] });
 }
-
-function setSyncMeta(updates) {
-  localStorage.setItem(STORAGE_KEYS.syncMeta, JSON.stringify({ ...getSyncMeta(), ...updates }));
-}
-
-function dispatchDataChange() {
-  window.dispatchEvent(new Event("clover-data-change"));
-}
-
-function scheduleCloudPush(data) {
-  if (!isCloudSyncEnabled() || syncingFromCloud) return;
-  window.clearTimeout(pushTimer);
-  const payload = clone(data);
-  pushTimer = window.setTimeout(async () => {
-    try {
-      const remote = await pushRemoteSnapshot(payload);
-      setSyncMeta({
-        lastLocalWriteAt: new Date().toISOString(),
-        lastRemoteUpdatedAt: remote?.updated_at || new Date().toISOString(),
-        lastSyncStatus: "connected",
-        lastSyncError: ""
-      });
-      dispatchDataChange();
-    } catch (error) {
-      setSyncMeta({
-        lastSyncStatus: "error",
-        lastSyncError: error?.message || "Supabase sync failed"
-      });
-    }
-  }, 500);
-}
-
 export function saveAllData(data, options = {}) {
-  const normalized = normalize(data);
-  localStorage.setItem(STORAGE_KEYS.appData, JSON.stringify(normalized));
-  try {
-    localStorage.setItem(STORAGE_KEYS.appDataBackup, JSON.stringify({ savedAt: new Date().toISOString(), data: normalized }));
-  } catch {
-    // Backup is best-effort so a full browser storage quota does not block normal saves.
+  const context = data?.[SNAPSHOT_CONTEXT];
+  if (!options.skipRemote && context && context.userId !== storageUser) throw new Error("계정이 변경되어 이전 화면의 저장을 중단했어요.");
+  let normalized = normalize(data);
+  if (!options.skipRemote && context) {
+    const merged = mergeSnapshots(context.baseline, normalized, getAllData());
+    archiveSyncConflicts(merged.conflicts);
+    normalized = normalize(merged.data);
   }
-  if (!options.silent) dispatchDataChange();
-  if (!options.skipRemote) scheduleCloudPush(normalized);
-}
-
-export function resetAllData() {
-  saveAllData(initialData);
-}
-
-export async function syncAllDataFromCloud() {
-  if (!isCloudSyncEnabled()) return { enabled: false };
-  try {
-    const remote = await pullRemoteSnapshot();
-    if (!remote?.data) {
-      const pushed = await pushRemoteSnapshot(getAllData());
-      setSyncMeta({
-        lastRemoteUpdatedAt: pushed?.updated_at || new Date().toISOString(),
-        lastSyncStatus: "connected",
-        lastSyncError: ""
-      });
-      return { enabled: true, changed: false };
-    }
-
-    const meta = getSyncMeta();
-    const remoteUpdatedAt = remote.updated_at || "";
-    if (remoteUpdatedAt && remoteUpdatedAt !== meta.lastRemoteUpdatedAt) {
-      window.clearTimeout(pushTimer);
-      syncingFromCloud = true;
-      saveAllData(remote.data, { skipRemote: true });
-      syncingFromCloud = false;
-      setSyncMeta({
-        lastRemoteUpdatedAt: remoteUpdatedAt,
-        lastSyncStatus: "connected",
-        lastSyncError: ""
-      });
-      return { enabled: true, changed: true };
-    }
-
-    setSyncMeta({
-      lastSyncStatus: "connected",
-      lastSyncError: ""
-    });
-    return { enabled: true, changed: false };
-  } catch (error) {
-    syncingFromCloud = false;
-    setSyncMeta({
-      lastSyncStatus: "error",
-      lastSyncError: error?.message || "Supabase sync failed"
-    });
-    return { enabled: true, changed: false, error };
+  if (options.skipRemote && localStorage.getItem(scopedKey(STORAGE_KEYS.appData))) {
+    preserveRecoverySnapshot('before-cloud', getAllData());
   }
+  localStorage.setItem(scopedKey(STORAGE_KEYS.appData), JSON.stringify(normalized));
+  if (!options.skipRemote) {
+    try { localStorage.setItem(scopedKey(STORAGE_KEYS.appDataBackup), JSON.stringify({ savedAt: new Date().toISOString(), data: normalized })); } catch {}
+    try { updateSyncState({ pending: true, lastLocalWriteAt: new Date().toISOString(), lastSyncStatus: 'pending' }); }
+    finally { window.dispatchEvent(new Event('clover-local-write')); }
+  }
+  if (!options.silent) window.dispatchEvent(new Event('clover-data-change'));
 }
-
-export function startCloudSync() {
-  if (!isCloudSyncEnabled() || syncTimer) return;
-  syncAllDataFromCloud();
-  syncTimer = window.setInterval(syncAllDataFromCloud, 4000);
-  window.addEventListener("focus", syncAllDataFromCloud);
-}
-
-export function getCloudSyncStatus() {
-  return {
-    enabled: isCloudSyncEnabled(),
-    ...getSyncMeta()
+export function resetAllData() { saveAllData(storageUser ? {} : initialData); }
+export function getLegacyData() {
+  const attachMandalart = (data) => {
+    const legacyPlan = readStored("clover-desk:mandalart:v1");
+    return data || legacyPlan ? { ...normalize(data || {}), ...(legacyPlan && !data?.mandalart ? { mandalart: normalizeMandalart(legacyPlan) } : {}) } : null;
   };
+  try { const data = readStored(STORAGE_KEYS.appData); if (data) return attachMandalart(data); } catch {}
+  const backup = readStored(STORAGE_KEYS.appDataBackup);
+  return attachMandalart(backup?.data);
+}
+export function importLegacyData() {
+  if (!storageUser) throw new Error('클라우드 계정으로 먼저 로그인해주세요.');
+  const legacy = getLegacyData();
+  if (!legacy) return false;
+  preserveRecoverySnapshot('before-legacy-import');
+  const merged = mergeSnapshots({}, legacy, getAllData());
+  archiveSyncConflicts(merged.conflicts);
+  saveAllData(merged.data);
+  return true;
+}
+export function buildFullBackup() {
+  return { format: 'clover-recovery-v2', exportedAt: new Date().toISOString(), userId: storageUser,
+    data: getAllData(), recovery: getRecoverySnapshots(), lastLocalBackup: readStored(scopedKey(STORAGE_KEYS.appDataBackup)), sync: getSyncState(), legacy: getLegacyData() };
 }
 
 function list(collection) {

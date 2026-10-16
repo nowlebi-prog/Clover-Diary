@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
@@ -244,6 +244,11 @@ function ProjectPlan({ project, items, month, setMonth, selectedDate, setSelecte
 
 export default function PlanPage() {
   const [data, setData] = useState(getAllData());
+  useEffect(() => {
+    const refresh = () => setData(getAllData());
+    window.addEventListener("clover-data-change", refresh);
+    return () => window.removeEventListener("clover-data-change", refresh);
+  }, []);
   const [searchParams, setSearchParams] = useSearchParams();
   const [projectModal, setProjectModal] = useState(null);
   const [itemModal, setItemModal] = useState(null);

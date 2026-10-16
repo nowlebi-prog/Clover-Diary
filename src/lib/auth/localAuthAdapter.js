@@ -1,4 +1,4 @@
-import { STORAGE_KEYS } from "../storage/storageKeys";
+import { STORAGE_KEYS } from "../storage/storageKeys.js";
 
 const LOCAL_USERNAME = import.meta.env.VITE_LOCAL_USERNAME || "eunbibi";
 const LOCAL_PASSWORD = import.meta.env.VITE_LOCAL_PASSWORD || "";

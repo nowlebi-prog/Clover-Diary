@@ -1,3 +1,4 @@
+import { getMandalart, saveMandalartValue } from "../../lib/storage/mandalartRepository";
 import { useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import AppButton from "../../components/common/AppButton";
@@ -504,23 +505,12 @@ function LifeMandalartDetails({ onChange }) {
   const [goal, setGoal] = useState("");
 
   useEffect(() => {
-    try {
-      setGoal(JSON.parse(localStorage.getItem("clover-desk:mandalart:v1") || "{}").mainGoal || "");
-    } catch {
-      setGoal("");
-    }
+    const refresh = () => setGoal(getMandalart().mainGoal);
+    refresh();
+    window.addEventListener("clover-data-change", refresh);
+    return () => window.removeEventListener("clover-data-change", refresh);
   }, []);
-
-  const save = () => {
-    let current = {};
-    try {
-      current = JSON.parse(localStorage.getItem("clover-desk:mandalart:v1") || "{}");
-    } catch {
-      current = {};
-    }
-    localStorage.setItem("clover-desk:mandalart:v1", JSON.stringify({ ...current, mainGoal: goal, updatedAt: new Date().toISOString() }));
-    onChange?.();
-  };
+  const save = () => { saveMandalartValue(['mainGoal'], goal); onChange?.(); };
 
   return (
     <GlassCard>
@@ -529,7 +519,7 @@ function LifeMandalartDetails({ onChange }) {
         <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-700">Mandalart</p>
         <label className="mt-3 grid gap-2 text-sm font-bold">
           내 삶의 최종 목표
-          <AppTextarea value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="내 삶의 최종 목표를 적어보세요" />
+          <AppTextarea value={goal} onChange={(event) => { saveMandalartValue(["mainGoal"], event.target.value); setGoal(event.target.value); }} placeholder="내 삶의 최종 목표를 적어보세요" />
         </label>
         <p className="mt-2 text-sm font-bold text-clover-sub">상단 탭에서 바로 확인하고 수정할 수 있게 했어요.</p>
       </div>

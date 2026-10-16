@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/layout/PageHeader";
 
-const STORAGE_KEY = "clover-desk:mandalart:v1";
+import { getMandalart, saveMandalartValue } from "../../lib/storage/mandalartRepository";
+import { syncAllDataFromCloud } from "../../lib/storage/cloudSync";
 const themeSlots = [0, 1, 2, 3, "center", 4, 5, 6, 7];
 const cellSlots = [0, 1, 2, 3, "center", 4, 5, 6, 7];
 const palette = [
@@ -16,26 +17,11 @@ const palette = [
   { border: "border-rose-300", bg: "bg-rose-50", strong: "bg-rose-100 text-rose-700", focus: "focus:ring-rose-300" }
 ];
 
-const emptyPlan = {
-  mainGoal: "",
-  themes: Array.from({ length: 8 }, () => ({ title: "", tasks: Array.from({ length: 8 }, () => "") }))
-};
-
 const loadPlan = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyPlan;
-    const parsed = JSON.parse(raw);
-    return {
-      mainGoal: parsed.mainGoal || "",
-      themes: Array.from({ length: 8 }, (_, index) => ({
-        title: parsed.themes?.[index]?.title || "",
-        tasks: Array.from({ length: 8 }, (__, taskIndex) => parsed.themes?.[index]?.tasks?.[taskIndex] || "")
-      }))
-    };
-  } catch {
-    return emptyPlan;
-  }
+  const parsed = getMandalart();
+  return { mainGoal: parsed.mainGoal, themes: Array.from({ length: 8 }, (_, i) => ({
+    title: parsed.themes[i].title, tasks: Array.from({ length: 8 }, (__, j) => parsed.themes[i].tasks[j])
+  })) };
 };
 
 function MandalartInput({ value, placeholder, className = "", onChange }) {
@@ -87,31 +73,17 @@ export default function MandalartPage() {
   const coreTasks = useMemo(() => plan.themes.map((theme) => theme.title), [plan.themes]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(plan));
-  }, [plan]);
-
+    const refresh = () => setPlan(loadPlan());
+    window.addEventListener("clover-data-change", refresh);
+    return () => window.removeEventListener("clover-data-change", refresh);
+  }, []);
   const save = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(plan));
+    void syncAllDataFromCloud();
     setSavedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
   };
-
-  const updateMainGoal = (mainGoal) => setPlan((current) => ({ ...current, mainGoal }));
-  const updateThemeTitle = (themeIndex, title) => {
-    setPlan((current) => ({
-      ...current,
-      themes: current.themes.map((theme, index) => index === themeIndex ? { ...theme, title } : theme)
-    }));
-  };
-  const updateThemeTask = (themeIndex, taskIndex, value) => {
-    setPlan((current) => ({
-      ...current,
-      themes: current.themes.map((theme, index) =>
-        index === themeIndex
-          ? { ...theme, tasks: theme.tasks.map((task, innerIndex) => innerIndex === taskIndex ? value : task) }
-          : theme
-      )
-    }));
-  };
+  const updateMainGoal = value => saveMandalartValue(['mainGoal'], value);
+  const updateThemeTitle = (i, value) => saveMandalartValue(['themes', i, 'title'], value);
+  const updateThemeTask = (i, j, value) => saveMandalartValue(['themes', i, 'tasks', j], value);
 
   return (
     <>

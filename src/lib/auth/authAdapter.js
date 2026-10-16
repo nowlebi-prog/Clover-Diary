@@ -1,6 +1,6 @@
-import { isSupabaseConfigured } from "../supabaseClient";
-import * as local from "./localAuthAdapter";
-import * as cloud from "./supabaseAuthAdapter";
+import { isSupabaseConfigured } from "../supabaseClient.js";
+import * as local from "./localAuthAdapter.js";
+import * as cloud from "./supabaseAuthAdapter.js";
 
 export const usingCloud = isSupabaseConfigured;
 
@@ -17,16 +17,18 @@ export async function login(idOrEmail, password) {
 }
 
 export async function signUp(email, password) {
-  if (usingCloud) return cloud.signUp(email, password);
-  return { ok: false, message: "클라우드 동기화가 설정되지 않아 회원가입을 지원하지 않아요." };
+  return { ok: false, message: "기존 Supabase 계정으로 로그인해주세요." };
 }
 
 export async function logout() {
   if (usingCloud) return cloud.logout();
-  return local.logout();
+  local.logout();
+  window.dispatchEvent(new Event("clover-auth-change"));
 }
 
 export function onAuthChange(callback) {
   if (usingCloud) return cloud.onAuthChange(callback);
-  return () => {};
+  const listener = () => callback(local.getSession());
+  window.addEventListener("clover-auth-change", listener);
+  return () => window.removeEventListener("clover-auth-change", listener);
 }

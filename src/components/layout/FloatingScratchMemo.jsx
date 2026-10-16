@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getAllData, saveAllData } from "../../lib/storage/localStorageAdapter";
 
 const positionKey = "clover-floating-scratch-memo-position";
 const defaultPosition = { right: 28, top: 120 };
@@ -28,11 +29,23 @@ export default function FloatingScratchMemo() {
   const [collapsed, setCollapsed] = useState(false);
   const [closed, setClosed] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(() => getAllData().scratchMemo?.text || "");
   const [position, setPosition] = useState(readPosition);
   const textareaRef = useRef(null);
   const dragRef = useRef(null);
   const positionRef = useRef(position);
+
+  useEffect(() => {
+    const refresh = () => setText(getAllData().scratchMemo?.text || "");
+    window.addEventListener("clover-data-change", refresh);
+    return () => window.removeEventListener("clover-data-change", refresh);
+  }, []);
+  const saveText = (next) => {
+    const data = getAllData();
+    data.scratchMemo = { text: next };
+    saveAllData(data, { silent: true });
+    setText(next);
+  };
 
   useEffect(() => {
     positionRef.current = position;
@@ -169,7 +182,7 @@ export default function FloatingScratchMemo() {
       <textarea
         ref={textareaRef}
         value={text}
-        onChange={(event) => setText(event.target.value)}
+        onChange={(event) => saveText(event.target.value)}
         placeholder={"그냥 잠깐 끄적끄적...\n필요 없으면 x로 닫아요."}
         className="block min-h-[150px] w-full resize-none overflow-y-auto bg-transparent px-3 py-3 text-sm leading-6 text-clover-text outline-none placeholder:text-clover-sub/70"
       />

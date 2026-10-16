@@ -1,6 +1,6 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
 import CloverLogo from "../common/CloverLogo";
-import { logout } from "../../lib/auth/localAuthAdapter";
+import { logout } from "../../lib/auth/authAdapter";
 
 const items = [
   { to: "/", label: "Home", paths: ["/"] },
@@ -16,10 +16,10 @@ const items = [
 
 export default function Sidebar() {
   const location = useLocation();
-  const signOut = () => {
+  const signOut = async () => {
     sessionStorage.removeItem("clover-money-unlocked");
-    logout();
-    window.location.href = "/login";
+    try { await logout(); window.location.href = "/login"; }
+    catch (error) { window.alert(`로그아웃하지 못했어요: ${error.message}`); }
   };
 
   return (

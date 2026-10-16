@@ -1,5 +1,6 @@
 import { STORAGE_KEYS } from "./storageKeys";
-import { getAllData } from "./localStorageAdapter";
+import { getAllData, getStorageUser } from "./localStorageAdapter";
+const configKey = () => getStorageUser() ? `${STORAGE_KEYS.googleSheetsBackup}:user:${encodeURIComponent(getStorageUser())}` : STORAGE_KEYS.googleSheetsBackup;
 
 const AUTO_BACKUP_INTERVAL_MS = 10 * 60 * 1000;
 const BACKUP_DEBOUNCE_MS = 5000;
@@ -19,17 +20,17 @@ const defaultConfig = {
   lastError: ""
 };
 
-function readConfig() {
+function readConfig(key = configKey()) {
   try {
-    return { ...defaultConfig, ...(JSON.parse(localStorage.getItem(STORAGE_KEYS.googleSheetsBackup) || "{}") || {}) };
+    return { ...defaultConfig, ...(JSON.parse(localStorage.getItem(key) || "{}") || {}) };
   } catch {
     return { ...defaultConfig };
   }
 }
 
-function writeConfig(updates) {
-  const next = { ...readConfig(), ...updates };
-  localStorage.setItem(STORAGE_KEYS.googleSheetsBackup, JSON.stringify(next));
+function writeConfig(updates, key = configKey()) {
+  const next = { ...readConfig(key), ...updates };
+  localStorage.setItem(key, JSON.stringify(next));
   window.dispatchEvent(new Event("clover-backup-change"));
   return next;
 }
@@ -75,6 +76,7 @@ export function buildGoogleSheetsBackupPayload(data = getAllData()) {
 }
 
 export async function backupToGoogleSheets({ manual = false } = {}) {
+  const key = configKey();
   const config = readConfig();
   const url = (config.webhookUrl || "").trim();
   if (!config.enabled || !url) return { ok: false, skipped: true, reason: "not-configured" };
@@ -98,13 +100,13 @@ export async function backupToGoogleSheets({ manual = false } = {}) {
       lastBackupDate: payload.backupDate,
       lastStatus: manual ? "manual-ok" : "auto-ok",
       lastError: ""
-    });
+    }, key);
     return { ok: true, at: now };
   } catch (error) {
     writeConfig({
       lastStatus: "error",
       lastError: error?.message || "Google Sheets backup failed"
-    });
+    }, key);
     return { ok: false, error };
   } finally {
     running = false;
@@ -125,8 +127,16 @@ function scheduleBackup(reason = "change") {
 }
 
 export function startGoogleSheetsBackup() {
-  if (backupTimer) return;
+  stopGoogleSheetsBackup();
   scheduleBackup("start");
   window.addEventListener("clover-data-change", scheduleBackup);
   backupTimer = window.setInterval(() => scheduleBackup("interval"), AUTO_BACKUP_INTERVAL_MS);
+  return stopGoogleSheetsBackup;
+}
+export function stopGoogleSheetsBackup() {
+  window.clearInterval(backupTimer);
+  window.clearTimeout(changeTimer);
+  backupTimer = null;
+  changeTimer = null;
+  window.removeEventListener("clover-data-change", scheduleBackup);
 }
