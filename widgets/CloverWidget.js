@@ -1,4 +1,4 @@
-// Clover Diary · Scriptable · v1
+// Clover Diary · Scriptable · v1.1 · 로그인 오류 진단
 // 아이폰 Scriptable에서 실행하세요. 비밀번호는 저장하지 않습니다.
 // 웹 다이어리와 같은 이메일로 로그인하세요. 위젯은 기록을 읽기만 합니다.
 const CLOVER_CONFIG = /*CLOVER_CONFIG*/ null;
@@ -131,12 +131,18 @@ async function requestCloud(path, options = {}) {
   request.timeoutInterval = 12;
   // Do not forward authenticated requests to another host through a redirect.
   request.onRedirect = () => null;
-  request.headers = { apikey: CLOVER_CONFIG.key, Accept: 'application/json' };
-  if (options.token) request.headers.Authorization = `Bearer ${options.token}`;
-  if (options.body) { request.headers['Content-Type'] = 'application/json'; request.body = JSON.stringify(options.body); }
+  const headers = { apikey: CLOVER_CONFIG.key, Accept: 'application/json' };
+  if (options.token) headers.Authorization = `Bearer ${options.token}`;
+  if (options.body) { headers['Content-Type'] = 'application/json'; request.body = JSON.stringify(options.body); }
+  request.headers = headers;
   const raw = await request.loadString();
   const status = request.response && request.response.statusCode;
-  if (!status || status < 200 || status >= 300) throw Object.assign(new Error('서버에 연결하지 못했어요.'), { status });
+  if (!status || status < 200 || status >= 300) {
+    let payload; try { payload = JSON.parse(raw); } catch {}
+    const knownCodes = ['invalid_credentials', 'email_not_confirmed', 'user_banned', 'over_request_rate_limit', 'over_email_send_rate_limit', 'captcha_failed', 'validation_failed', 'provider_disabled', 'unexpected_failure'];
+    const code = knownCodes.includes(payload?.error_code) ? payload.error_code : /invalid api key/i.test(payload?.message || '') ? 'invalid_api_key' : 'unknown';
+    throw Object.assign(new Error('서버에 연결하지 못했어요.'), { status, code });
+  }
   try { return JSON.parse(raw); } catch { throw new Error('서버 응답을 확인할 수 없어요.'); }
 }
 async function signIn(store) {
@@ -148,14 +154,26 @@ async function signIn(store) {
   alert.addAction('로그인'); alert.addCancelAction('취소');
   if (await alert.presentAlert() === -1) return false;
   try {
-    const response = await requestCloud('/auth/v1/token?grant_type=password', { method: 'POST', body: { email: alert.textFieldValue(0).trim(), password: alert.textFieldValue(1) } });
+    const email = alert.textFieldValue(0).trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Object.assign(new Error('이메일 주소가 필요해요.'), { code: 'email_required' });
+    const response = await requestCloud('/auth/v1/token?grant_type=password', { method: 'POST', body: { email, password: alert.textFieldValue(1) } });
     const session = sessionFromResponse(response, Date.now() / 1000);
     // Remove the old account's agenda before exposing the new identity.
     store.remove('cache'); store.set('session', session);
     return true;
   } catch (error) {
     const failure = new Alert(); failure.title = '로그인하지 못했어요';
-    failure.message = error.status === 400 || error.status === 401 ? '이메일과 비밀번호를 확인해주세요. 웹 다이어리와 같은 계정을 사용해야 합니다.' : '네트워크와 Supabase 프로젝트 상태를 확인하고 다시 시도해주세요.';
+    const messages = {
+      email_required: '아이디 대신 @가 포함된 다이어리 계정 이메일을 입력해주세요. 예전 로컬 아이디와 Supabase 대시보드 로그인은 별도입니다.',
+      invalid_credentials: '서버가 이메일·비밀번호 조합을 거절했어요. Safari의 다이어리에서 같은 이메일·비밀번호로 새로 로그인되는지 확인해주세요. 기존 로그인 상태만으로는 비밀번호 확인이 되지 않습니다.',
+      email_not_confirmed: '이메일 인증이 완료되지 않았어요. 가입 확인 메일의 인증을 완료해주세요.',
+      invalid_api_key: '위젯의 서버 연결 설정을 확인해야 해요. 설치 안내에서 최신 코드를 다시 복사해주세요.',
+      user_banned: '서버에서 이 계정의 로그인을 제한했어요.',
+      captcha_failed: '서버에서 CAPTCHA 확인을 요청했어요. 위젯 연결 방식을 확인해야 합니다.',
+      provider_disabled: '서버에서 이메일 로그인을 허용하지 않고 있어요.'
+    };
+    const message = messages[error.code] || (error.status === 429 ? '로그인 요청이 많아요. 잠시 후 다시 시도해주세요.' : error.status ? '로그인 서버가 요청을 거절했어요. 아래 진단 코드를 알려주세요.' : '서버 응답을 받지 못했어요. 네트워크와 Supabase 프로젝트 상태를 확인해주세요.');
+    failure.message = `${message}\n\n위젯 v1.1 · HTTP ${error.status || '없음'} · ${error.code || 'network_or_response'}`;
     failure.addAction('확인'); await failure.presentAlert();
     return false;
   }
