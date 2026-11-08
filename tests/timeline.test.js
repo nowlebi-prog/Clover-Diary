@@ -27,3 +27,17 @@ test('a 20-minute card ends before the next card and truly overlapping cards kee
  assert.equal(items[0].laneCount,1);
  assert.notEqual(items[2].lane,items[3].lane);
 });
+
+test('completed entries stay in the schedule and can be marked incomplete again',()=>{
+ const source=fs.readFileSync(new URL('../src/features/schedule/SchedulePage.jsx',import.meta.url),'utf8');
+ const helpers=source.slice(source.indexOf('const fromCollection ='),source.indexOf('const getScheduleItems ='));
+ const {fromCollection,toggleScheduleCompletion}=vm.runInNewContext(`${helpers}\n;({fromCollection,toggleScheduleCompletion:typeof toggleScheduleCompletion==='function'?toggleScheduleCompletion:null})`,{
+  normalizeEndDate:(start,end)=>end||start,titleOf:item=>item.title,normalizeCategory:()=> 'PPT'
+ });
+ const entry={id:'event-1',title:'Meeting',date:'2026-11-09',completed:true,completedAt:'2026-11-09'};
+ const shown=fromCollection([entry],'events','date','PPT');
+ assert.equal(shown.length,1);assert.equal(shown[0].completed,true);
+ const reopened=toggleScheduleCompletion(entry,'2026-11-09','2026-11-10');
+ assert.equal(reopened.completed,false);assert.equal(reopened.completedAt,'');assert.equal(reopened.date,entry.date);
+ assert.equal(toggleScheduleCompletion(reopened,'2026-11-09','2026-11-10').completedAt,'2026-11-09');
+});

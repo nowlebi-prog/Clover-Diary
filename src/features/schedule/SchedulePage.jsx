@@ -182,7 +182,6 @@ const normalizeCategory = (item, fallback = "기타") => {
 
 const fromCollection = (items, collection, dateField, fallbackCategory) =>
   (items || [])
-    .filter((item) => !item.completed)
     .map((item) => {
       const date = item[dateField] || item.date || null;
       const endDate = normalizeEndDate(date, item.endDate);
@@ -202,6 +201,14 @@ const fromCollection = (items, collection, dateField, fallbackCategory) =>
       };
     });
 
+const toggleScheduleCompletion = (entry, selectedDate, today) => ({
+  ...entry,
+  completed: !entry.completed,
+  completedAt: entry.completed ? "" : selectedDate,
+  updatedAt: today
+});
+const completedTitle = item => item.completed ? "line-through text-clover-sub" : "";
+
 const getScheduleItems = (data) => {
   const todayKey = toDateKey(new Date());
   const items = [
@@ -212,11 +219,10 @@ const getScheduleItems = (data) => {
     ...fromCollection(data.contentPlans, "contentPlans", "publishDate", "PPT"),
     ...(data.chores || [])
       .filter((item) => !item.archived)
-      .map((item) => {
+      .flatMap((item) => {
         const rawDueDate = item.nextDueDate || todayKey;
         const dueDate = rawDueDate < todayKey ? todayKey : rawDueDate;
-        if (item.lastDoneAt === dueDate) return null;
-        return {
+        const occurrence = {
           ...item,
           collection: "chores",
           date: dueDate,
@@ -228,13 +234,17 @@ const getScheduleItems = (data) => {
           isAllDay: true,
           allDay: true,
           isUnscheduled: false,
-          status: "todo"
+          status: "todo",
+          completed: false
         };
+        const rows = item.lastDoneAt === dueDate ? [] : [occurrence];
+        if (item.lastDoneAt) rows.push({ ...occurrence, id: `${item.id}-completed-${item.lastDoneAt}`, originalId: item.id,
+          date: item.lastDoneAt, scheduleDate: item.lastDoneAt, endDate: item.lastDoneAt, completed: true, completedChoreOccurrence: true });
+        return rows;
       })
-      .filter(Boolean)
   ];
 
-  (data.campaigns || []).filter((item) => !item.completed).forEach((item) => {
+  (data.campaigns || []).forEach((item) => {
     if (item.applyDueDate) items.push({ ...item, id: `${item.id}-apply`, originalId: item.id, collection: "campaigns", dateField: "applyDueDate", date: item.applyDueDate, scheduleDate: item.applyDueDate, title: `${titleOf(item)} 신청`, category: normalizeCategory(item, "기타"), startTime: "", endTime: "", isAllDay: false, isUnscheduled: false });
     if (item.uploadDueDate) items.push({ ...item, id: `${item.id}-upload`, originalId: item.id, collection: "campaigns", dateField: "uploadDueDate", date: item.uploadDueDate, scheduleDate: item.uploadDueDate, title: `${titleOf(item)} 업로드`, category: normalizeCategory(item, "기타"), startTime: "", endTime: "", isAllDay: false, isUnscheduled: false });
   });
@@ -428,7 +438,7 @@ function MonthCalendar({ year, month, selectedDate, items, filter, onSelect, onM
               <span className={`mb-1 grid h-5 min-w-5 shrink-0 place-items-center rounded-full px-1 text-xs font-black leading-none ${cell.isToday ? "bg-clover-ink text-white" : cell.weekday === 0 ? "text-red-400" : cell.weekday === 6 ? "text-sky-500" : ""}`}>{cell.day}</span>
               <div className="grid w-full min-w-0 gap-1">
                 {dayItems.slice(0, 2).map((item) => (
-                  <span key={`${item.collection}-${item.id}`} className={`truncate rounded-md border px-1.5 py-0.5 text-[10px] font-black ${categoryMeta[item.category]?.chip || categoryMeta["기타"].chip}`}>
+                  <span key={`${item.collection}-${item.id}`} className={`truncate rounded-md border px-1.5 py-0.5 text-[10px] font-black ${categoryMeta[item.category]?.chip || categoryMeta["기타"].chip} ${completedTitle(item)}`}>
                     {item.title}
                   </span>
                 ))}
@@ -448,12 +458,12 @@ function MonthCalendar({ year, month, selectedDate, items, filter, onSelect, onM
 function ScheduleRow({ item, onComplete, onEdit, onDelete, extraAction }) {
   return (
     <article className="grid grid-cols-[auto_78px_minmax(0,1fr)_auto] items-center gap-3 border-b border-clover-line/70 px-3 py-3 text-sm last:border-0 max-sm:grid-cols-[auto_minmax(0,1fr)_auto]">
-      <input type="checkbox" checked={false} onChange={() => onComplete(item)} className="h-4 w-4 accent-clover-deep" aria-label="완료" />
+      <input type="checkbox" checked={Boolean(item.completed)} onChange={() => onComplete(item)} className="h-4 w-4 accent-clover-deep" aria-label="완료" />
       <span className="text-xs font-black text-clover-sub max-sm:hidden">{timeText(item)}</span>
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
           <span className={`h-2 w-2 shrink-0 rounded-full ${categoryMeta[item.category]?.dot || "bg-slate-300"}`} />
-          <b className="truncate text-clover-ink">{item.title}</b>
+          <b className={`truncate ${completedTitle(item) || "text-clover-ink"}`}>{item.title}</b>
           <CategoryChip category={item.category} />
         </div>
         {item.memo && <p className="mt-1 truncate text-xs font-bold text-clover-sub">{item.memo}</p>}
@@ -471,20 +481,20 @@ function ScheduleRowCompact({ item, onComplete, onEdit, onDelete, extraAction })
   return (
     <article className="min-w-0 max-w-full overflow-hidden border-b border-clover-line/70 px-3 py-3 text-sm last:border-0">
       <div className="flex min-w-0 items-center gap-2">
-        <input type="checkbox" checked={false} onChange={() => onComplete(item)} className="h-4 w-4 shrink-0 accent-clover-deep" aria-label="완료" />
+        <input type="checkbox" checked={Boolean(item.completed)} disabled={Boolean(item.completedChoreOccurrence)} onChange={() => onComplete(item)} className="h-4 w-4 shrink-0 accent-clover-deep" aria-label={item.completedChoreOccurrence ? "반복 집안일 완료 기록" : "완료"} />
         <span className="shrink-0 whitespace-nowrap text-[11px] font-black leading-tight text-clover-sub sm:text-xs">{timeText(item)}</span>
         <span className={`h-2 w-2 shrink-0 rounded-full ${categoryMeta[item.category]?.dot || "bg-slate-300"}`} />
-        <b className="min-w-0 flex-1 truncate text-[13px] font-black text-clover-ink sm:text-sm">{item.title}</b>
+        <b className={`min-w-0 flex-1 truncate text-[13px] font-black sm:text-sm ${completedTitle(item) || "text-clover-ink"}`}>{item.title}</b>
         <span className="shrink-0">
           <CategoryChip category={item.category} />
         </span>
       </div>
       {item.memo && <p className="mt-1 min-w-0 max-w-full break-all pl-6 text-xs font-bold leading-relaxed text-clover-sub">{item.memo}</p>}
-      <div className="mt-2 flex min-w-0 flex-wrap justify-end gap-1 pl-6">
+      {!item.completedChoreOccurrence && <div className="mt-2 flex min-w-0 flex-wrap justify-end gap-1 pl-6">
         {extraAction}
         <button type="button" onClick={() => onEdit(item)} className="rounded-lg border border-clover-line bg-white px-2.5 py-1.5 text-xs font-black text-clover-sub">수정</button>
         <button type="button" onClick={() => onDelete(item)} className="rounded-lg border border-clover-line bg-white px-2.5 py-1.5 text-xs font-black text-clover-sub">삭제</button>
-      </div>
+      </div>}
     </article>
   );
 }
@@ -776,7 +786,7 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
           {timedItems.map(item => (
             <div key={`${item.collection}-${item.id}`} className="flex flex-wrap items-center gap-2">
               <span className="shrink-0 whitespace-nowrap">{timeText(item)}</span>
-              <b className="min-w-0 flex-1 break-words">{item.title}</b>
+              <b className={`min-w-0 flex-1 break-words ${completedTitle(item)}`}>{item.title}</b>
               <div className="ml-auto flex shrink-0 gap-1">
                 <button type="button" onClick={() => onEdit(item)} className="rounded-lg bg-white px-2.5 py-2">수정</button>
                 <button type="button" onClick={() => onDelete(item)} className="rounded-lg bg-white px-2.5 py-2">삭제</button>
@@ -822,7 +832,7 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
                 >
                   <button type="button" onClick={() => onEdit(item)} title={`${timeText(item)} · ${item.title}`} className="flex h-full w-full min-w-0 items-center gap-1.5 overflow-hidden px-1.5 text-left leading-none sm:px-2">
                     <span className="max-w-[52%] shrink-0 truncate text-[10px] font-black">{timeText(item)}</span>
-                    <b className="min-w-0 flex-1 truncate text-[11px]">{item.title}</b>
+                    <b className={`min-w-0 flex-1 truncate text-[11px] ${completedTitle(item)}`}>{item.title}</b>
                   </button>
                 </article>
               );
@@ -1152,8 +1162,8 @@ export default function SchedulePage() {
     noTime: selectedItems.filter((item) => !item.startTime && !item.endTime && !item.isAllDay)
   };
   const unscheduledItems = allItems.filter((item) => item.isUnscheduled);
-  const selectedMoveItems = allItems.filter((item) => item.needMove && isDateInRange(item, selectedDate));
-  const moveReminderItems = selectedMoveItems.length ? unscheduledItems : [];
+  const selectedMoveItems = allItems.filter((item) => !item.completed && item.needMove && isDateInRange(item, selectedDate));
+  const moveReminderItems = selectedMoveItems.length ? unscheduledItems.filter(item => !item.completed) : [];
   const counts = allItems.reduce((map, item) => ({ ...map, [item.category]: (map[item.category] || 0) + 1 }), {});
 
   const persist = (updater) => {
@@ -1266,6 +1276,7 @@ export default function SchedulePage() {
   };
 
   const completeItem = (item) => {
+    if (item.completedChoreOccurrence) return;
     persist((next) => {
       const collection = item.collection || "events";
       const id = item.originalId || item.id;
@@ -1279,7 +1290,7 @@ export default function SchedulePage() {
           updatedAt: today
         } : chore);
       } else {
-        next[collection] = (next[collection] || []).map((entry) => entry.id === id ? { ...entry, completed: true, completedAt: selectedDate, updatedAt: today } : entry);
+        next[collection] = (next[collection] || []).map((entry) => entry.id === id ? toggleScheduleCompletion(entry, selectedDate, today) : entry);
       }
     });
   };
