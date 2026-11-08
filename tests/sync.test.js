@@ -71,3 +71,14 @@ test('logout cancels an in-flight pull without applying data to another account'
   const d=device({row:{data:{todos:[{id:'private'}]},revision:1}},{todos:[]});const p=d.engine.sync();d.stop();await p;
   assert.deepEqual(d.read(),{todos:[]});
 });
+
+test('failed device persistence prevents uploading or marking an edit synced', async () => {
+ let pulled=0, committed=0, state={pending:true};
+ const engine=createSyncEngine({readLocal:()=>({todos:[{id:'draft'}]}),readState:()=>state,
+  writeState: patch=>{state={...state,...patch};},applyRemote:()=>assert.fail('must not replace draft'),
+  isActive:()=>true,archiveConflicts:()=>{},pull:async()=>{pulled++;return null;},
+  commit:async()=>{committed++;},prepareLocal:async()=>{throw Error('disk full');}
+ });
+ assert.equal((await engine.sync()).synced,false);assert.equal(pulled,0);assert.equal(committed,0);
+ assert.equal(state.lastSyncStatus,'error');assert.equal(state.pending,true);
+});

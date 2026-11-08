@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
 import { createSyncEngine } from './syncEngine.js';
 import { STORAGE_KEYS } from './storageKeys.js';
+import { getDiaryStorageStatus, refreshDiaryStorage, flushDiaryStorage } from './diaryStorage.js';
 import { getAllData, saveAllData, getStorageUser, getSyncState, updateSyncState, archiveSyncConflicts, normalizeSnapshot } from './localStorageAdapter.js';
 
 let active = null;
@@ -8,7 +9,10 @@ let cleanup = () => {};
 export function getCloudSyncStatus() {
   let meta;
   try { meta = getSyncState(); } catch (error) { meta = { lastSyncStatus: 'error', lastSyncError: error.message }; }
-  return { ...meta, enabled: isSupabaseConfigured, authenticated: Boolean(active),
+  const storage = getDiaryStorageStatus();
+  return { ...meta, lastSyncStatus: active?.syncing && !storage.error ? 'syncing' : meta.lastSyncStatus,
+    storagePending: storage.pending, storageError: storage.error?.message,
+    enabled: isSupabaseConfigured, authenticated: Boolean(active),
     offline: typeof navigator !== 'undefined' && !navigator.onLine };
 }
 export function syncAllDataFromCloud() {
@@ -22,7 +26,18 @@ export function startCloudSync(userId) {
   const session = { userId };
   const valid = () => active === session && getStorageUser() === userId;
   session.engine = createSyncEngine({
-    readLocal: getAllData, readState: getSyncState, writeState: updateSyncState,
+    readLocal: getAllData, readState: getSyncState,
+    prepareLocal: refreshDiaryStorage, flushLocal: flushDiaryStorage,
+    writeState: updates => {
+      session.syncing = updates.lastSyncStatus === 'syncing';
+      // A periodic read check should not write transient state to disk or other tabs.
+      if (session.syncing) { window.dispatchEvent(new Event('clover-sync-status')); return; }
+      const before = getSyncState();
+      if (updates.lastSyncStatus === 'saved' && before.lastSyncStatus === 'saved' && !before.pending && before.revision === updates.revision) {
+        window.dispatchEvent(new Event('clover-sync-status')); return;
+      }
+      updateSyncState(updates, { staleAcknowledgement: true });
+    },
     applyRemote: data => saveAllData(data, { skipRemote: true }),
     isActive: valid, archiveConflicts: archiveSyncConflicts,
     pull: async () => {

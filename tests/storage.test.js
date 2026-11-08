@@ -19,6 +19,7 @@ function loadAdapter({ limit = Infinity } = {}) {
   Event: class {constructor(type){this.type=type;}}, CustomEvent: class {constructor(type,opts){this.type=type;this.detail=opts?.detail;}},
   isCloudSyncEnabled:()=>true, pullRemoteSnapshot:()=>new Promise(r=>{resolvePull=r;}), pushRemoteSnapshot:async()=>{throw Error('offline');}, console
  });
+ context.diaryStorage=context.localStorage;
  vm.runInContext(source+'\nglobalThis.adapter={getAllData,saveAllData,getSyncState,normalizeSnapshot:typeof normalizeSnapshot === "function"?normalizeSnapshot:null,importLegacyData,buildFullBackup,setStorageUser,getRecoverySnapshots,startActiveSession,getActiveSession,pauseActiveSession,resumeActiveSession,endActiveSession,getTaskCategories,undoDataChange:typeof undoDataChange === "function" ? undoDataChange : null,redoDataChange:typeof redoDataChange === "function" ? redoDataChange : null,handleDataHistoryKeydown:typeof handleDataHistoryKeydown === "function" ? handleDataHistoryKeydown : null};',context);
  return {api:context.adapter,memory,events,timers,resolvePull:value=>resolvePull(value)};
 }

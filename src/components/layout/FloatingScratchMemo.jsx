@@ -94,7 +94,7 @@ export default function FloatingScratchMemo() {
   };
 
   const endDrag = () => {
-    if (dragRef.current) localStorage.setItem(positionKey, JSON.stringify(positionRef.current));
+    try { if (dragRef.current) localStorage.setItem(positionKey, JSON.stringify(positionRef.current)); } catch { /* The memo remains usable without a saved position. */ }
     dragRef.current = null;
     window.removeEventListener("mousemove", moveDrag);
     window.removeEventListener("mouseup", endDrag);

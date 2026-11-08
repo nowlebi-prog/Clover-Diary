@@ -2,6 +2,7 @@ import { initialData, collections, DEFAULT_WORK_CATEGORIES } from "./initialData
 import { STORAGE_KEYS } from "./storageKeys.js";
 import { mergeSnapshots } from "./snapshotMerge.js";
 import { normalizeMandalart } from "./mandalartData.js";
+import { diaryStorage } from "./diaryStorage.js";
 export { getCloudSyncStatus, syncAllDataFromCloud } from "./cloudSync.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -106,13 +107,17 @@ function readStored(key, fallback = null) {
   const raw = localStorage.getItem(key);
   return raw ? JSON.parse(raw) : fallback;
 }
+function readDiary(key, fallback = null) {
+  const raw = diaryStorage.getItem(key);
+  return raw ? JSON.parse(raw) : fallback;
+}
 export function getAllData() {
   const mainKey = scopedKey(STORAGE_KEYS.appData);
   const backupKey = scopedKey(STORAGE_KEYS.appDataBackup);
-  const raw = localStorage.getItem(mainKey);
+  const raw = diaryStorage.getItem(mainKey);
   try { if (raw) return trackSnapshot(normalize(JSON.parse(raw))); } catch {}
-  try { const backup = readStored(backupKey); if (backup?.data) return trackSnapshot(normalize(backup.data)); } catch {}
-  if (raw || localStorage.getItem(backupKey)) throw new Error('기기 저장 데이터를 읽을 수 없어요. 원본은 보존되어 있습니다. 복구가 필요합니다.');
+  try { const backup = readDiary(backupKey); if (backup?.data) return trackSnapshot(normalize(backup.data)); } catch {}
+  if (raw || diaryStorage.getItem(backupKey)) throw new Error('기기 저장 데이터를 읽을 수 없어요. 원본은 보존되어 있습니다. 복구가 필요합니다.');
   const fresh = normalize(storageUser ? {} : initialData);
   if (!storageUser) {
     const legacyPlan = readStored("clover-desk:mandalart:v1");
@@ -121,14 +126,14 @@ export function getAllData() {
   return trackSnapshot(fresh);
 }
 export function getSyncState() {
-  const state = readStored(scopedKey(STORAGE_KEYS.syncMeta), {}) || {};
+  const state = readDiary(scopedKey(STORAGE_KEYS.syncMeta), {}) || {};
   return storageUser ? { ...state, baseline: normalize(state.baseline || {}) } : state;
 }
-export function updateSyncState(updates) {
-  localStorage.setItem(scopedKey(STORAGE_KEYS.syncMeta), JSON.stringify({ ...getSyncState(), ...updates }));
+export function updateSyncState(updates, { localPending = false, staleAcknowledgement = false } = {}) {
+  diaryStorage.setItem(scopedKey(STORAGE_KEYS.syncMeta), JSON.stringify({ ...getSyncState(), ...updates }), localPending ? updates : undefined, staleAcknowledgement);
   window.dispatchEvent(new Event('clover-sync-status'));
 }
-export function getRecoverySnapshots() { return readStored(scopedKey(STORAGE_KEYS.recovery), []) || []; }
+export function getRecoverySnapshots() { return readDiary(scopedKey(STORAGE_KEYS.recovery), []) || []; }
 export function preserveRecoverySnapshot(reason, data = getAllData()) {
   const snapshots = getRecoverySnapshots();
   if (snapshots.length && JSON.stringify(snapshots[0].data) === JSON.stringify(data)) return;
@@ -137,11 +142,11 @@ export function preserveRecoverySnapshot(reason, data = getAllData()) {
   ].slice(0, 12);
   while (candidates.length > 1 && JSON.stringify(candidates).length > 750000) candidates.pop();
   for (;;) {
-    try { localStorage.setItem(scopedKey(STORAGE_KEYS.recovery), JSON.stringify(candidates)); return; }
+    try { diaryStorage.setItem(scopedKey(STORAGE_KEYS.recovery), JSON.stringify(candidates)); return; }
     catch (error) {
       if (error.name !== "QuotaExceededError") throw error;
       if (candidates.length > 1) { candidates.pop(); continue; }
-      const backup = readStored(scopedKey(STORAGE_KEYS.appDataBackup));
+      const backup = readDiary(scopedKey(STORAGE_KEYS.appDataBackup));
       // Remote saves never replace this last-local-edit backup.
       if (backup?.data && JSON.stringify(backup.data) === JSON.stringify(data)) return;
       throw new Error("기기 저장 공간이 부족해 동기화를 보류했어요. 설정에서 전체 백업을 내려받은 뒤 저장 공간을 확보해주세요. 기존 기록은 보존되어 있습니다.");
@@ -166,14 +171,14 @@ export function saveAllData(data, options = {}) {
     archiveSyncConflicts(merged.conflicts);
     normalized = normalize(merged.data);
   }
-  if (options.skipRemote && localStorage.getItem(scopedKey(STORAGE_KEYS.appData))) {
+  if (options.skipRemote && diaryStorage.getItem(scopedKey(STORAGE_KEYS.appData))) {
     preserveRecoverySnapshot('before-cloud', getAllData());
   }
-  localStorage.setItem(scopedKey(STORAGE_KEYS.appData), JSON.stringify(normalized));
+  diaryStorage.setItem(scopedKey(STORAGE_KEYS.appData), JSON.stringify(normalized));
   if (before) rememberChange(before, normalized);
   if (!options.skipRemote) {
-    try { localStorage.setItem(scopedKey(STORAGE_KEYS.appDataBackup), JSON.stringify({ savedAt: new Date().toISOString(), data: normalized })); } catch {}
-    try { updateSyncState({ pending: true, lastLocalWriteAt: new Date().toISOString(), lastSyncStatus: 'pending' }); }
+    try { diaryStorage.setItem(scopedKey(STORAGE_KEYS.appDataBackup), JSON.stringify({ savedAt: new Date().toISOString(), data: normalized })); } catch {}
+    try { updateSyncState({ pending: true, lastLocalWriteAt: new Date().toISOString(), lastSyncStatus: 'pending' }, { localPending: true }); }
     finally { window.dispatchEvent(new Event('clover-local-write')); }
   }
   if (!options.silent) window.dispatchEvent(new Event('clover-data-change'));
@@ -184,8 +189,8 @@ export function getLegacyData() {
     const legacyPlan = readStored("clover-desk:mandalart:v1");
     return data || legacyPlan ? { ...normalize(data || {}), ...(legacyPlan && !data?.mandalart ? { mandalart: normalizeMandalart(legacyPlan) } : {}) } : null;
   };
-  try { const data = readStored(STORAGE_KEYS.appData); if (data) return attachMandalart(data); } catch {}
-  const backup = readStored(STORAGE_KEYS.appDataBackup);
+  try { const data = readDiary(STORAGE_KEYS.appData); if (data) return attachMandalart(data); } catch {}
+  const backup = readDiary(STORAGE_KEYS.appDataBackup);
   return attachMandalart(backup?.data);
 }
 export function importLegacyData() {
@@ -200,7 +205,7 @@ export function importLegacyData() {
 }
 export function buildFullBackup() {
   return { format: 'clover-recovery-v2', exportedAt: new Date().toISOString(), userId: storageUser,
-    data: getAllData(), recovery: getRecoverySnapshots(), lastLocalBackup: readStored(scopedKey(STORAGE_KEYS.appDataBackup)), sync: getSyncState(), legacy: getLegacyData() };
+    data: getAllData(), recovery: getRecoverySnapshots(), lastLocalBackup: readDiary(scopedKey(STORAGE_KEYS.appDataBackup)), sync: getSyncState(), legacy: getLegacyData() };
 }
 
 function list(collection) {

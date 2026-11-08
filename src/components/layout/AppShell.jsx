@@ -42,12 +42,12 @@ export default function AppShell() {
   }, []);
 
   const closeWeeklyReport = () => {
-    if (weeklyReport?.key) localStorage.setItem(weeklyReport.key, "seen");
+    try { if (weeklyReport?.key) localStorage.setItem(weeklyReport.key, "seen"); } catch { /* Dismiss even if storage is full. */ }
     setWeeklyReport(null);
   };
 
   const closeRoutineCoach = () => {
-    if (routineCoach?.key) localStorage.setItem(routineCoach.key, "seen");
+    try { if (routineCoach?.key) localStorage.setItem(routineCoach.key, "seen"); } catch { /* Dismiss even if storage is full. */ }
     setRoutineCoach(null);
   };
 

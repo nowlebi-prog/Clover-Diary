@@ -68,7 +68,7 @@ export default function TodayTaskReminder() {
   if (!activeSlot || !visibleTasks.length) return null;
 
   const close = () => {
-    localStorage.setItem(reminderKey(today, activeSlot), "seen");
+    try { localStorage.setItem(reminderKey(today, activeSlot), "seen"); } catch { /* Dismiss even if storage is full. */ }
     setActiveSlot(null);
   };
 

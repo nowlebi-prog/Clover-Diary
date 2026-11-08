@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { getCloudSyncStatus, syncAllDataFromCloud } from '../../lib/storage/cloudSync';
 
 export function describeSyncStatus(status) {
+  if (status.storageError) return '기기 저장 실패 · 설정에서 전체 백업을 저장해 주세요';
+  if (status.storagePending) return '기기에 저장 중…';
   if (!status.enabled) return '이 브라우저에만 저장됨 · 기기 간 동기화 꺼짐';
   if (!status.authenticated) return '동기화하려면 계정 로그인이 필요해요';
   if (status.offline) return '오프라인 · 기기에 보관 중, 연결되면 자동 전송';

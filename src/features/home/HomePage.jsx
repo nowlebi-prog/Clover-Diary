@@ -770,7 +770,7 @@ export default function HomePage() {
   };
 
   const closeDailySummary = () => {
-    localStorage.setItem(dailySummarySeenKey(today), "yes");
+    try { localStorage.setItem(dailySummarySeenKey(today), "yes"); } catch { /* A display preference must not block dismissal. */ }
     setShowDailySummary(false);
   };
 

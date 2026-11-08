@@ -325,7 +325,7 @@ export default function SettingsPage({ onLogout }) {
             {syncStatus.lastLocalWriteAt && <p>마지막 로컬 저장: {new Date(syncStatus.lastLocalWriteAt).toLocaleString()}</p>}
             {syncStatus.lastSyncedAt && <p>마지막 서버 확인: {new Date(syncStatus.lastSyncedAt).toLocaleString()}</p>}
             {Boolean(syncStatus.conflicts?.length) && <p>동시 수정 {syncStatus.conflicts.length}건의 양쪽 내용을 복구 사본에 보관했어요. 전체 백업으로 내려받을 수 있습니다.</p>}
-            {syncStatus.lastSyncError && <p className="font-bold text-red-500">오류: {syncStatus.lastSyncError}</p>}
+            {(syncStatus.storageError || syncStatus.lastSyncError) && <p className="font-bold text-red-500">오류: {syncStatus.storageError || syncStatus.lastSyncError}</p>}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <AppButton variant="soft" onClick={syncNow} disabled={syncing}>{syncing ? "동기화 중..." : "지금 동기화"}</AppButton>
