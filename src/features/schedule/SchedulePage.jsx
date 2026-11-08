@@ -85,7 +85,7 @@ const timelineMetrics = (item, startHour = 0, endHour = 24) => {
   if (visibleEnd <= dayStart || visibleStart >= dayEnd) return null;
   return {
     top: Math.max(0, (visibleStart - dayStart) * 0.9),
-    height: Math.max(26, (visibleEnd - visibleStart) * 0.9),
+    height: (visibleEnd - visibleStart) * 0.9,
     start: startRaw,
     end: endNext
   };
@@ -771,9 +771,19 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
       </div>
 
       {showDetails && (
-        <p className="mb-3 rounded-[14px] bg-slate-50 px-4 py-3 text-xs font-bold text-clover-sub">
-          일정 블록을 누르면 수정할 수 있고, 세부 옵션에서는 수정/삭제 버튼이 함께 보여요.
-        </p>
+        <div className="mb-3 grid gap-2 rounded-[14px] bg-slate-50 p-3 text-xs font-bold text-clover-sub">
+          {!timedItems.length && <p>시간이 정해진 일정이 없어요.</p>}
+          {timedItems.map(item => (
+            <div key={`${item.collection}-${item.id}`} className="flex flex-wrap items-center gap-2">
+              <span className="shrink-0 whitespace-nowrap">{timeText(item)}</span>
+              <b className="min-w-0 flex-1 break-words">{item.title}</b>
+              <div className="ml-auto flex shrink-0 gap-1">
+                <button type="button" onClick={() => onEdit(item)} className="rounded-lg bg-white px-2.5 py-2">수정</button>
+                <button type="button" onClick={() => onDelete(item)} className="rounded-lg bg-white px-2.5 py-2">삭제</button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       <div className="relative">
@@ -802,24 +812,18 @@ function VisualTimelineCompact({ selectedDate, items, quickText, onQuickText, on
               return (
                 <article
                   key={`${item.collection}-${item.id}`}
-                  className={`absolute z-10 flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border px-3 py-1.5 text-xs shadow-sm max-sm:px-2 ${tone}`}
+                  className={`absolute z-10 min-w-0 overflow-hidden rounded-lg border text-xs ${tone}`}
                   style={{
                     top: `${item.metrics.top}px`,
-                    minHeight: `${item.metrics.height}px`,
+                    height: `${item.metrics.height}px`,
                     left: `calc(${item.lane * laneWidth}% + ${item.lane ? laneGap / 2 : 0}px)`,
                     width: `calc(${laneWidth}% - ${laneGap}px)`
                   }}
                 >
-                  <button type="button" onClick={() => onEdit(item)} className="grid min-w-0 grid-cols-[82px_1fr] items-center gap-2 text-left max-sm:grid-cols-1 max-sm:gap-0.5">
-                    <span className="text-[11px] font-black leading-tight">{timeText(item)}</span>
-                    <b className="min-w-0 truncate">{item.title}</b>
+                  <button type="button" onClick={() => onEdit(item)} title={`${timeText(item)} · ${item.title}`} className="flex h-full w-full min-w-0 items-center gap-1.5 overflow-hidden px-1.5 text-left leading-none sm:px-2">
+                    <span className="max-w-[52%] shrink-0 truncate text-[10px] font-black">{timeText(item)}</span>
+                    <b className="min-w-0 flex-1 truncate text-[11px]">{item.title}</b>
                   </button>
-                  {showDetails && (
-                    <div className="mt-2 flex justify-end gap-1">
-                      <button type="button" onClick={() => onEdit(item)} className="rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-black">수정</button>
-                      <button type="button" onClick={() => onDelete(item)} className="rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-black">삭제</button>
-                    </div>
-                  )}
                 </article>
               );
             })}

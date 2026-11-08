@@ -14,3 +14,16 @@ test('empty and populated timelines both show midnight through the last hour',()
   assert.equal(api.timelineMetrics({startTime:'23:00',endTime:'23:59'},range.startHour,range.endHour).top,1242);
  }
 });
+
+test('a 20-minute card ends before the next card and truly overlapping cards keep separate lanes',()=>{
+ const source=fs.readFileSync(new URL('../src/features/schedule/SchedulePage.jsx',import.meta.url),'utf8');
+ const helpers=source.slice(source.indexOf('const timeMinutes ='),source.indexOf('const addDays ='));
+ const {timelineMetrics,layoutTimelineItems}=vm.runInNewContext(`${helpers}\n;({timelineMetrics,layoutTimelineItems})`);
+ const items=layoutTimelineItems([
+  {startTime:'05:00',endTime:'05:20'}, {startTime:'05:20',endTime:'07:00'},
+  {startTime:'08:00',endTime:'08:15'}, {startTime:'08:00',endTime:'09:00'}
+ ].map(item=>({...item,metrics:timelineMetrics(item)})));
+ assert.ok(items[0].metrics.top+items[0].metrics.height<=items[1].metrics.top);
+ assert.equal(items[0].laneCount,1);
+ assert.notEqual(items[2].lane,items[3].lane);
+});
